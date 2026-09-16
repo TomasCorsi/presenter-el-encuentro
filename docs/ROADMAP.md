@@ -1,8 +1,22 @@
 # Roadmap
 
+Este documento es la ÚNICA fuente de verdad del roadmap y del estado de las
+fases. No debe duplicarse en otros archivos.
+
 ## Regla
 
 No comenzar una fase nueva hasta validar la anterior.
+
+---
+
+## Estado actual
+
+- Fase actual completada: **Fase 0 — Arquitectura y documentación**.
+- Próxima fase: **Fase 1 — App Shell + Design System** (pendiente de aprobación).
+- Backend: no conectado. Se decide en la Fase 12.
+- Dependencias añadidas en Fase 0: ninguna.
+- Implementado hasta ahora: documentación en `/docs` y una página inicial
+  placeholder técnico. Sin funcionalidades de producto.
 
 ---
 
@@ -14,12 +28,12 @@ Definir la base técnica y funcional del proyecto.
 
 ### Tareas
 
-- [ ] Crear documentación.
-- [ ] Definir arquitectura.
-- [ ] Definir modelo de dominio.
-- [ ] Definir design system inicial.
-- [ ] Definir estrategia offline.
-- [ ] Registrar decisiones iniciales.
+- [x] Crear documentación.
+- [x] Definir arquitectura.
+- [x] Definir modelo de dominio.
+- [x] Definir design system inicial.
+- [x] Definir estrategia offline.
+- [x] Registrar decisiones iniciales.
 
 ### Fuera de alcance
 
@@ -34,14 +48,15 @@ Definir la base técnica y funcional del proyecto.
 
 ### Criterios de aceptación
 
-- [ ] La documentación existe.
-- [ ] La arquitectura está definida.
-- [ ] El roadmap está documentado.
-- [ ] Las decisiones principales están registradas.
+- [x] La documentación existe.
+- [x] La arquitectura está definida.
+- [x] El roadmap está documentado.
+- [x] Las decisiones principales están registradas.
 
 ### Estado
 
-- [x] En progreso
+- [x] Completada
+
 
 ---
 
