@@ -1,5 +1,5 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
-import { FolderOpen, Radio, Settings } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { FolderOpen, Settings } from "lucide-react";
 
 import { Page, PageHeader } from "@/components/layout/page";
 import { NAV_GROUPS } from "@/components/layout/nav-items";
