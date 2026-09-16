@@ -9,50 +9,246 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppBibleRouteImport } from './routes/_app.bible'
+import { Route as AppLiveRouteImport } from './routes/_app.live'
+import { Route as AppMediaRouteImport } from './routes/_app.media'
+import { Route as AppOutputsRouteImport } from './routes/_app.outputs'
+import { Route as AppPresetsRouteImport } from './routes/_app.presets'
+import { Route as AppProjectsRouteImport } from './routes/_app.projects'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
+import { Route as AppSongsRouteImport } from './routes/_app.songs'
 
-const IndexRoute = IndexRouteImport.update({
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBibleRoute = AppBibleRouteImport.update({
+  id: '/bible',
+  path: '/bible',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLiveRoute = AppLiveRouteImport.update({
+  id: '/live',
+  path: '/live',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMediaRoute = AppMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOutputsRoute = AppOutputsRouteImport.update({
+  id: '/outputs',
+  path: '/outputs',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPresetsRoute = AppPresetsRouteImport.update({
+  id: '/presets',
+  path: '/presets',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProjectsRoute = AppProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSongsRoute = AppSongsRouteImport.update({
+  id: '/songs',
+  path: '/songs',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/bible': typeof AppBibleRoute
+  '/live': typeof AppLiveRoute
+  '/media': typeof AppMediaRoute
+  '/outputs': typeof AppOutputsRoute
+  '/presets': typeof AppPresetsRoute
+  '/projects': typeof AppProjectsRoute
+  '/settings': typeof AppSettingsRoute
+  '/songs': typeof AppSongsRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/bible': typeof AppBibleRoute
+  '/live': typeof AppLiveRoute
+  '/media': typeof AppMediaRoute
+  '/outputs': typeof AppOutputsRoute
+  '/presets': typeof AppPresetsRoute
+  '/projects': typeof AppProjectsRoute
+  '/settings': typeof AppSettingsRoute
+  '/songs': typeof AppSongsRoute
+  '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_app/bible': typeof AppBibleRoute
+  '/_app/live': typeof AppLiveRoute
+  '/_app/media': typeof AppMediaRoute
+  '/_app/outputs': typeof AppOutputsRoute
+  '/_app/presets': typeof AppPresetsRoute
+  '/_app/projects': typeof AppProjectsRoute
+  '/_app/settings': typeof AppSettingsRoute
+  '/_app/songs': typeof AppSongsRoute
+  '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/bible'
+    | '/live'
+    | '/media'
+    | '/outputs'
+    | '/presets'
+    | '/projects'
+    | '/settings'
+    | '/songs'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/bible'
+    | '/live'
+    | '/media'
+    | '/outputs'
+    | '/presets'
+    | '/projects'
+    | '/settings'
+    | '/songs'
+    | '/'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/_app/bible'
+    | '/_app/live'
+    | '/_app/media'
+    | '/_app/outputs'
+    | '/_app/presets'
+    | '/_app/projects'
+    | '/_app/settings'
+    | '/_app/songs'
+    | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/bible': {
+      id: '/_app/bible'
+      path: '/bible'
+      fullPath: '/bible'
+      preLoaderRoute: typeof AppBibleRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/live': {
+      id: '/_app/live'
+      path: '/live'
+      fullPath: '/live'
+      preLoaderRoute: typeof AppLiveRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/media': {
+      id: '/_app/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof AppMediaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/outputs': {
+      id: '/_app/outputs'
+      path: '/outputs'
+      fullPath: '/outputs'
+      preLoaderRoute: typeof AppOutputsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/presets': {
+      id: '/_app/presets'
+      path: '/presets'
+      fullPath: '/presets'
+      preLoaderRoute: typeof AppPresetsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/projects': {
+      id: '/_app/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof AppProjectsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/songs': {
+      id: '/_app/songs'
+      path: '/songs'
+      fullPath: '/songs'
+      preLoaderRoute: typeof AppSongsRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppBibleRoute: typeof AppBibleRoute
+  AppLiveRoute: typeof AppLiveRoute
+  AppMediaRoute: typeof AppMediaRoute
+  AppOutputsRoute: typeof AppOutputsRoute
+  AppPresetsRoute: typeof AppPresetsRoute
+  AppProjectsRoute: typeof AppProjectsRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppSongsRoute: typeof AppSongsRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppBibleRoute: AppBibleRoute,
+  AppLiveRoute: AppLiveRoute,
+  AppMediaRoute: AppMediaRoute,
+  AppOutputsRoute: AppOutputsRoute,
+  AppPresetsRoute: AppPresetsRoute,
+  AppProjectsRoute: AppProjectsRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppSongsRoute: AppSongsRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

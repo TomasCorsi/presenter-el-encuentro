@@ -11,12 +11,15 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Fase actual completada: **Fase 0 — Arquitectura y documentación**.
-- Próxima fase: **Fase 1 — App Shell + Design System** (pendiente de aprobación).
+- Fase actual completada: **Fase 1 — App Shell + Design System**.
+- Próxima fase: **Fase 2 — Projects** (pendiente de aprobación).
 - Backend: no conectado. Se decide en la Fase 12.
-- Dependencias añadidas en Fase 0: ninguna.
-- Implementado hasta ahora: documentación en `/docs` y una página inicial
-  placeholder técnico. Sin funcionalidades de producto.
+- Dependencias añadidas en Fases 0 y 1: ninguna.
+- Implementado hasta ahora: documentación en `/docs`, tema oscuro con tokens
+  semánticos, App Shell (sidebar + topbar + área de contenido) y las nueve
+  rutas de la aplicación con pantallas vacías. Sin funcionalidades de producto.
+- Ancho de página: lo decide cada pantalla (`contained` o `full`), no el shell.
+- Tipografía: stack del sistema, sin fuentes externas (offline-first).
 
 ---
 
@@ -68,25 +71,32 @@ Crear la estructura visual y de navegación.
 
 ### Tareas
 
-- [ ] Layout.
-- [ ] Sidebar.
-- [ ] Topbar.
-- [ ] Routing.
-- [ ] Tema oscuro.
-- [ ] Componentes UI base.
-- [ ] Responsive foundation.
+- [x] Layout (`src/routes/_app.tsx`, ruta pathless: los outputs no lo heredan).
+- [x] Sidebar (grupos Principal / Producción / Sistema, colapsable a iconos).
+- [x] Topbar (workspace, proyecto activo, conexión, perfil).
+- [x] Routing (nueve rutas con metadatos propios).
+- [x] Tema oscuro con tokens `live`, `success`, `warning`, `offline`.
+- [x] Componentes UI base: `StatusBadge`, `EmptyState`, `Page` / `PageHeader`.
+- [x] Responsive foundation (verificado en 1920x1080, 1366x768 y móvil).
 
 ### Pantallas
 
-- [ ] Home.
-- [ ] Projects.
-- [ ] Songs.
-- [ ] Bible.
-- [ ] Media.
-- [ ] Presets.
-- [ ] Live.
-- [ ] Outputs.
-- [ ] Settings.
+- [x] Home.
+- [x] Projects.
+- [x] Songs.
+- [x] Bible.
+- [x] Media.
+- [x] Presets.
+- [x] Live.
+- [x] Outputs.
+- [x] Settings.
+
+### Estado
+
+- [x] Completada
+
+Todas las pantallas son estados vacíos. El estado Online / Offline / Sync es
+visual: no existe sincronización real.
 
 ---
 
