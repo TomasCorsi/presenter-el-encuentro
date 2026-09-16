@@ -41,16 +41,18 @@ En Fase 0 solo se crean las carpetas que ya tienen contenido real; el resto se d
 - Crear `/docs` con los 9 documentos.
 - Actualizar `ARCHITECTURE.md`: estructura real de carpetas, regla de dependencias, convención de rutas de outputs.
 - Actualizar `README.md` (docs): estructura corregida y comandos reales del proyecto.
-- Actualizar `DECISIONS.md`: nuevas ADR-007 (enrutado por archivos), ADR-008 (estado global diferido a Fase 4), ADR-009 (tokens semánticos como única fuente de color).
-- Actualizar `ROADMAP.md`: Fase 0 marcada como completada, criterios de aceptación tildados.
-- Crear `roadmap.md` en la raíz como lista de tareas viva del desarrollo.
-- Dejar la página inicial del proyecto con una pantalla mínima que indique el estado del proyecto (aún no es la app; el shell real llega en Fase 1) con metadatos propios de título y descripción.
+- Actualizar `DECISIONS.md`: nuevas ADR-007 (enrutado por archivos de TanStack Start), ADR-008 (estado global diferido a Fase 4), ADR-009 (tokens semánticos como única fuente de color), ADR-010 (BroadcastChannel como decisión PROVISIONAL, solo mismo dispositivo, pendiente de validación técnica; la comunicación entre dispositivos se define en una fase posterior).
+- Actualizar `ROADMAP.md`: única fuente de verdad del roadmap. Fase 0 completada, criterios tildados y nueva sección "Estado actual". No se crea ningún `roadmap.md` en la raíz.
+- Documentar en `ARCHITECTURE.md` qué código debe ejecutarse solo en cliente por el renderizado en servidor (almacenamiento local, ventanas, BroadcastChannel, service worker).
+- Dejar la página inicial únicamente como placeholder técnico con metadatos propios de título y descripción. Sin app shell, sidebar, dashboard, design system visual ni navegación de producto: eso es Fase 1.
+- No instalar dependencias en esta fase.
 
 ## 5. Viabilidad técnica (verificada contra el stack)
 
 - **Local-first**: viable. El acceso a datos se aísla tras una capa de repositorios, de modo que IndexedDB (Fase 11) entra sin tocar la UI.
 - **PWA**: viable, pero el proyecto renderiza en servidor; el service worker debe registrarse solo en cliente y no cachear respuestas HTML de forma agresiva. Se documenta en OFFLINE_STRATEGY.
-- **Outputs**: viables como rutas independientes. La sincronización entre ventanas usará BroadcastChannel local (no la nube), decisión a confirmar en Fase 6.
+- **Outputs**: viables como rutas independientes. Sincronización entre ventanas del mismo dispositivo vía BroadcastChannel, como decisión provisional a validar en Fase 6.
+
 
 ## 6. Riesgos técnicos a registrar
 
