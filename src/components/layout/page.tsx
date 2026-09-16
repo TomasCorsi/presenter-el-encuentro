@@ -19,7 +19,7 @@ export function Page({ width = "full", className, children, ...props }: PageProp
   return (
     <div
       className={cn(
-        "w-full px-4 py-6 sm:px-6",
+        "w-full px-4 py-6 sm:px-6 lg:px-8 lg:py-7",
         width === "contained" && "mx-auto max-w-3xl",
         className,
       )}
@@ -51,22 +51,22 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 sm:flex sm:flex-wrap sm:items-center sm:justify-between",
+        "mb-7 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 border-b border-border pb-5 sm:flex sm:flex-wrap sm:items-end sm:justify-between",
         className,
       )}
       {...props}
     >
       <div className="min-w-0">
         {eyebrow ? (
-          <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+        <h1 className="truncate text-2xl font-semibold text-foreground sm:text-[28px]">
           {title}
         </h1>
         {description ? (
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground">
             {description}
           </p>
         ) : null}

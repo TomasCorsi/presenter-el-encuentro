@@ -26,24 +26,23 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex min-h-[320px] flex-col items-center justify-center rounded-lg",
-        "border border-dashed border-border bg-card/40 px-6 py-12 text-center",
+        "flex max-w-2xl items-start gap-4 rounded-md border border-border bg-card px-5 py-5 text-left sm:px-6 sm:py-6",
         className,
       )}
       {...props}
     >
       {Icon ? (
-        <div className="mb-4 grid size-11 shrink-0 place-items-center rounded-md border border-border bg-muted text-muted-foreground">
-          <Icon className="size-5" aria-hidden="true" />
+        <div className="grid size-10 shrink-0 place-items-center rounded-sm border border-border bg-muted text-muted-foreground">
+          <Icon className="size-[18px]" aria-hidden="true" />
         </div>
       ) : null}
-      <h2 className="text-base font-semibold text-foreground">{title}</h2>
-      {description ? (
-        <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
-          {description}
-        </p>
-      ) : null}
-      {actions ? <div className="mt-6 flex flex-wrap justify-center gap-2">{actions}</div> : null}
+      <div className="min-w-0 pt-0.5">
+        <h2 className="text-base font-semibold text-foreground">{title}</h2>
+        {description ? (
+          <p className="mt-1.5 max-w-lg text-sm leading-6 text-muted-foreground">{description}</p>
+        ) : null}
+        {actions ? <div className="mt-4 flex flex-wrap gap-2">{actions}</div> : null}
+      </div>
     </div>
   );
 }

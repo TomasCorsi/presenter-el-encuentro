@@ -44,8 +44,8 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-0.5",
-        "font-mono text-[11px] font-medium uppercase tracking-wider",
+        "inline-flex h-6 shrink-0 items-center gap-1.5 rounded-sm border px-2",
+        "font-mono text-[10px] font-semibold uppercase tracking-wide",
         toneClasses[tone],
         className,
       )}
