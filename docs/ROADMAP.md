@@ -71,25 +71,32 @@ Crear la estructura visual y de navegación.
 
 ### Tareas
 
-- [ ] Layout.
-- [ ] Sidebar.
-- [ ] Topbar.
-- [ ] Routing.
-- [ ] Tema oscuro.
-- [ ] Componentes UI base.
-- [ ] Responsive foundation.
+- [x] Layout (`src/routes/_app.tsx`, ruta pathless: los outputs no lo heredan).
+- [x] Sidebar (grupos Principal / Producción / Sistema, colapsable a iconos).
+- [x] Topbar (workspace, proyecto activo, conexión, perfil).
+- [x] Routing (nueve rutas con metadatos propios).
+- [x] Tema oscuro con tokens `live`, `success`, `warning`, `offline`.
+- [x] Componentes UI base: `StatusBadge`, `EmptyState`, `Page` / `PageHeader`.
+- [x] Responsive foundation (verificado en 1920x1080, 1366x768 y móvil).
 
 ### Pantallas
 
-- [ ] Home.
-- [ ] Projects.
-- [ ] Songs.
-- [ ] Bible.
-- [ ] Media.
-- [ ] Presets.
-- [ ] Live.
-- [ ] Outputs.
-- [ ] Settings.
+- [x] Home.
+- [x] Projects.
+- [x] Songs.
+- [x] Bible.
+- [x] Media.
+- [x] Presets.
+- [x] Live.
+- [x] Outputs.
+- [x] Settings.
+
+### Estado
+
+- [x] Completada
+
+Todas las pantallas son estados vacíos. El estado Online / Offline / Sync es
+visual: no existe sincronización real.
 
 ---
 
