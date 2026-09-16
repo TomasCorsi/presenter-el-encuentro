@@ -173,5 +173,27 @@ Mapeo previsto:
 | danger           | `--destructive`             |
 | offline          | `--offline` (nuevo)         |
 
-Los tokens nuevos (`live`, `success`, `warning`, `offline`) se crean en la
-Fase 1 junto con el tema oscuro, no antes.
+Los tokens nuevos (`live`, `success`, `warning`, `offline`) se crearon en la
+Fase 1 junto con el tema oscuro, cada uno con su variante `-foreground`.
+
+## Tipografía (definida en Fase 1)
+
+No se cargan fuentes externas (Google Fonts, CDN). El producto es offline-first
+y su apariencia base no puede depender de Internet.
+
+```text
+sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
+mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
+```
+
+La familia monoespaciada se reserva para información técnica: estados, rutas,
+atajos y tiempos. Empaquetar una fuente local se evaluará más adelante.
+
+## Ancho de página (definido en Fase 1)
+
+El App Shell no impone ancho máximo. Cada pantalla elige mediante `Page`:
+
+| Modo        | Uso                                                    |
+| ----------- | ------------------------------------------------------ |
+| `contained` | Settings, formularios y textos largos                  |
+| `full`      | Live, Projects, Media, Presets, Outputs y vistas densas |
