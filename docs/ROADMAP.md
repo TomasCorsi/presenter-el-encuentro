@@ -11,12 +11,15 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Fase actual completada: **Fase 0 — Arquitectura y documentación**.
-- Próxima fase: **Fase 1 — App Shell + Design System** (pendiente de aprobación).
+- Fase actual completada: **Fase 1 — App Shell + Design System**.
+- Próxima fase: **Fase 2 — Projects** (pendiente de aprobación).
 - Backend: no conectado. Se decide en la Fase 12.
-- Dependencias añadidas en Fase 0: ninguna.
-- Implementado hasta ahora: documentación en `/docs` y una página inicial
-  placeholder técnico. Sin funcionalidades de producto.
+- Dependencias añadidas en Fases 0 y 1: ninguna.
+- Implementado hasta ahora: documentación en `/docs`, tema oscuro con tokens
+  semánticos, App Shell (sidebar + topbar + área de contenido) y las nueve
+  rutas de la aplicación con pantallas vacías. Sin funcionalidades de producto.
+- Ancho de página: lo decide cada pantalla (`contained` o `full`), no el shell.
+- Tipografía: stack del sistema, sin fuentes externas (offline-first).
 
 ---
 
