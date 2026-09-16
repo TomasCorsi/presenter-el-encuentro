@@ -117,3 +117,101 @@ Reducir retrabajo, bugs y consumo innecesario de créditos.
 ### Consecuencias
 
 No se avanza a la siguiente fase sin aprobación.
+
+---
+
+## ADR-007 — Enrutado por archivos de TanStack Start
+
+### Contexto
+
+La documentación inicial proponía `src/app/` y `src/pages/`, que no corresponden
+al stack real del proyecto.
+
+### Decisión
+
+Usar el enrutado por archivos de TanStack Start en `src/routes/`.
+
+### Motivo
+
+Es el enrutado nativo del stack; evita capas propias innecesarias y habilita
+code splitting y SSR sin configuración extra.
+
+### Consecuencias
+
+`src/routeTree.gen.ts` es generado y no se edita. Los outputs se definen como
+rutas independientes (`output.main.tsx`, etc.).
+
+---
+
+## ADR-008 — Estado global diferido a la Fase 4
+
+### Contexto
+
+Los documentos mencionan Zustand o equivalente.
+
+### Decisión
+
+No instalar ninguna librería de estado global hasta la Fase 4, cuando el
+Presentation Engine lo requiera realmente.
+
+### Motivo
+
+Evitar sobreingeniería y dependencias sin uso.
+
+### Consecuencias
+
+Las Fases 1–3 usan estado local de componente y el estado de servidor que
+provee el stack.
+
+---
+
+## ADR-009 — Tokens semánticos como única fuente de color
+
+### Contexto
+
+El design system define tokens conceptuales (`surface`, `live`, `offline`...).
+
+### Decisión
+
+Todos los colores se definen como tokens semánticos en `src/styles.css` y se
+consumen mediante clases semánticas. Prohibido usar colores literales en los
+componentes.
+
+### Motivo
+
+Coherencia visual, tema oscuro consistente y cambios centralizados.
+
+### Consecuencias
+
+Añadir un color implica registrar el token antes de usarlo.
+
+---
+
+## ADR-010 — BroadcastChannel: decisión PROVISIONAL
+
+### Contexto
+
+Los outputs (Main, Stage, Stream) se abren como ventanas o pestañas separadas y
+necesitan recibir el estado de presentación.
+
+### Decisión
+
+Provisional: usar BroadcastChannel para sincronizar ventanas y pestañas del
+MISMO dispositivo.
+
+Esta decisión NO es definitiva y queda pendiente de validación técnica en la
+Fase 6.
+
+### Motivo
+
+Es la vía más simple y de menor latencia dentro de un mismo navegador, sin
+dependencias ni red.
+
+### Consecuencias
+
+- No sirve para dispositivos distintos.
+- El Mobile Remote (Fase 15) y cualquier control entre dispositivos requerirán
+  otro canal, que se definirá en una fase posterior.
+- El transporte debe quedar aislado tras una interfaz, para poder sustituirlo
+  sin tocar el Presentation Engine ni los outputs.
+- Solo puede instanciarse en cliente (ver regla SSR en ARCHITECTURE.md).

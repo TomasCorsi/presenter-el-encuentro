@@ -155,3 +155,72 @@ Priorizar:
 - Code splitting.
 - Virtualización de listas grandes.
 - Procesamiento de medios fuera del flujo crítico.
+
+---
+
+## Estructura real del proyecto (definida en Fase 0)
+
+El stack actual de Lovable es TanStack Start con enrutado por archivos. No se usa
+`src/app/` ni `src/pages/`.
+
+```text
+docs/                     documentación: fuente de verdad
+src/
+├── routes/               enrutado por archivos (app, /output/*, /remote)
+├── components/ui/        componentes base reutilizables
+├── components/layout/    shell: sidebar, topbar (Fase 1)
+├── features/             projects, songs, bible, media, presets,
+│                         presentation, outputs, remote
+├── domain/               tipos y reglas de negocio puras
+├── services/             repositorios y acceso a datos
+├── stores/               estado interactivo (desde Fase 4)
+├── lib/                  utilidades
+└── styles.css            tokens del design system
+```
+
+Las carpetas se crean cuando la fase que las necesita comienza. No se crean
+carpetas vacías.
+
+### Regla de dependencias
+
+```text
+routes → features → domain
+features → services → persistence
+```
+
+Nunca al revés. Un componente jamás accede a IndexedDB ni a la nube directamente.
+
+### Convención de rutas de outputs
+
+| URL              | Archivo                          |
+| ---------------- | -------------------------------- |
+| `/output/main`   | `src/routes/output.main.tsx`     |
+| `/output/stage`  | `src/routes/output.stage.tsx`    |
+| `/output/stream` | `src/routes/output.stream.tsx`   |
+| `/remote`        | `src/routes/remote.tsx`          |
+
+Los outputs no contienen controles y no comparten layout con la aplicación.
+
+## SSR: código exclusivo de cliente
+
+La aplicación se renderiza también en el servidor. El siguiente código NO puede
+ejecutarse durante la importación de un módulo ni durante el render:
+
+- `window`, `document`, `navigator`, `location`.
+- `localStorage`, `sessionStorage`, IndexedDB.
+- `BroadcastChannel`.
+- Registro del Service Worker.
+- Apertura de ventanas de output (`window.open`).
+- `matchMedia`, tamaños de pantalla, fullscreen API.
+
+Dónde sí se permite: dentro de `useEffect`, en manejadores de eventos, dentro de
+`<ClientOnly>`, o detrás de `useHydrated() === true`. Las librerías que tocan el
+navegador al importarse se cargan con `import()` dinámico o `React.lazy`.
+
+Los secretos y variables de entorno sin prefijo `VITE_` solo se leen dentro del
+handler de una server function.
+
+## Backend
+
+Fase 0 no define ni conecta backend. La decisión de backend (Supabase u otra)
+pertenece a la Fase 12; hasta entonces ningún módulo asume su existencia.
