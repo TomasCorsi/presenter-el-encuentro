@@ -29,12 +29,17 @@ La aplicación será:
 - Supabase para Auth, PostgreSQL, Storage y sincronización cloud
 - Realtime solo cuando sea necesario
 
-## Estructura sugerida
+## Estructura del proyecto
+
+Definida en la Fase 0. El stack usa TanStack Start con enrutado por archivos:
+no hay `src/app/` ni `src/pages/`.
 
 ```text
+docs/
 src/
-├── app/
-├── components/
+├── routes/               enrutado por archivos (app, /output/*, /remote)
+├── components/ui/
+├── components/layout/
 ├── features/
 │   ├── projects/
 │   ├── songs/
@@ -44,13 +49,17 @@ src/
 │   ├── presentation/
 │   ├── outputs/
 │   └── remote/
+├── domain/
 ├── hooks/
 ├── lib/
 ├── services/
 ├── stores/
-├── types/
-└── utils/
+└── styles.css
 ```
+
+Las carpetas se crean cuando su fase comienza. Ver `ARCHITECTURE.md` para la
+regla de dependencias y las restricciones de SSR.
+
 
 ## Principios
 
