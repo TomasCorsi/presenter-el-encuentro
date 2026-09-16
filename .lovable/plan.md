@@ -10,7 +10,7 @@ Tokens nuevos según el mapeo ya acordado en el design system: `live`, `success`
 
 Regla que se respeta en todo el código: ningún color literal en los componentes, solo clases semánticas (ADR-009).
 
-Tipografía sans-serif legible cargada con un `<link>` en la raíz, más una familia monoespaciada para valores técnicos (tiempos, atajos, estados).
+Tipografía: stack del sistema (`system-ui`, `-apple-system`, `BlinkMacSystemFont`, `"Segoe UI"`, `sans-serif`) más una familia monoespaciada del sistema para información técnica. Sin Google Fonts ni ningún recurso externo: la apariencia base no depende de Internet. Empaquetar una fuente local se evaluará más adelante.
 
 ## 2. App Shell
 
