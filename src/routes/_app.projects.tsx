@@ -34,6 +34,7 @@ function ProjectsPage() {
         icon={LayoutList}
         title="Sin proyectos todavía"
         description="La gestión de proyectos, el rundown y la persistencia local llegan en la Fase 2."
+        className="border-l-2 border-l-primary/60"
       />
     </Page>
   );

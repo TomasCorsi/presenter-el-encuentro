@@ -1,3 +1,7 @@
+import { ChevronRight } from "lucide-react";
+
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
@@ -14,32 +18,37 @@ import {
  */
 export function AppTopbar() {
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-4">
-      <SidebarTrigger className="shrink-0" />
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-3 sm:px-5">
+      <SidebarTrigger className="size-8 shrink-0 rounded-sm border border-transparent hover:border-border" />
 
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="truncate text-sm font-medium text-foreground">
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        <span className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px]">
           {WORKSPACE_PLACEHOLDER.name}
         </span>
-        <span aria-hidden="true" className="hidden text-muted-foreground sm:inline">
-          /
-        </span>
-        <span className="hidden truncate text-sm text-muted-foreground sm:inline">
+        <ChevronRight aria-hidden="true" className="hidden size-3.5 text-border sm:block" />
+        <span className="hidden truncate text-sm font-medium text-foreground sm:inline">
           {ACTIVE_PROJECT_PLACEHOLDER}
         </span>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-3">
         <StatusBadge tone={CONNECTION_PLACEHOLDER.tone}>
           {CONNECTION_PLACEHOLDER.label}
         </StatusBadge>
-        <button
+        <div className="h-5 w-px bg-border" aria-hidden="true" />
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           aria-label={`Perfil de ${USER_PLACEHOLDER.name}`}
-          className="grid size-8 shrink-0 place-items-center rounded-md border border-border bg-card font-mono text-[11px] text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="size-8 rounded-sm p-0"
         >
-          {USER_PLACEHOLDER.initials}
-        </button>
+          <Avatar className="size-8 rounded-sm border border-border">
+            <AvatarFallback className="rounded-sm bg-muted font-mono text-[11px] text-foreground">
+              {USER_PLACEHOLDER.initials}
+            </AvatarFallback>
+          </Avatar>
+        </Button>
       </div>
     </header>
   );

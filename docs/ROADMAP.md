@@ -11,7 +11,7 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Fase actual completada: **Fase 1 — App Shell + Design System**.
+- Fase actual completada: **Fase 1.1 — Refinamiento visual del App Shell**.
 - Próxima fase: **Fase 2 — Projects** (pendiente de aprobación).
 - Backend: no conectado. Se decide en la Fase 12.
 - Dependencias añadidas en Fases 0 y 1: ninguna.
@@ -20,6 +20,8 @@ No comenzar una fase nueva hasta validar la anterior.
   rutas de la aplicación con pantallas vacías. Sin funcionalidades de producto.
 - Ancho de página: lo decide cada pantalla (`contained` o `full`), no el shell.
 - Tipografía: stack del sistema, sin fuentes externas (offline-first).
+- Dirección visual: superficie de control broadcast, con jerarquía operativa,
+  estados vacíos compactos y Home organizado como centro de producción.
 
 ---
 
@@ -97,6 +99,31 @@ Crear la estructura visual y de navegación.
 
 Todas las pantallas son estados vacíos. El estado Online / Offline / Sync es
 visual: no existe sincronización real.
+
+---
+
+## Fase 1.1 — Refinamiento visual del App Shell
+
+### Objetivo
+
+Elevar la calidad visual y la legibilidad del shell sin modificar arquitectura,
+routing, comportamiento ni alcance funcional.
+
+### Tareas
+
+- [x] Refinar jerarquía, densidad, superficies y bordes.
+- [x] Refinar sidebar expandida y colapsada.
+- [x] Convertir la topbar en barra de contexto operativo.
+- [x] Reorganizar Home como centro de producción sin funciones nuevas.
+- [x] Convertir los estados vacíos en bloques compactos e integrados.
+- [x] Mantener tokens semánticos y fuentes locales del sistema.
+- [x] Verificar navegación, teclado y viewports de escritorio.
+
+### Estado
+
+- [x] Completada
+
+No se añadieron funcionalidades, rutas, dependencias ni datos técnicos ficticios.
 
 ---
 

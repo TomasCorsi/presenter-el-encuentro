@@ -30,12 +30,13 @@ function LivePage() {
         eyebrow="Producción"
         title="Live"
         description="Rundown, preview, program y controles de presentación."
-        actions={<StatusBadge tone="neutral">Preview</StatusBadge>}
+        actions={<StatusBadge tone="neutral">Disponible en Fase 5</StatusBadge>}
       />
       <EmptyState
         icon={Radio}
         title="Modo en directo no disponible"
         description="El motor de presentación llega en la Fase 4 y el modo en directo en la Fase 5."
+        className="border-l-2 border-l-primary/60"
       />
     </Page>
   );
