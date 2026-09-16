@@ -10,14 +10,14 @@ Tokens nuevos según el mapeo ya acordado en el design system: `live`, `success`
 
 Regla que se respeta en todo el código: ningún color literal en los componentes, solo clases semánticas (ADR-009).
 
-Tipografía sans-serif legible cargada con un `<link>` en la raíz, más una familia monoespaciada para valores técnicos (tiempos, atajos, estados).
+Tipografía: stack del sistema (`system-ui`, `-apple-system`, `BlinkMacSystemFont`, `"Segoe UI"`, `sans-serif`) más una familia monoespaciada del sistema para información técnica. Sin Google Fonts ni ningún recurso externo: la apariencia base no depende de Internet. Empaquetar una fuente local se evaluará más adelante.
 
 ## 2. App Shell
 
 - Ruta de layout que envuelve las pantallas de la aplicación y deja fuera los futuros `/output/*` y `/remote`.
 - Sidebar fija en escritorio, colapsable a franja de iconos, con menú deslizante en pantallas pequeñas.
 - Topbar con espacio para nombre del workspace, proyecto activo, estado de conexión y perfil.
-- Área de contenido con scroll propio y ancho máximo cómodo.
+- Área de contenido con scroll propio y **ancho definido por cada página**, no por el shell: modo `contained` (ancho limitado, para Settings y formularios) y modo `full-width` (todo el viewport, para Live, Projects, Media, Presets y Outputs). Sin ancho máximo global, para no limitar después interfaces como Preview + Program + Rundown.
 
 Todo el estado mostrado (workspace, usuario, online/offline/sync) es visual y estático en esta fase; nada de sincronización real.
 
