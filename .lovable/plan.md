@@ -17,7 +17,7 @@ Tipografía: stack del sistema (`system-ui`, `-apple-system`, `BlinkMacSystemFon
 - Ruta de layout que envuelve las pantallas de la aplicación y deja fuera los futuros `/output/*` y `/remote`.
 - Sidebar fija en escritorio, colapsable a franja de iconos, con menú deslizante en pantallas pequeñas.
 - Topbar con espacio para nombre del workspace, proyecto activo, estado de conexión y perfil.
-- Área de contenido con scroll propio y ancho máximo cómodo.
+- Área de contenido con scroll propio y **ancho definido por cada página**, no por el shell: modo `contained` (ancho limitado, para Settings y formularios) y modo `full-width` (todo el viewport, para Live, Projects, Media, Presets y Outputs). Sin ancho máximo global, para no limitar después interfaces como Preview + Program + Rundown.
 
 Todo el estado mostrado (workspace, usuario, online/offline/sync) es visual y estático en esta fase; nada de sincronización real.
 
