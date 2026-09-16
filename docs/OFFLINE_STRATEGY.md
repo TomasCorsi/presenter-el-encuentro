@@ -120,3 +120,17 @@ Escenario obligatorio:
 9. Continuar presentación.
 10. Reconectar Internet.
 11. Verificar sincronización.
+
+---
+
+## Nota de Fase 0 — restricciones del renderizado en servidor
+
+La aplicación se renderiza también en el servidor. Por lo tanto:
+
+- El Service Worker se registra solo en cliente, después de la hidratación.
+- IndexedDB, `localStorage` y `BroadcastChannel` nunca se tocan al importar un
+  módulo ni durante el render.
+- El cacheo no debe servir HTML obsoleto de forma agresiva; se define una
+  estrategia de actualización explícita en la Fase 11.
+
+Nada de esto se implementa en la Fase 0.

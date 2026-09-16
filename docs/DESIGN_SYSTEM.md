@@ -147,3 +147,31 @@ large
 - Elementos interactivos con labels.
 - Navegación por teclado.
 - Tamaños táctiles suficientes.
+
+---
+
+## Implementación de tokens (definida en Fase 0)
+
+Los tokens semánticos se definen en `src/styles.css` y se consumen únicamente a
+través de clases semánticas. Nunca colores literales en los componentes
+(ADR-009).
+
+Mapeo previsto:
+
+| Token conceptual | Token de la hoja de estilos |
+| ---------------- | --------------------------- |
+| background       | `--background`              |
+| surface          | `--card`                    |
+| surfaceElevated  | `--popover`                 |
+| border           | `--border`                  |
+| textPrimary      | `--foreground`              |
+| textSecondary    | `--muted-foreground`        |
+| accent           | `--primary`                 |
+| live             | `--live` (nuevo)            |
+| success          | `--success` (nuevo)         |
+| warning          | `--warning` (nuevo)         |
+| danger           | `--destructive`             |
+| offline          | `--offline` (nuevo)         |
+
+Los tokens nuevos (`live`, `success`, `warning`, `offline`) se crean en la
+Fase 1 junto con el tema oscuro, no antes.

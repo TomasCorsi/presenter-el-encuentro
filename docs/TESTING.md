@@ -88,3 +88,11 @@ Una fase no está completa si:
 - Rompe funciones anteriores.
 - No cumple criterios de aceptación.
 - No actualiza documentación.
+
+---
+
+## Nota de Fase 0
+
+Aún no hay runner de tests instalado. Vitest y Playwright se añaden en la
+Fase 4, junto con los primeros tests del Presentation Engine. No se instalan
+dependencias antes de que su fase las requiera.
