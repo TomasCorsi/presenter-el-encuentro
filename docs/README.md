@@ -72,16 +72,20 @@ regla de dependencias y las restricciones de SSR.
 
 ## Comandos
 
-Los comandos exactos dependen del scaffold generado por Lovable. Mantener esta sección actualizada durante el desarrollo.
-
-Ejemplo:
-
 ```bash
-npm install
-npm run dev
-npm run build
-npm run test
+bun install
+bun run dev
+bun run build
 ```
+
+Todavía no hay runner de tests instalado: se añade en la Fase 4 junto con los
+tests del Presentation Engine.
+
+## Fuente de verdad
+
+Toda la documentación vive en `/docs`. `ROADMAP.md` es la única fuente de verdad
+del estado de las fases; no existe ningún roadmap duplicado en la raíz.
+
 
 ## Documentación
 
