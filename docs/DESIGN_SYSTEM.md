@@ -197,3 +197,38 @@ El App Shell no impone ancho máximo. Cada pantalla elige mediante `Page`:
 | ----------- | ------------------------------------------------------ |
 | `contained` | Settings, formularios y textos largos                  |
 | `full`      | Live, Projects, Media, Presets, Outputs y vistas densas |
+
+## Refinamiento del App Shell (Fase 1.1)
+
+### Superficies
+
+- El fondo, la barra lateral, las superficies de contenido y las superficies
+  elevadas deben distinguirse mediante tokens y bordes sutiles, no mediante
+  sombras fuertes ni gradientes decorativos.
+- Las secciones de página no se presentan como tarjetas flotantes. Las tarjetas
+  se reservan para accesos individuales y bloques de información concretos.
+- Los radios son pequeños y los divisores son nítidos para conservar el carácter
+  de una superficie de control profesional.
+
+### Jerarquía y densidad
+
+- Los títulos de página deben poder leerse con comodidad en un monitor 1080p;
+  las etiquetas de sección y los datos técnicos permanecen compactos.
+- La tipografía monoespaciada se limita a estados y metadata técnica.
+- La navegación mantiene objetivos de interacción estables y espaciado denso,
+  sin sacrificar foco visible ni lectura a distancia.
+
+### Selección y estados
+
+- El azul identifica selección, foco y navegación activa.
+- `live`, `success`, `warning` y `offline` se usan únicamente cuando comunican
+  estados reales o mocks explícitos del sistema, nunca como decoración.
+- El estado activo de navegación combina superficie, borde e icono para no
+  depender exclusivamente del color.
+
+### Estados vacíos
+
+- Tienen altura intrínseca y se integran bajo la cabecera de página.
+- Evitan cajas punteadas de gran tamaño y no llenan artificialmente el viewport.
+- Incluyen únicamente icono, título, explicación breve y acciones reales cuando
+  existan.
