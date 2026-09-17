@@ -76,7 +76,7 @@ El estilo resuelto se propaga al `Slide` durante la composición, de modo que el
 
 `src/features/presentation/components/slide-renderer.tsx`: componente puro que recibe `{ lines, style }` y no conoce ni el App Shell ni ningún provider. Lo consumen Live Preview, Live Program, `/output/main` y la vista previa del editor de Presets. Ninguna de esas superficies define tipografía o fondo por su cuenta.
 
-## 5. Output Snapshot
+## 6. Output Snapshot
 
 `OutputSnapshot` pasa a llevar el estilo **resuelto**:
 
@@ -88,17 +88,17 @@ Output nunca lee repositories ni conoce `presetId`. `snapshotsEqual` compara ade
 
 El publisher tampoco resuelve nada: recibe el estilo desde el snapshot de Live ya cargado. La cadena queda repositories → composición/snapshot → Presentation Engine → OutputPublisher → Output, en un solo sentido. En la práctica el estilo viaja en el `Slide` del runtime, así que `getProgramOutput` ya lo entrega resuelto y `toOutputSnapshot` solo lo copia.
 
-## 6. CLEAR / BLACK
+## 7. CLEAR / BLACK
 
 Sin cambios de semántica: `black` → negro puro (`--output-safe`), ignora el Preset. `clear` → fondo base opaco (`--output-base`), ignora el Preset. Sin sesión Live → negro puro. El Preset solo pinta en `content` con slide.
 
-## 7. Biblioteca y editor
+## 8. Biblioteca y editor
 
 - `/presets`: tabla compacta con búsqueda, crear, abrir, renombrar, duplicar, eliminar. El Default aparece marcado, sin eliminar ni renombrar.
 - `/presets/$presetId`: panel de configuración a la izquierda, vista previa 16:9 en vivo a la derecha, con texto de ejemplo propio ("Esta es una vista previa del texto" + varias líneas), nunca letras reales.
 - Autoguardado con el mismo patrón que Songs: borrador local, debounce, indicador Guardando… / Guardado / Error al guardar.
 
-## 8. Eliminar un Preset en uso
+## 9. Eliminar un Preset en uso
 
 Se calcula el uso (items del rundown por project) y se advierte antes de eliminar, nombrando cuántos items y qué projects. Al confirmar, el preset se borra y los items afectados caen al Default por la resolución tolerante; no se reescriben los Projects. Motivo: evita una escritura masiva y mantiene una sola regla de fallback, la misma que cubre datos corruptos.
 
