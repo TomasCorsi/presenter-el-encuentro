@@ -63,8 +63,8 @@ Layout de dos columnas en escritorio, densidad broadcast:
 
 - Agregar: crea `RundownItem` con `id` nuevo (`crypto.randomUUID()`), `sourceId = song.id`, `title` snapshot, al final, y renormaliza `order`. La Song no se modifica.
 - Repetir: agregar dos veces la misma Song produce dos items con el mismo `sourceId` y distinto `id`. No hay deduplicación en ningún punto.
-- Reordenar: botones subir/bajar, como en las secciones de Song. Drag & drop se descarta en esta fase: requeriría dependencia nueva o un implementación a medida con coste de accesibilidad; se evalúa en Fase 5 junto con la UI Live.
-- Eliminar: quita solo esa instancia y renormaliza `order`. Confirmación ligera (la acción es de bajo riesgo y reversible re-agregando).
+- Reordenar: botones subir/bajar, como en las secciones de Song. Drag & drop se descarta en esta fase: requeriría dependencia nueva o una implementación a medida con coste de accesibilidad; se evalúa en Fase 6 junto con la UI Live.
+- Eliminar: quita solo esa instancia del rundown y renormaliza `order`; nunca afecta a la Song original ni a otras instancias. Confirmación ligera. No se describe como reversible: volver a agregar la canción genera otro `RundownItem.id` y no restaura la posición anterior.
 
 ## 6. Referencias rotas
 
@@ -83,7 +83,17 @@ Estrategia aprobada por preferencia del usuario: **advertir, no bloquear**.
 
 Al eliminar una Song, el diálogo de confirmación indica en cuántos proyectos está en uso y los nombra (hasta unos pocos). Si el usuario confirma, la Song se elimina y las referencias quedan rotas, visibles como "Contenido faltante". Bloquear obligaría a editar proyectos antiguos solo para limpiar la biblioteca; borrar en cascada destruiría trabajo del usuario en silencio.
 
-El cálculo de uso es una función pura de dominio sobre los projects cargados; Songs no adquiere dependencia de la persistencia de Projects (el recuento se pasa desde la capa de feature).
+**Sin dependencia Songs → Projects.** `features/songs` no importa lógica, contextos ni servicios de `features/projects`. La composición ocurre en la capa superior:
+
+```text
+Ruta /songs (composition layer)
+  → lee Songs (SongsProvider)
+  → lee Projects (ProjectsProvider)
+  → calcula uso con una función pura de dominio
+  → pasa usageInfo como prop a los componentes de Songs
+```
+
+La regla de uso vive en `src/domain/projects/rundown-rules.ts` (`findSongUsage(projects, songId)`), es pura y testeable, y devuelve solo datos planos (cantidad y nombres de proyectos). Los componentes de Songs reciben `usage` opcional por props y no saben de dónde viene: cero dependencias circulares entre features.
 
 ## 8. Rundown → PresentationItems
 
