@@ -241,3 +241,63 @@ reglas de negocio permanecen en dominio/servicio.
 - `activeProjectId` es local al workspace/dispositivo y no está sincronizado.
 - La decisión sobre sincronizarlo o mantenerlo por dispositivo queda pendiente.
 - Los datos temporales no garantizan migración automática a IndexedDB.
+
+---
+
+## ADR-012 — Secciones de Song embebidas y tipos de sección
+
+### Contexto
+
+Fase 3 necesita letra estructurada por secciones con persistencia local
+temporal. El modelo previo referenciaba secciones por `sectionIds` y usaba
+tipos `ending`/`custom` sin `prechorus`/`outro`.
+
+### Decisión
+
+Las secciones viven embebidas en `Song` (`sections: SongSection[]`), sin
+colección separada ni `songId`. Tipos: `verse`, `chorus`, `prechorus`,
+`bridge`, `intro`, `outro`, `custom`. Los campos opcionales (`tags`,
+`favorite`, `presetId`, copyright) quedan diferidos.
+
+Labels automáticos: `Verso N` (numerados según versos existentes), `Coro`,
+`Pre-coro`, `Puente`, `Intro`, `Outro`; en `custom` el usuario define el
+label. Reordenar solo cambia `order` (normalizado a 0..n-1), nunca labels.
+Cambiar el tipo solo sugiere un nuevo label si el anterior era automático.
+
+### Consecuencias
+
+- Una canción es una unidad de persistencia: lecturas y escrituras simples.
+- La migración futura a IndexedDB conservará esta forma embebida.
+
+---
+
+## ADR-013 — Autoguardado del editor de Songs
+
+### Contexto
+
+El editor de secciones genera muchas escrituras pequeñas; un guardado manual
+sería frágil y un guardado por pulsación, innecesario.
+
+### Decisión
+
+Autoguardado con debounce de ~600 ms sobre un borrador local del editor:
+
+- Las ediciones se aplican de inmediato al borrador y se marcan `dirty`.
+- Al hacer blur de un campo se intenta guardar de inmediato si hay cambios.
+- Antes de acciones que cambian de contexto (duplicar, eliminar) se hace
+  flush de los cambios pendientes.
+- Desmontar el componente NO es garantía de persistencia.
+- Si el guardado falla, el borrador se conserva y se muestra
+  `Error al guardar`; `Guardado hh:mm` solo aparece tras la confirmación
+  del repository.
+- No existe Undo, historial ni versionado: los cambios no son reversibles.
+
+Estados visibles: `Guardando…`, `Guardado hh:mm`, `Cambios sin guardar`,
+`Error al guardar`.
+
+### Consecuencias
+
+- localStorage tiene capacidad limitada y dependiente del navegador/entorno;
+  el volumen esperado es pequeño temporalmente y los errores de cuota son
+  errores reales de persistencia que se muestran al usuario.
+- IndexedDB será la solución definitiva en su fase (Fase 11).

@@ -114,6 +114,15 @@ Vitest, Testing Library y Playwright como dependencias del proyecto continúan
 diferidos hasta que su alcance lo requiera. Las comprobaciones E2E de esta fase
 usan únicamente el entorno de desarrollo.
 
+## Fase 3 — Songs
+
+`bun test` cubre el dominio (validación de título, labels automáticos no
+destructivos, operaciones de secciones, duplicación con IDs nuevos, búsqueda)
+y el repository temporal (CRUD, JSON inválido, formas corruptas, copias sin
+referencias compartidas y propagación de errores de cuota). El autoguardado
+(debounce, blur, flush) se verifica con comprobaciones E2E en el entorno de
+desarrollo.
+
 ## Nota de Fase 0
 
 Aún no hay runner de tests instalado. Vitest y Playwright se añaden en la
