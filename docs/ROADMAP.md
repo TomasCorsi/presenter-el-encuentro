@@ -14,10 +14,10 @@ No comenzar una fase nueva hasta validar la anterior.
 - Fase actual completada: **Fase 2 — Projects**.
 - Próxima fase: **Fase 3 — Songs** (pendiente de aprobación).
 - Backend: no conectado. Se decide en la Fase 12.
-- Dependencias añadidas en Fases 0 y 1: ninguna.
+- Dependencias añadidas hasta la Fase 2: ninguna.
 - Implementado hasta ahora: documentación en `/docs`, tema oscuro con tokens
-  semánticos, App Shell (sidebar + topbar + área de contenido) y las nueve
-  rutas de la aplicación con pantallas vacías. Sin funcionalidades de producto.
+  semánticos, App Shell y gestión local completa de Projects con proyecto activo,
+  búsqueda, detalle y persistencia temporal aislada detrás de un repository.
 - Ancho de página: lo decide cada pantalla (`contained` o `full`), no el shell.
 - Tipografía: stack del sistema, sin fuentes externas (offline-first).
 - Dirección visual: superficie de control broadcast, con jerarquía operativa,
