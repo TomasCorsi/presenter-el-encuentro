@@ -27,13 +27,25 @@ export function LiveControls({
 }: LiveControlsProps) {
   return (
     <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Controles de presentación">
-      <Button variant="outline" size="sm" disabled={!canPrevious} onClick={onPrevious} title="Anterior (←)">
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={!canPrevious}
+        onClick={onPrevious}
+        title="Anterior (←) · avanza al aire dentro del item actual"
+      >
         <ChevronLeft />Previous
       </Button>
-      <Button variant="outline" size="sm" disabled={!canNext} onClick={onNext} title="Siguiente (→)">
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={!canNext}
+        onClick={onNext}
+        title="Siguiente (→) · avanza al aire dentro del item actual"
+      >
         Next<ChevronRight />
       </Button>
-      <Button size="sm" disabled={!canTake} onClick={onTake} title="Enviar a Program (Enter / Espacio)">
+      <Button size="sm" disabled={!canTake} onClick={onTake} title="Envía la slide seleccionada a Program (Enter / Espacio)">
         <Play />TAKE
       </Button>
       <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
