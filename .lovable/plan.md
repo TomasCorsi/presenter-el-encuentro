@@ -66,35 +66,64 @@ recibir; cualquier mensaje con forma inválida se ignora en silencio.
 snapshot es pequeño y así una ventana nueva y una ventana antigua convergen
 con el mismo mensaje.
 
+### Política de sesión: un Output, un Live
+
+Output NO adopta cualquier `sessionId` que reciba. Regla explícita:
+
+- Al recibir el **primer snapshot válido**, Output queda **vinculado** a ese
+  `sessionId`.
+- Mientras esa sesión siga viva, ignora `snapshot` y `update` de cualquier
+  otro `sessionId`. Esto evita que dos ventanas Live abiertas hagan que
+  Output alterne entre ellas.
+- La sesión termina por `bye` o por timeout de heartbeat (punto 3.2). Solo
+  entonces Output queda libre y puede adoptar la primera sesión válida que
+  responda.
+- Si Output abre con dos Live ya activos, adopta el primero que responda y lo
+  mantiene. **Limitación documentada:** no hay selección manual de sesión en
+  esta fase; la recomendación operativa es tener un solo Live abierto.
+
+### Liveness: heartbeat, no `bye`
+
+`bye` se envía como optimización (desconexión inmediata), pero NO es la
+garantía: un cierre de pestaña, crash o suspensión puede impedir que llegue.
+La garantía real es el heartbeat:
+
+- Output envía `hello` cada **2 s**, siempre, esté conectado o no.
+- Live responde a cada `hello` con un `snapshot` (o `heartbeat` si nada
+  cambió desde el último envío a esa sesión; en la práctica el snapshot
+  completo es barato y simplifica el protocolo, así que se responde siempre
+  con snapshot).
+- Si Output no recibe ninguna señal válida de **su sesión vinculada** durante
+  **5 s**, considera a Live desconectado: pasa a salida segura vacía, queda
+  libre de sesión y sigue escuchando y reintentando.
+- Nada de polling de estado de aplicación ni de storage: el heartbeat vive
+  solo en el protocolo Output Sync.
+
 ### Inicialización de una ventana nueva
 
-- **Output abre después de Live:** Output emite `hello`; Live responde con
-  `snapshot`. Un único viaje, sin polling.
-- **Live abre después de Output:** Live emite `snapshot` al montar, así que
-  el Output que ya estaba escuchando se actualiza solo. Además Output
-  reintenta `hello` cada 2 s mientras no haya recibido nada (cinturón y
-  tirantes barato, se detiene con la primera respuesta).
+- **Output abre después de Live:** el `hello` periódico obtiene `snapshot`
+  en el primer ciclo (latencia máxima ~2 s; el primer `hello` se envía al
+  montar, así que en la práctica es inmediato).
+- **Live abre después de Output:** Live emite `snapshot` al montar y además
+  responde al `hello` periódico; Output lo adopta como primera sesión.
 - **Output se cierra y se reabre / se recarga:** repite `hello` y recibe el
   estado actual. No hay estado que restaurar.
-- **Varias ventanas Output:** el canal es difusión pura. El `hello` de una
-  provoca un `snapshot` que las demás también reciben, y como es el estado
-  completo y con `sequence`, es idempotente.
+- **Varias ventanas Output:** el canal es difusión pura. Cada Output mantiene
+  su propia vinculación de sesión y su propio contador de secuencia; todas
+  convergen al mismo contenido.
 
 ### Live ausente
 
-Output no recibe respuesta a `hello`: se queda en la salida vacía segura
-(negra). Sin texto de error, sin spinner, sin nada proyectable. Con `bye`, o
-tras un tiempo sin señal, Output vuelve a vacío en lugar de congelar la última
-slide: dejar contenido antiguo al aire es peor que dejar negro.
-
-El único indicador de desconexión vive dentro del overlay de configuración
-(punto 7), que solo aparece con actividad del ratón o del teclado.
+Sin respuesta a `hello` durante 5 s (o `bye` recibido): salida vacía segura
+(negra). Sin texto de error, sin spinner, sin nada proyectable. El único
+indicador de desconexión vive dentro del overlay de configuración (punto 7),
+que solo aparece con actividad del ratón o del teclado.
 
 ### Reconexión
 
-Output nunca deja de escuchar el canal ni de reintentar `hello`. Cuando
-aparece una sesión Live nueva, su `snapshot` inicial llega igualmente y Output
-adopta el nuevo `sessionId` y reinicia su contador de secuencia.
+Output nunca deja de emitir `hello` ni de escuchar. Cuando aparece una sesión
+Live nueva, su `snapshot` llega en respuesta al siguiente `hello` y, como
+Output ya está libre, la adopta: nuevo `sessionId`, secuencia reiniciada.
 
 ---
 
