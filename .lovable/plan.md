@@ -19,7 +19,7 @@ interface PresetStyle {
   align: HorizontalAlign;
   verticalAlign: VerticalAlign;
   textColor: string;     // hex, dato del usuario
-  backgroundColor: string; // hex, dato del usuario
+  background: { type: "solid"; color: string }; // discriminado desde el inicio
   safeAreaX: number;     // % del ancho  (0..20)
   safeAreaY: number;     // % de la altura (0..20)
 }
@@ -32,6 +32,8 @@ interface Preset {
 ```
 
 Sin propiedades anticipadas (nada de imagen, vídeo, overlays, transiciones).
+
+**Background.** `background` es una unión discriminada desde la Fase 8, con un único caso válido `{ type: "solid"; color }`. Así añadir `image` o `video` en la fase de Media es ampliar la unión, no migrar el modelo. No existe caso `transparent` en esta fase: `/output/main` es una ventana opaca del navegador y una salida "transparente" solo tendría sentido con browser source real; se evalúa cuando exista ese consumidor. El renderer valida el tipo y cae al Default ante un background desconocido.
 
 **Tamaño de texto (opción D).** `fontSize` es un número relativo a la altura del lienzo. El renderer envuelve la slide en un contenedor 16:9 con `container-type: size` y expresa tipografía y safe area en unidades de contenedor (`cqh` / `cqw`). Así el Preview pequeño de Live, el Program y `/output/main` a 1920×1080 se ven proporcionalmente idénticos, y un cambio de resolución no rompe nada. Sin píxeles fijos en ningún caso.
 
@@ -49,11 +51,32 @@ Resolución pura `resolvePreset(presetId, presets) → Preset`: si no hay id, o 
 
 En `/projects/$projectId` cada fila del rundown gana un selector compacto de Preset (acción secundaria), sin convertir el rundown en formulario.
 
-## 4. Renderer compartido
+## 4. Los Presets forman parte del snapshot de Live (ADR-023 extendido)
+
+Los estilos se congelan igual que el contenido: editar un Preset en `/presets` mientras Live está operando NO cambia el show al aire.
+
+`buildLiveSnapshot(project, songs, presets)` resuelve el Preset de cada RundownItem en el momento de la carga y deja el estilo **ya resuelto** dentro de la presentación:
+
+```ts
+interface PresentationItem { …; presetId?: string; style: PresetStyle }
+```
+
+El estilo resuelto se propaga al `Slide` durante la composición, de modo que el Presentation Engine nunca consulta el repositorio de Presets ni el provider: sigue recibiendo todo resuelto, exactamente como hoy con el texto. (Alternativa considerada: un mapa `resolvedPresetByItemId` paralelo al runtime. Se descarta porque obligaría a los selectores, al publisher y a cada superficie a llevar dos fuentes en paralelo y a mantenerlas sincronizadas; con el estilo en el item/slide hay una sola.)
+
+`presentationSignature` incorpora, por cada item, el `presetId` efectivo y el `updatedAt` del Preset resuelto. Así:
+
+- editar un Preset usado por el show → Live muestra **Contenido actualizado / Recargar presentación**, igual que al editar una Song;
+- editar un Preset que el show no usa → sin desfase;
+- solo `reloadPresentation` incorpora los nuevos estilos, conservando Preview y Program cuando sus ids siguen existiendo;
+- al recargar, el estilo cambia y el publisher emite `update` aunque la slide y el texto sean idénticos.
+
+`/presets/$presetId` y el rundown siguen leyendo los Presets vivos: la congelación es exclusiva de Live.
+
+## 5. Renderer compartido
 
 `src/features/presentation/components/slide-renderer.tsx`: componente puro que recibe `{ lines, style }` y no conoce ni el App Shell ni ningún provider. Lo consumen Live Preview, Live Program, `/output/main` y la vista previa del editor de Presets. Ninguna de esas superficies define tipografía o fondo por su cuenta.
 
-## 5. Output Snapshot
+## 6. Output Snapshot
 
 `OutputSnapshot` pasa a llevar el estilo **resuelto**:
 
@@ -61,19 +84,21 @@ En `/projects/$projectId` cada fila del rundown gana un selector compacto de Pre
 snapshot.slide = { id, lines, style: PresetStyle } | null
 ```
 
-Output nunca lee repositories ni conoce `presetId`. `snapshotsEqual` compara además el estilo completo, así que cambiar solo el Preset (misma slide, mismo texto) produce un `update` inmediato.
+Output nunca lee repositories ni conoce `presetId`. `snapshotsEqual` compara además el estilo completo, así que un cambio de estilo con la misma slide y el mismo texto produce un `update` inmediato.
 
-## 6. CLEAR / BLACK
+El publisher tampoco resuelve nada: recibe el estilo desde el snapshot de Live ya cargado. La cadena queda repositories → composición/snapshot → Presentation Engine → OutputPublisher → Output, en un solo sentido. En la práctica el estilo viaja en el `Slide` del runtime, así que `getProgramOutput` ya lo entrega resuelto y `toOutputSnapshot` solo lo copia.
+
+## 7. CLEAR / BLACK
 
 Sin cambios de semántica: `black` → negro puro (`--output-safe`), ignora el Preset. `clear` → fondo base opaco (`--output-base`), ignora el Preset. Sin sesión Live → negro puro. El Preset solo pinta en `content` con slide.
 
-## 7. Biblioteca y editor
+## 8. Biblioteca y editor
 
 - `/presets`: tabla compacta con búsqueda, crear, abrir, renombrar, duplicar, eliminar. El Default aparece marcado, sin eliminar ni renombrar.
 - `/presets/$presetId`: panel de configuración a la izquierda, vista previa 16:9 en vivo a la derecha, con texto de ejemplo propio ("Esta es una vista previa del texto" + varias líneas), nunca letras reales.
 - Autoguardado con el mismo patrón que Songs: borrador local, debounce, indicador Guardando… / Guardado / Error al guardar.
 
-## 8. Eliminar un Preset en uso
+## 9. Eliminar un Preset en uso
 
 Se calcula el uso (items del rundown por project) y se advierte antes de eliminar, nombrando cuántos items y qué projects. Al confirmar, el preset se borra y los items afectados caen al Default por la resolución tolerante; no se reescriben los Projects. Motivo: evita una escritura masiva y mantiene una sola regla de fallback, la misma que cubre datos corruptos.
 
@@ -85,7 +110,15 @@ Se calcula el uso (items del rundown por project) y se advierte antes de elimina
 
 ## Tests (`bun test`, sin dependencias nuevas)
 
-Crear/editar/validar nombre, duplicar (`— copia`, id y fechas nuevas), default presente, default no eliminable, eliminar preset en uso, fallback a Default con id inexistente, persistencia y datos inválidos, resolución RundownItem → Preset, alineaciones y background del renderer (prueba pura del cálculo de estilo), OutputSnapshot con estilo resuelto, y el caso crítico: **misma slide y mismo texto con Preset distinto → produce `update`**.
+Crear/editar/validar nombre, duplicar (`— copia`, id y fechas nuevas), default presente, default no eliminable, eliminar preset en uso, fallback a Default con id inexistente, persistencia y datos inválidos, resolución RundownItem → Preset, alineaciones y background del renderer (prueba pura del cálculo de estilo), background desconocido → Default, y OutputSnapshot con estilo resuelto.
+
+Snapshot de Live (bloque crítico):
+
+- editar un Preset con el show cargado NO altera Preview ni Program;
+- cambiar un Preset usado por el show produce el estado de desfase;
+- `reloadPresentation` incorpora los nuevos estilos, conservando Preview y Program cuando sus ids siguen existiendo;
+- mismo `slide.id` y mismas `lines` con `style` distinto tras el reload → el publisher emite `update`;
+- cambio de Preset que NO usa el show → no produce desfase.
 
 ## ADR propuestas
 
@@ -95,6 +128,8 @@ Crear/editar/validar nombre, duplicar (`— copia`, id y fechas nuevas), default
 - ADR-035 Renderer de slide compartido por Preview, Program, Output y editor.
 - ADR-036 Estilo resuelto dentro de OutputSnapshot.
 - ADR-037 Tamaño tipográfico relativo al lienzo mediante unidades de contenedor.
+- ADR-038 Los Presets forman parte del snapshot de Live y de su firma de desfase.
+- ADR-039 `background` como unión discriminada, solo `solid` en Fase 8.
 
 Documentación actualizada: ROADMAP, DATA_MODEL, ARCHITECTURE, DECISIONS, TESTING.
 
