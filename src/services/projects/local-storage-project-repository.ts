@@ -20,13 +20,13 @@ function isProject(value: unknown): value is Project {
   if (!value || typeof value !== "object") return false;
   const project = value as Record<string, unknown>;
   return (
-    typeof project.id === "string" &&
-    typeof project.workspaceId === "string" &&
-    typeof project.name === "string" &&
-    Array.isArray(project.itemIds) &&
-    project.itemIds.every((id) => typeof id === "string") &&
-    typeof project.createdAt === "string" &&
-    typeof project.updatedAt === "string"
+    typeof project["id"] === "string" &&
+    typeof project["workspaceId"] === "string" &&
+    typeof project["name"] === "string" &&
+    Array.isArray(project["itemIds"]) &&
+    project["itemIds"].every((id) => typeof id === "string") &&
+    typeof project["createdAt"] === "string" &&
+    typeof project["updatedAt"] === "string"
   );
 }
 
@@ -37,12 +37,12 @@ function parseState(raw: string | null): StoredProjects {
     const value: unknown = JSON.parse(raw);
     if (!value || typeof value !== "object") return { ...EMPTY_STATE, projects: [] };
     const candidate = value as Record<string, unknown>;
-    if (candidate.version !== 1 || !Array.isArray(candidate.projects)) {
+    if (candidate["version"] !== 1 || !Array.isArray(candidate["projects"])) {
       return { ...EMPTY_STATE, projects: [] };
     }
 
-    const projects = candidate.projects.filter(isProject);
-    const requestedActiveId = typeof candidate.activeProjectId === "string" ? candidate.activeProjectId : null;
+    const projects = candidate["projects"].filter(isProject);
+    const requestedActiveId = typeof candidate["activeProjectId"] === "string" ? candidate["activeProjectId"] : null;
     const activeProjectId = projects.some((project) => project.id === requestedActiveId)
       ? requestedActiveId
       : null;
