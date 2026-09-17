@@ -6,13 +6,14 @@ import {
   toOutputSnapshot,
   type OutputSnapshot,
 } from "@/domain/output/output-snapshot";
+import { DEFAULT_PRESET_STYLE } from "@/domain/presets/preset";
 
 function snapshot(overrides: Partial<OutputSnapshot> = {}): OutputSnapshot {
   return {
     sessionId: "session-a",
     sequence: 0,
     mode: "content",
-    slide: { id: "song:1:slide:0", lines: ["Línea uno", "Línea dos"] },
+    slide: { id: "song:1:slide:0", lines: ["Línea uno", "Línea dos"], style: DEFAULT_PRESET_STYLE },
     ...overrides,
   };
 }
@@ -26,6 +27,7 @@ describe("toOutputSnapshot", () => {
           id: "song:1:slide:0",
           itemId: "song:1",
           order: 0, content: { kind: "text", lines: ["Hola", "Mundo"] },
+          style: DEFAULT_PRESET_STYLE,
         },
       },
       "s1",
@@ -35,7 +37,7 @@ describe("toOutputSnapshot", () => {
       sessionId: "s1",
       sequence: 7,
       mode: "content",
-      slide: { id: "song:1:slide:0", lines: ["Hola", "Mundo"] },
+      slide: { id: "song:1:slide:0", lines: ["Hola", "Mundo"], style: DEFAULT_PRESET_STYLE },
     });
   });
 
@@ -51,7 +53,21 @@ describe("snapshotsEqual", () => {
 
   it("mismo slide.id con líneas distintas → distintos (editar Song + recargar)", () => {
     const a = snapshot();
-    const b = snapshot({ slide: { id: "song:1:slide:0", lines: ["Letra nueva"] } });
+    const b = snapshot({
+      slide: { id: "song:1:slide:0", lines: ["Letra nueva"], style: DEFAULT_PRESET_STYLE },
+    });
+    expect(snapshotsEqual(a, b)).toBe(false);
+  });
+
+  it("mismo id y mismas líneas con estilo distinto → distintos (editar Preset + recargar)", () => {
+    const a = snapshot();
+    const b = snapshot({
+      slide: {
+        id: "song:1:slide:0",
+        lines: ["Línea uno", "Línea dos"],
+        style: { ...DEFAULT_PRESET_STYLE, fontSize: 12 },
+      },
+    });
     expect(snapshotsEqual(a, b)).toBe(false);
   });
 
@@ -95,7 +111,9 @@ describe("parseOutputMessage", () => {
     expect(
       parseOutputMessage({
         type: "update",
-        snapshot: snapshot({ slide: { id: "a", lines: ["ok", 3] as never } }),
+        snapshot: snapshot({
+          slide: { id: "a", lines: ["ok", 3] as never, style: DEFAULT_PRESET_STYLE },
+        }),
       }),
     ).toBeNull();
     expect(parseOutputMessage({ type: "bye", sessionId: "" })).toBeNull();

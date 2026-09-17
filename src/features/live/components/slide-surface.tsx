@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react";
 
 import type { Slide } from "@/domain/presentation/presentation";
+import { SlideRenderer } from "@/features/presentation/components/slide-renderer";
 import { cn } from "@/lib/utils";
 
 export interface SlideSurfaceProps extends ComponentProps<"div"> {
@@ -13,8 +14,9 @@ export interface SlideSurfaceProps extends ComponentProps<"div"> {
 }
 
 /**
- * Superficie 16:9 compartida por Preview y Program. Solo representa texto:
- * tipografía, fondos y presets llegan en fases posteriores.
+ * Superficie 16:9 compartida por Preview y Program. No define tipografía,
+ * color ni fondo: delega en el renderer común (ADR-035), así que se ve igual
+ * que `/output/main`.
  */
 export function SlideSurface({
   slide,
@@ -29,20 +31,15 @@ export function SlideSurface({
   return (
     <div
       className={cn(
-        "flex aspect-video w-full items-center justify-center overflow-hidden rounded-md border bg-stage p-6 text-center",
+        "aspect-video w-full overflow-hidden rounded-md border",
         tone === "program" && live ? "border-live/60" : "border-border",
+        lines.length > 0 ? "bg-transparent" : "grid place-items-center bg-stage",
         className,
       )}
       {...props}
     >
       {lines.length > 0 ? (
-        <p className="max-h-full overflow-hidden text-balance text-lg font-semibold leading-snug text-stage-foreground lg:text-2xl">
-          {lines.map((line, index) => (
-            <span key={`${slide?.id}-${index}`} className="block">
-              {line}
-            </span>
-          ))}
-        </p>
+        <SlideRenderer lines={lines} style={slide?.style} />
       ) : (
         <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
           {emptyLabel}

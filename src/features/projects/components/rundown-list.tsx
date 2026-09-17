@@ -1,6 +1,7 @@
 import { ListEnd } from "lucide-react";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import type { Preset } from "@/domain/presets/preset";
 import type { RundownItem } from "@/domain/projects/rundown";
 import type { Song } from "@/domain/songs/song";
 import { RundownRow } from "./rundown-row";
@@ -8,11 +9,13 @@ import { RundownRow } from "./rundown-row";
 export interface RundownListProps {
   items: RundownItem[];
   songs: Song[];
+  presets: readonly Preset[];
   onMove(itemId: string, direction: "up" | "down"): Promise<void>;
   onRemove(itemId: string): Promise<void>;
+  onSetPreset(itemId: string, presetId: string | undefined): Promise<void>;
 }
 
-export function RundownList({ items, songs, onMove, onRemove }: RundownListProps) {
+export function RundownList({ items, songs, presets, onMove, onRemove, onSetPreset }: RundownListProps) {
   if (items.length === 0) {
     return (
       <EmptyState
@@ -38,6 +41,8 @@ export function RundownList({ items, songs, onMove, onRemove }: RundownListProps
             sourceAuthor={song?.author}
             isFirst={index === 0}
             isLast={index === items.length - 1}
+            presets={presets}
+            onSetPreset={(presetId) => onSetPreset(item.id, presetId)}
             onMove={(direction) => onMove(item.id, direction)}
             onRemove={() => onRemove(item.id)}
           />

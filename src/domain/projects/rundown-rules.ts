@@ -101,3 +101,21 @@ export function findSongUsage(projects: readonly Project[], songId: string): Son
 
   return { occurrences, projectNames };
 }
+
+/**
+ * Asigna (o quita, con `undefined`) el Preset de UNA aparición del rundown.
+ * No toca la Song ni las demás apariciones de la misma fuente (ADR-034).
+ */
+export function setRundownItemPreset(
+  items: readonly RundownItem[],
+  itemId: string,
+  presetId: string | undefined,
+): RundownItem[] {
+  return normalizeRundown(items).map((item) => {
+    if (item.id !== itemId) return item;
+    const next: RundownItem = { ...item };
+    if (presetId) next.presetId = presetId;
+    else delete next.presetId;
+    return next;
+  });
+}

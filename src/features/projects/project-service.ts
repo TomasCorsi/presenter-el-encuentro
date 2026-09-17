@@ -1,7 +1,7 @@
 import type { CreateProjectInput, Project, ProjectFactoryDependencies } from "@/domain/projects/project";
 import { createProject, duplicateProject, renameProject, sortProjectsByUpdatedAt } from "@/domain/projects/project-rules";
 import type { RundownItem } from "@/domain/projects/rundown";
-import { addSongToRundown, moveRundownItem, removeRundownItem } from "@/domain/projects/rundown-rules";
+import { addSongToRundown, moveRundownItem, removeRundownItem, setRundownItemPreset } from "@/domain/projects/rundown-rules";
 import type { ProjectRepository } from "@/services/projects/project-repository";
 
 export interface ProjectsSnapshot {
@@ -61,6 +61,17 @@ export class ProjectService {
     direction: "up" | "down",
   ): Promise<Project> {
     return this.saveRundown(projectId, (rundown) => moveRundownItem(rundown, itemId, direction));
+  }
+
+  /** Asigna el Preset de UNA aparición del rundown (ADR-034). */
+  async setRundownItemPreset(
+    projectId: string,
+    itemId: string,
+    presetId: string | undefined,
+  ): Promise<Project> {
+    return this.saveRundown(projectId, (rundown) =>
+      setRundownItemPreset(rundown, itemId, presetId),
+    );
   }
 
   private async saveRundown(

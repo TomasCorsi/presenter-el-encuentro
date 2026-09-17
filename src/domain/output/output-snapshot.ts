@@ -1,4 +1,6 @@
 import type { ProgramMode } from "@/domain/presentation/presentation";
+import { DEFAULT_PRESET_STYLE, type PresetStyle } from "@/domain/presets/preset";
+import { normalizePresetStyle, presetStylesEqual } from "@/domain/presets/preset-rules";
 import type { ProgramOutput } from "@/domain/presentation/presentation-selectors";
 
 /**
@@ -9,10 +11,14 @@ import type { ProgramOutput } from "@/domain/presentation/presentation-selectors
  * validación defensiva de todo lo que llega por el canal.
  */
 
-/** Contenido resuelto de una slide: Output nunca reconstruye nada. */
+/**
+ * Contenido Y apariencia RESUELTOS: Output nunca reconstruye nada ni consulta
+ * repositories. El estilo llega congelado desde el snapshot de Live (ADR-036).
+ */
 export interface OutputSlide {
   id: string;
   lines: string[];
+  style: PresetStyle;
 }
 
 /** Estado completo que Output necesita para pintar Program. */
@@ -45,7 +51,15 @@ export function toOutputSnapshot(
     sessionId,
     sequence,
     mode: output.mode,
-    slide: output.slide ? { id: output.slide.id, lines: [...output.slide.content.lines] } : null,
+    slide: output.slide
+      ? {
+          id: output.slide.id,
+          lines: [...output.slide.content.lines],
+          // El publisher NO resuelve Presets: solo copia el estilo ya
+          // congelado en el runtime, con el Default como red de seguridad.
+          style: output.slide.style ?? DEFAULT_PRESET_STYLE,
+        }
+      : null,
   };
 }
 
@@ -54,13 +68,19 @@ function linesEqual(a: readonly string[], b: readonly string[]): boolean {
 }
 
 /**
- * Compara todo lo que Output pinta. Mismo `slide.id` con `lines` distintas
- * cuenta como cambio (editar la Song y recargar produce un `update`).
+ * Compara TODO lo que Output pinta: modo, id, líneas y estilo. Mismo
+ * `slide.id` con `lines` o con `style` distintos cuenta como cambio, así que
+ * recargar la presentación tras editar la Song o el Preset produce un
+ * `update`.
  */
 export function snapshotsEqual(a: OutputSnapshot, b: OutputSnapshot): boolean {
   if (a.mode !== b.mode) return false;
   if (a.slide === null || b.slide === null) return a.slide === b.slide;
-  return a.slide.id === b.slide.id && linesEqual(a.slide.lines, b.slide.lines);
+  return (
+    a.slide.id === b.slide.id &&
+    linesEqual(a.slide.lines, b.slide.lines) &&
+    presetStylesEqual(a.slide.style, b.slide.style)
+  );
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -91,7 +111,13 @@ function parseSnapshot(value: unknown): OutputSnapshot | null {
     slide:
       slide === null
         ? null
-        : { id: (slide as { id: string }).id, lines: (slide as { lines: string[] }).lines },
+        : {
+            id: (slide as { id: string }).id,
+            lines: (slide as { lines: string[] }).lines,
+            // Un estilo ausente o inválido cae al Default campo a campo: la
+            // salida nunca queda indefinida.
+            style: normalizePresetStyle((slide as { style?: unknown }).style),
+          },
   };
 }
 

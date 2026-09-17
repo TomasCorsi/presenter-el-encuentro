@@ -1,4 +1,5 @@
 import type { OutputSnapshot } from "@/domain/output/output-snapshot";
+import { SlideRenderer } from "@/features/presentation/components/slide-renderer";
 import { cn } from "@/lib/utils";
 
 /**
@@ -9,7 +10,9 @@ import { cn } from "@/lib/utils";
  * - Sin sesión Live válida → `bg-output-safe` (negro puro).
  * - `black` → `bg-output-safe` (negro puro).
  * - `clear` o `content` sin slide → `bg-output-base` (fondo base opaco).
- * - `content` con slide → `bg-output-base` con el texto centrado.
+ * - `content` con slide → el renderer común pinta la slide con su Preset.
+ *
+ * `clear` y `black` son modos de salida y NO dependen del Preset (ADR-024).
  */
 export interface OutputSurfaceProps {
   /** `null` cuando no hay sesión Live válida. */
@@ -27,17 +30,11 @@ export function OutputSurface({ snapshot }: OutputSurfaceProps) {
     <main
       data-testid="output-surface"
       className={cn(
-        "flex h-dvh w-full items-center justify-center overflow-hidden",
-        pureBlack ? "bg-output-safe" : "bg-output-base",
+        "h-dvh w-full overflow-hidden",
+        slide ? "" : pureBlack ? "bg-output-safe" : "bg-output-base",
       )}
     >
-      {slide ? (
-        <div className="flex h-full w-full items-center justify-center p-[6vmin]">
-          <p className="text-stage-foreground max-w-full text-center text-[7vmin] leading-tight font-semibold whitespace-pre-line">
-            {slide.lines.join("\n")}
-          </p>
-        </div>
-      ) : null}
+      {slide ? <SlideRenderer lines={slide.lines} style={slide.style} /> : null}
     </main>
   );
 }

@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { RundownList } from "@/features/projects/components/rundown-list";
 import { SongPickerPanel } from "@/features/projects/components/song-picker-panel";
+import { usePresets } from "@/features/presets/presets-context";
 import { useProjects } from "@/features/projects/projects-context";
 import { useSongs } from "@/features/songs/songs-context";
 
@@ -36,8 +37,9 @@ function ProjectDetailPage() {
   const { projectId } = Route.useParams();
   const {
     projects, activeProjectId, hasLoaded, error, clearError,
-    setActiveProject, addSongToProject, removeRundownItem, moveRundownItem,
+    setActiveProject, addSongToProject, removeRundownItem, moveRundownItem, setRundownItemPreset,
   } = useProjects();
+  const { presets } = usePresets();
   const { songs, hasLoaded: songsLoaded } = useSongs();
   const project = projects.find((item) => item.id === projectId);
 
@@ -121,8 +123,10 @@ function ProjectDetailPage() {
           <RundownList
             items={project.rundown}
             songs={songs}
+            presets={presets}
             onMove={(itemId, direction) => moveRundownItem(project.id, itemId, direction)}
             onRemove={(itemId) => removeRundownItem(project.id, itemId)}
+            onSetPreset={(itemId, presetId) => setRundownItemPreset(project.id, itemId, presetId)}
           />
         </section>
       </div>
