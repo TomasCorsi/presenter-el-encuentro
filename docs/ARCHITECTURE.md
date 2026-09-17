@@ -338,3 +338,34 @@ Cada estado de datos distingue tres campos: `loading` (operación en curso),
 `hasLoaded` (la carga inicial terminó, con éxito o error) y `error`. Las
 vistas bloquean solo mientras `hasLoaded` es `false`; refrescos posteriores no
 sustituyen la pantalla.
+
+
+## Presets y renderizado (Fase 8)
+
+Composición de contenido y resolución de estilo son pasos distintos:
+
+```text
+Project + Songs
+  → projectToPresentation()        contenido + presetId (NO conoce Presets)
+Presets
+  → buildLiveSnapshot()            resuelve y CONGELA el estilo por aparición
+  → Presentation Engine            transporta contenido + estilo ya resuelto
+  → OutputPublisher                OutputSnapshot con estilo resuelto
+  → /output/main
+```
+
+`projectToPresentation` nunca importa Presets; el Presentation Engine no los
+consulta ni interpreta. La única frontera de resolución es el snapshot de
+Live, por eso editar un Preset con Live abierto NO cambia Program: aparece el
+aviso de contenido desactualizado y el operador decide recargar.
+
+El cálculo visual vive en la función pura
+`resolveSlideRenderStyle(PresetStyle) → ResolvedSlideRenderStyle`, consumida
+por el componente único `SlideRenderer`. Live Preview, Live Program,
+`/output/main` y la vista previa del editor renderizan con ese mismo
+componente, así que no pueden divergir. El tamaño y la safe area se expresan
+en `cqh`/`cqw` sobre un contenedor 16:9, de modo que la misma configuración se
+ve proporcionalmente igual en un monitor pequeño y en 1920×1080.
+
+`clear` y `black` siguen siendo modos de salida independientes del Preset:
+`black` es negro puro y `clear` usa el fondo base opaco.

@@ -663,3 +663,54 @@ nada de mensajes de error proyectados.
 separado de `loading` y de `error`. Las vistas usan `hasLoaded` para el
 primer render; una recarga posterior nunca reemplaza la pantalla completa.
 El contrato queda cubierto por `tests/routing/*`.
+
+## ADR-032 — Preset separado del contenido
+
+**Estado:** aceptada (Fase 8).
+
+El contenido (Song, Slide) y la apariencia (Preset) son entidades distintas.
+Ninguna propiedad visual se guarda dentro del texto de una Song. `Preset`
+contiene identidad, nombre, fechas y un `PresetStyle` con tipografía, tamaño,
+peso, interlineado, alineación H/V, color de texto, fondo sólido discriminado
+y safe area. El tamaño y la safe area son porcentajes del lienzo, no píxeles,
+para que Preview, Program y Output 1920×1080 coincidan.
+
+## ADR-033 — Default Preset reservado
+
+**Estado:** aceptada (Fase 8).
+
+Existe un preset con id reservado `preset-default`, sintetizado en memoria y
+nunca persistido. No se edita ni se elimina, pero sí se duplica. El sistema
+jamás queda sin estilo válido: cualquier referencia ausente, desconocida o
+corrupta resuelve al Default.
+
+## ADR-034 — Preset por aparición del rundown
+
+**Estado:** aceptada (Fase 8).
+
+`RundownItem.presetId?` es el único punto de asignación en esta fase. Así la
+misma Song puede verse distinta en dos momentos del show sin modificarla. Al
+eliminar un preset en uso se advierte con el número de apariciones afectadas y
+esos items caen al Default; no se reescriben los proyectos, la resolución
+tolerante evita referencias visuales rotas.
+
+## ADR-035 — Renderer compartido
+
+**Estado:** aceptada (Fase 8).
+
+El cálculo visual vive en la función pura `resolveSlideRenderStyle` y se
+aplica en un único componente `SlideRenderer`, usado por Live Preview, Live
+Program, `/output/main` y la vista previa del editor. Ninguna superficie
+define tipografía, color o fondo por su cuenta, y el renderer no depende del
+App Shell ni de providers.
+
+## ADR-036 — Estilo resuelto y congelado en el snapshot
+
+**Estado:** aceptada (Fase 8).
+
+`projectToPresentation` solo propaga `presetId`; `buildLiveSnapshot(project,
+songs, presets)` resuelve y congela el estilo. `OutputSnapshot.slide` viaja
+con su `style` resuelto para que Output no lea repositories. La comparación de
+snapshots incluye el estilo: misma slide y mismo texto con estilo distinto
+publican update. Editar un Preset con Live abierto no altera Program; genera
+el aviso de contenido desactualizado hasta que el operador recarga.
