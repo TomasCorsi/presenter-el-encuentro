@@ -24,6 +24,7 @@ import {
 } from "@/features/live/live-presentation";
 import { LiveSlideGrid } from "@/features/live/components/live-slide-grid";
 import { useLiveKeyboard } from "@/features/live/use-live-keyboard";
+import { useOutputPublisher } from "@/features/output/use-output-publisher";
 import {
   PresentationProvider,
   usePresentationState,
@@ -66,6 +67,10 @@ function LiveConsole() {
   const store = usePresentationStore();
   const state = usePresentationState();
   const [snapshot, setSnapshot] = useState<LiveSnapshot | null>(null);
+
+  // Live es la autoridad del protocolo Output Sync: publica Program a
+  // `/output/main` (ADR-027/028).
+  useOutputPublisher();
 
   // Carga inicial del show: un único snapshot explícito por sesión.
   useEffect(() => {

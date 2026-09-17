@@ -270,3 +270,20 @@ nunca borran `programSlideId`, así que volver a `content` devuelve al aire la
 misma slide. `loadPresentation` descarta Program; `reloadPresentation` lo
 conserva mientras su id siga existiendo.
 
+
+## Output Sync (Fase 7)
+
+`OutputSnapshot` es el único estado que viaja de Live a `/output/main`:
+
+```ts
+interface OutputSnapshot {
+  sessionId: string;        // efímero, generado al montar Live
+  sequence: number;         // incremental por sesión
+  mode: ProgramMode;        // content | clear | black
+  slide: { id: string; lines: string[] } | null;
+}
+```
+
+Transmite el contenido RESUELTO de Program: Output nunca reconstruye nada
+desde Projects/Songs. Preview no se sincroniza. No hay persistencia: el
+protocolo vive solo en memoria y en el canal de broadcast.

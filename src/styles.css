@@ -54,6 +54,8 @@
   --color-live-foreground: var(--live-foreground);
   --color-stage: var(--stage);
   --color-stage-foreground: var(--stage-foreground);
+  --color-output-safe: var(--output-safe);
+  --color-output-base: var(--output-base);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
@@ -102,6 +104,9 @@
   /* Superficie de salida: simula la pantalla proyectada, no el tema de la UI. */
   --stage: oklch(0.06 0 0);
   --stage-foreground: oklch(0.99 0 0);
+  /* Output: negro puro para "sin señal" y modo black; fondo base opaco para clear. */
+  --output-safe: oklch(0 0 0);
+  --output-base: var(--stage);
   --live-foreground: oklch(0.98 0.003 264);
   --success: oklch(0.72 0.16 155);
   --success-foreground: oklch(0.16 0.012 264);

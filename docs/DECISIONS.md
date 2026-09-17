@@ -604,3 +604,46 @@ semántica crítica en la capa equivocada y es difícil de probar.
 
 Ambos comandos se prueban por separado, incluido el caso en que la slide de
 Program desaparece y el modo vuelve a `content`.
+
+## ADR-027 — BroadcastChannel como transporte de Output Sync
+
+**Estado:** aceptada (Fase 7).
+
+`/output/main` vive en otra ventana del mismo navegador: no comparte el
+runtime JavaScript de Live, así que importar el mismo store NO sincroniza
+nada. Se adopta `BroadcastChannel` (canal `broadcast-control.output.v1`)
+detrás de la interfaz `OutputTransport`, con un transporte en memoria para
+tests. Los componentes React nunca tocan `BroadcastChannel` directamente.
+La sincronización entre dispositivos queda fuera de alcance.
+
+## ADR-028 — Protocolo Output Sync
+
+**Estado:** aceptada (Fase 7).
+
+Mensajes: `hello` (Output → Live), `snapshot` (respuesta completa),
+`update` (cambio de Program) y `bye` (cierre de Live, optimización).
+Siempre se transmite el estado completo, nunca deltas. `sessionId` efímero
+generado al montar Live; `sequence` incremental por sesión descarta
+mensajes fuera de orden. Liveness: `hello` cada 2 s; si no llega señal
+válida de la sesión vinculada en 5 s, Output pasa a salida segura. `bye`
+acelera la transición pero NO es la garantía: el timeout lo es.
+
+## ADR-029 — Vinculación de sesión: un Output, un Live
+
+**Estado:** aceptada (Fase 7).
+
+Output adopta el `sessionId` del primer snapshot válido y, mientras esa
+sesión siga viva, ignora `snapshot`/`update` de cualquier otra. La sesión
+termina por `bye` o por timeout; solo entonces Output queda libre y puede
+adoptar otra. Limitación documentada: con dos Live simultáneos, Output se
+queda con el primero que responda; no hay selección manual de sesión.
+
+## ADR-030 — Superficie segura de Output: negro puro
+
+**Estado:** aceptada (Fase 7).
+
+Sin sesión Live válida (antes del primer snapshot, tras `bye`, tras timeout
+o ante datos inválidos) la salida es NEGRO PURO (`--output-safe`), igual que
+`ProgramMode = black`. `clear` y `content` sin slide usan el fondo base
+opaco (`--output-base`). La diferencia se mantiene con tokens semánticos;
+nada de mensajes de error proyectados.

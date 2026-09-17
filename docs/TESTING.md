@@ -180,3 +180,20 @@ dependencias antes de que su fase las requiera.
   firma de origen que detecta cambios de rundown y de canción.
 - **Store**: TAKE y modos de salida a través del store, sin notificar cuando un
   comando no cambia nada.
+
+## Fase 7 — Output Sync
+
+- **Dominio** (`tests/output/output-snapshot.test.ts`): serialización y
+  validación de mensajes; `snapshotsEqual` detecta mismo `slide.id` con
+  `lines` distintas (editar Song + recargar publica update).
+- **Publisher** (`tests/output/output-publisher.test.ts`): publica solo ante
+  cambios visibles; responde `hello` con snapshot completo; `bye` al cerrar.
+- **Subscriber** (`tests/output/output-subscriber.test.ts`): adopción del
+  primer snapshot, descarte de mensajes fuera de orden, vinculación de sesión
+  (ignora Live B mientras A vive; adopta B tras `bye` de A), timeout sin
+  `bye` → salida segura, reconexión, `bye` de otra sesión ignorado, mensajes
+  inválidos ignorados, múltiples subscribers.
+- **Navegador** (Playwright): TAKE reflejado en Output, Preview no afecta,
+  Clear/Black/Content, dos Outputs simultáneos, recarga de Output, Live
+  ausente → negro puro, overlay de fullscreen y cursor oculto, 1920×1080,
+  consola sin errores.

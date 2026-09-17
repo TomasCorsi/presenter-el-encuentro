@@ -300,3 +300,21 @@ Route → useSongs() + useProjects()
 
 Así no hay ciclos entre features y las reglas de uso quedan testeables sin
 React ni persistencia.
+
+## Output Sync (Fase 7)
+
+```text
+Live Store
+  ↓ (useOutputPublisher, suscrito al store)
+OutputPublisher — compara mode + slide.id + slide.lines
+  ↓ OutputTransport (BroadcastChannel `broadcast-control.output.v1`)
+OutputSubscriber — vinculación de sesión, sequence, heartbeat 2 s / timeout 5 s
+  ↓
+/output/main — superficie fuera del App Shell, solo representa Program
+```
+
+Flujo unidireccional: Live es la única autoridad; Output nunca envía
+comandos. El transporte es una interfaz (`OutputTransport`) con
+implementación BroadcastChannel en el navegador y en memoria para tests;
+los componentes React no acceden al canal. Sin sesión válida la superficie
+es negro puro (ADR-030).

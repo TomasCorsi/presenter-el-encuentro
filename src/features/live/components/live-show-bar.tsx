@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+import { ExternalLink, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -36,6 +36,13 @@ export function LiveShowBar({
         {outdated ? <StatusBadge tone="sync">Contenido actualizado</StatusBadge> : null}
         <Button variant="outline" size="sm" className="ml-auto" onClick={onReload}>
           <RefreshCw />Recargar presentación
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => window.open("/output/main", "_blank", "noopener")}
+        >
+          <ExternalLink />Abrir Output
         </Button>
       </div>
 
