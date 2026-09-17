@@ -166,9 +166,23 @@ devuelve `slide: null` en `clear` y `black`. No viaja Preview, ni el rundown,
 ni títulos, ni etiquetas de sección: nada de eso se pinta en la salida.
 
 Publicación sin retardo: el publisher se suscribe al `PresentationStore`,
-recalcula el snapshot y, si cambia respecto al anterior (comparación
-superficial de `mode` e `id` de slide), publica al instante. Sin debounce.
-Un TAKE y un cambio de modo salen en el mismo tick del cambio de estado.
+recalcula el snapshot y publica al instante si cambia **cualquier cosa que
+Output deba pintar**. La comparación NO es solo `mode` + `slide.id`: incluye
+el contenido. Regla concreta:
+
+```text
+cambió mode  → publicar
+cambió slide.id  → publicar
+cambió slide.lines (mismo id)  → publicar
+cualquier otra cosa (Preview, navegación…)  → NO publicar
+```
+
+El caso real que cubre: se edita una Song, el operador pulsa "Recargar
+presentación", la slide conserva su id determinista pero su letra cambió, y
+Output recibe el texto nuevo. La comparación se implementa como función pura
+`snapshotsEqual(a, b)` (compara `mode`, `slide.id` y `lines` elemento a
+elemento), simple y testeable, sin hashes. Sin debounce: un TAKE, un cambio
+de modo o una recarga con contenido nuevo salen en el mismo tick.
 
 ---
 
