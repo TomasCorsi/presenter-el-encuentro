@@ -12,14 +12,19 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { SONG_TITLE_MAX_LENGTH, type Song, type SongSectionType } from "@/domain/songs/song";
-import { SongTitleError } from "@/domain/songs/song-rules";
+import { SONG_TITLE_MAX_LENGTH, type Song, type SongFactoryDependencies } from "@/domain/songs/song";
+import { addSection, moveSection, removeSection } from "@/domain/songs/song-rules";
 import { SongSectionEditor } from "@/features/songs/components/song-section-editor";
 import { useSongs } from "@/features/songs/songs-context";
 
 const TITLE = "Editor de canción — Plataforma de presentación en vivo";
 const DESCRIPTION = "Edición de título, autor y secciones de una canción de la biblioteca.";
 const AUTOSAVE_DELAY_MS = 600;
+
+const draftDependencies: SongFactoryDependencies = {
+  createId: () => crypto.randomUUID(),
+  now: () => new Date().toISOString(),
+};
 
 export const Route = createFileRoute("/_app/songs/$songId")({
   head: () => ({
@@ -52,22 +57,20 @@ function SongEditorPage() {
   const { songs, loading } = songsContext;
   const persistedSong = songs.find((item) => item.id === songId);
 
-  // Borrador local: los cambios se editan de inmediato y se marcan como dirty.
+  // Borrador local: las ediciones son inmediatas y se marcan como dirty.
   const [draft, setDraft] = useState<Song | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("clean");
   const [savedAt, setSavedAt] = useState<Date | null>(null);
-  const [titleError, setTitleError] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef<Song | null>(null);
   draftRef.current = draft;
 
-  // Sincroniza el borrador cuando cambia la canción persistida (carga inicial o refresh externo).
+  // Sincroniza el borrador con la canción persistida sin pisar ediciones pendientes.
   useEffect(() => {
     if (!persistedSong) return;
     setDraft((current) => {
       if (!current || current.id !== persistedSong.id) return persistedSong;
-      // No pisar ediciones locales pendientes de guardar.
       if (saveStatus === "dirty" || saveStatus === "saving" || saveStatus === "error") return current;
       return persistedSong;
     });
@@ -86,16 +89,11 @@ function SongEditorPage() {
     clearTimer();
     setSaveStatus("saving");
     try {
-      // Persiste el borrador completo a través del servicio (título, autor y secciones).
-      await songsContext.renameSong(current.id, current.title);
-      await songsContext.updateAuthor(current.id, current.author);
-      setTitleError(null);
+      await songsContext.saveSong(current);
       setSaveStatus("saved");
       setSavedAt(new Date());
-    } catch (error) {
-      if (error instanceof SongTitleError) {
-        setTitleError(error.message);
-      }
+    } catch {
+      // Mantiene el estado local del editor; el usuario ve "Error al guardar".
       setSaveStatus("error");
     }
   }, [clearTimer, songsContext]);
@@ -154,27 +152,6 @@ function SongEditorPage() {
     await navigate({ to: "/songs" });
   }
 
-  async function handleAddSection() {
-    await flush();
-    const updated = await songsContext.addSection(song!.id, "verse");
-    setDraft(updated);
-    setSaveStatus("clean");
-  }
-
-  async function handleMoveSection(sectionId: string, direction: "up" | "down") {
-    await flush();
-    const updated = await songsContext.moveSection(song!.id, sectionId, direction);
-    setDraft(updated);
-    setSaveStatus("clean");
-  }
-
-  async function handleRemoveSection(sectionId: string) {
-    await flush();
-    const updated = await songsContext.removeSection(song!.id, sectionId);
-    setDraft(updated);
-    setSaveStatus("clean");
-  }
-
   return (
     <Page>
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -194,11 +171,8 @@ function SongEditorPage() {
               onChange={(event) => markDirty({ ...song, title: event.target.value })}
               onBlur={flushIfPending}
               maxLength={SONG_TITLE_MAX_LENGTH}
-              aria-invalid={Boolean(titleError)}
-              aria-describedby={titleError ? "song-title-error" : undefined}
               className="mt-1.5 text-base font-semibold"
             />
-            {titleError ? <p id="song-title-error" className="mt-2 text-sm text-destructive">{titleError}</p> : null}
           </div>
           <div>
             <Label htmlFor="song-author">Autor / artista</Label>
@@ -242,7 +216,7 @@ function SongEditorPage() {
             <h2 id="sections-title" className="text-base font-semibold text-foreground">Letra por secciones</h2>
             <p className="mt-1 text-sm text-muted-foreground">Cada sección se convertirá en slides en una fase posterior.</p>
           </div>
-          <Button size="sm" onClick={() => void handleAddSection().catch(() => undefined)}>
+          <Button size="sm" onClick={() => markDirty(addSection(song, "verse", draftDependencies))}>
             <Plus />Añadir sección
           </Button>
         </div>
@@ -252,7 +226,7 @@ function SongEditorPage() {
             icon={ListMusic}
             title="Sin secciones todavía"
             description="Añade la primera sección para estructurar la letra (verso, coro, puente…)."
-            actions={<Button size="sm" onClick={() => void handleAddSection().catch(() => undefined)}><Plus />Añadir sección</Button>}
+            actions={<Button size="sm" onClick={() => markDirty(addSection(song, "verse", draftDependencies))}><Plus />Añadir sección</Button>}
           />
         ) : (
           <div className="space-y-3">
@@ -267,8 +241,8 @@ function SongEditorPage() {
                   sections: song.sections.map((item) => (item.id === section.id ? { ...item, ...input } : item)),
                 })}
                 onBlurFlush={flushIfPending}
-                onMove={(direction) => void handleMoveSection(section.id, direction).catch(() => undefined)}
-                onRemove={() => void handleRemoveSection(section.id).catch(() => undefined)}
+                onMove={(direction) => markDirty(moveSection(song, section.id, direction, draftDependencies.now))}
+                onRemove={() => markDirty(removeSection(song, section.id, draftDependencies.now))}
               />
             ))}
           </div>
