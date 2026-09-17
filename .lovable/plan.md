@@ -162,4 +162,4 @@ Live UI, Preview, Program, outputs, Clear/Black/Logo, BroadcastChannel, Remote, 
 3. **Advertir sin bloquear** al eliminar una Song en uso: aparecerán referencias rotas si el usuario confirma.
 4. **Sin drag & drop** en esta fase; solo subir/bajar.
 5. **Panel lateral persistente** para agregar canciones, en lugar de dialog o command palette.
-6. **La UI no carga el Presentation Engine**: la conversión existe y está testeada, pero no será observable en pantalla hasta Fase 5.
+6. **La UI no carga el Presentation Engine**: la conversión existe y está testeada, pero no será observable en pantalla hasta Fase 6 (Live Mode).
