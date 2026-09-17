@@ -7,7 +7,10 @@ import { createLocalStorageProjectRepository } from "@/services/projects/local-s
 interface ProjectsState {
   projects: Project[];
   activeProjectId: string | null;
+  /** Hay una operación de carga en curso. */
   loading: boolean;
+  /** La carga inicial ya terminó al menos una vez (con éxito o con error). */
+  hasLoaded: boolean;
   error: string | null;
 }
 
@@ -29,14 +32,28 @@ type Action =
   | { type: "failed"; message: string }
   | { type: "clearError" };
 
-const initialState: ProjectsState = { projects: [], activeProjectId: null, loading: true, error: null };
+const initialState: ProjectsState = {
+  projects: [],
+  activeProjectId: null,
+  loading: true,
+  hasLoaded: false,
+  error: null,
+};
 const ProjectsContext = createContext<ProjectsContextValue | null>(null);
 
 function reducer(state: ProjectsState, action: Action): ProjectsState {
   if (action.type === "loaded") {
-    return { projects: action.projects, activeProjectId: action.activeProjectId, loading: false, error: null };
+    return {
+      projects: action.projects,
+      activeProjectId: action.activeProjectId,
+      loading: false,
+      hasLoaded: true,
+      error: null,
+    };
   }
-  if (action.type === "failed") return { ...state, loading: false, error: action.message };
+  if (action.type === "failed") {
+    return { ...state, loading: false, hasLoaded: true, error: action.message };
+  }
   return { ...state, error: null };
 }
 

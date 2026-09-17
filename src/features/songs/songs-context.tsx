@@ -7,7 +7,10 @@ import { createLocalStorageSongRepository } from "@/services/songs/local-storage
 
 interface SongsState {
   songs: Song[];
+  /** Hay una operación de carga en curso. */
   loading: boolean;
+  /** La carga inicial ya terminó al menos una vez (con éxito o con error). */
+  hasLoaded: boolean;
   error: string | null;
 }
 
@@ -30,12 +33,16 @@ type Action =
   | { type: "failed"; message: string }
   | { type: "clearError" };
 
-const initialState: SongsState = { songs: [], loading: true, error: null };
+const initialState: SongsState = { songs: [], loading: true, hasLoaded: false, error: null };
 const SongsContext = createContext<SongsContextValue | null>(null);
 
 function reducer(state: SongsState, action: Action): SongsState {
-  if (action.type === "loaded") return { songs: action.songs, loading: false, error: null };
-  if (action.type === "failed") return { ...state, loading: false, error: action.message };
+  if (action.type === "loaded") {
+    return { songs: action.songs, loading: false, hasLoaded: true, error: null };
+  }
+  if (action.type === "failed") {
+    return { ...state, loading: false, hasLoaded: true, error: action.message };
+  }
   return { ...state, error: null };
 }
 

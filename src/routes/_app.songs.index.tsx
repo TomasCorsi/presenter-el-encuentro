@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_app/songs/")({
 });
 
 function SongsPage() {
-  const { songs, loading, error, clearError, createSong, duplicateSong, deleteSong } = useSongs();
+  const { songs, hasLoaded, error, clearError, createSong, duplicateSong, deleteSong } = useSongs();
   const navigate = useNavigate({ from: "/songs/" });
   const [query, setQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -55,7 +55,7 @@ function SongsPage() {
           <span>{error}</span><Button variant="ghost" size="sm" onClick={clearError}>Cerrar</Button>
         </div>
       ) : null}
-      {loading ? <p className="text-sm text-muted-foreground" role="status">Cargando canciones…</p> : songs.length === 0 ? (
+      {!hasLoaded ? <p className="text-sm text-muted-foreground" role="status">Cargando canciones…</p> : songs.length === 0 ? (
         <EmptyState icon={Music} title="No hay canciones todavía" description="Crea una canción para comenzar a armar la biblioteca."
           actions={<Button size="sm" onClick={() => setCreateOpen(true)}><Plus />Crear canción</Button>} />
       ) : (

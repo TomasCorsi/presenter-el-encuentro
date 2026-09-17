@@ -647,3 +647,19 @@ o ante datos inválidos) la salida es NEGRO PURO (`--output-safe`), igual que
 `ProgramMode = black`. `clear` y `content` sin slide usan el fondo base
 opaco (`--output-base`). La diferencia se mantiene con tokens semánticos;
 nada de mensajes de error proyectados.
+
+## ADR-031 — Providers de datos estables en el App Shell
+
+**Estado:** aceptada (Fase 7.1).
+
+`ProjectsProvider` y `SongsProvider` se montan una única vez en
+`src/routes/_app.tsx`. Los layouts de ruta no pueden volver a montarlos.
+
+**Motivo:** con `SongsProvider` montado por ruta (`projects`, `songs`,
+`live`), cada navegación desmontaba el provider, releía y validaba
+`localStorage` y mostraba "Cargando canciones…" durante la transición.
+
+**Consecuencia:** se añade `hasLoaded` al estado de Projects y Songs,
+separado de `loading` y de `error`. Las vistas usan `hasLoaded` para el
+primer render; una recarga posterior nunca reemplaza la pantalla completa.
+El contrato queda cubierto por `tests/routing/*`.

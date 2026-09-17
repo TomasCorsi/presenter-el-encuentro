@@ -197,3 +197,16 @@ dependencias antes de que su fase las requiera.
   Clear/Black/Content, dos Outputs simultáneos, recarga de Output, Live
   ausente → negro puro, overlay de fullscreen y cursor oculto, 1920×1080,
   consola sin errores.
+
+## Fase 7.1 — Navegación
+
+- **Comportamiento** (`tests/routing/app-shell-providers.test.tsx`): monta el
+  App Shell con `@happy-dom/global-registrator` y `react-dom/client`, simula
+  Projects → Songs → Live → Projects y verifica un único montaje de
+  `SongsProvider` y una única lectura inicial de cada almacén.
+- **Contrato** (`tests/routing/route-provider-contract.test.ts`): el shell
+  monta los providers, ningún layout hijo los remonta y el sidebar navega con
+  `Link` del router.
+- **Medición** (Playwright sobre el build de producción): navegación SPA sin
+  peticiones de documento adicionales, sidebar no remontado, sin placeholders
+  de carga entre secciones y consola limpia.
