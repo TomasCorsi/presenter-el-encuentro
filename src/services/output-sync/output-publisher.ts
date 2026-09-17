@@ -35,16 +35,16 @@ export function createOutputPublisher(
     transport.publish(message);
   }
 
+  // `currentOutput` se fija en el primer `sync`, que el hook ejecuta antes de
+  // que ningún Output pueda emitir `hello` (el canal aún no tenía publisher).
+  let currentOutput: ProgramOutput = { mode: "content", slide: null };
+
   const unsubscribe = transport.subscribe((raw) => {
     const message = parseOutputMessage(raw);
     // Un `hello` siempre se responde con el estado completo: es el heartbeat
     // y el mecanismo de inicialización de ventanas nuevas.
     if (message?.type === "hello") publish("snapshot", currentOutput);
   });
-
-  // `currentOutput` se fija en el primer `sync`, que el hook ejecuta antes de
-  // que ningún Output pueda emitir `hello` (el canal aún no tenía publisher).
-  let currentOutput: ProgramOutput = { mode: "content", slide: null };
 
   return {
     sync(output) {
