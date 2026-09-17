@@ -10,7 +10,7 @@ Se mantiene el vocabulario de `DATA_MODEL.md` y se precisa para runtime:
 type SlideContent = { kind: "text"; lines: string[] }
 
 interface Slide {
-  id: string          // determinista: `${itemId}:${sectionId}:${chunkIndex}`
+  id: string          // `${itemId}:${sectionId}:${chunkIndex}`
   itemId: string
   order: number       // 0..n-1 dentro del item
   content: SlideContent
@@ -21,96 +21,122 @@ interface Slide {
 type PresentationItemType = "song" | "bible" | "media" | "presentation" | "countdown" | "message"
 
 interface PresentationItem {
-  id: string
+  id: string          // identidad de ESTA instancia dentro de la presentación
   type: PresentationItemType
   title: string
   order: number
   slides: Slide[]     // runtime: slides embebidas, no slideIds
-  sourceId?: string   // id de la Song/entidad de origen
-}
-
-interface Presentation {
-  items: PresentationItem[]
+  sourceId?: string   // identidad de la entidad original (song.id)
 }
 ```
 
-Diferencia intencional con el modelo persistido: el motor recibe slides ya resueltas (embebidas), no `slideIds`. Persistir slides no entra en esta fase. Esto se documenta en `DATA_MODEL.md` como "modelo de runtime".
+Diferencia intencional con el modelo persistido: el motor recibe slides ya resueltas (embebidas), no `slideIds`. Persistir slides no entra en esta fase. Se documenta en `DATA_MODEL.md` como "modelo de runtime".
 
-## 2. Fuente de verdad del estado
+**Identidad de instancia vs. identidad de origen**: `item.id` identifica la aparición concreta dentro de una presentación; `sourceId` apunta a la Song original. Así una misma canción puede repetirse en un futuro rundown (A, B, A) sin colisiones de IDs de item ni de slide.
 
-Fuente de verdad única y mínima:
+## 2. Runtime derivado y fuente de verdad
+
+Los índices de navegación son **datos derivados explícitos**, no un cache mutable escondido dentro del motor:
 
 ```ts
+interface PresentationRuntime {
+  items: readonly PresentationItem[]
+  itemIndexById: ReadonlyMap<string, number>
+  slideLocationById: ReadonlyMap<string, { itemIndex: number; slideIndex: number; navigableIndex: number }>
+  navigableSlideIds: readonly string[]   // orden global de slides navegables
+}
+
+function buildPresentationRuntime(items: PresentationItem[]): PresentationRuntime
+
 interface PresentationState {
-  items: PresentationItem[]
+  runtime: PresentationRuntime
   currentItemId: string | null
   currentSlideId: string | null
 }
 ```
 
-Índices (`currentItemIndex`, `currentSlideIndex`), `currentItem`, `currentSlide`, `nextSlide`, `previousSlide` son **selectores derivados**, nunca estado. Para evitar búsquedas costosas, el motor mantiene internamente un índice `Map<slideId, {itemIndex, slideIndex}>` reconstruido solo al cargar/reemplazar la presentación; navegación y selección quedan en O(1).
+- `buildPresentationRuntime` es una función pura, llamada **solo** cuando cambia la presentación (`load`).
+- El runtime es inmutable y congelado conceptualmente; los comandos jamás lo mutan.
+- Navegación y selección en O(1) mediante `slideLocationById` + `navigableSlideIds`.
+- Fuente de verdad posicional: `currentItemId` + `currentSlideId`. Índices, `currentItem`, `currentSlide`, `nextSlide`, `previousSlide` son **selectores derivados**, nunca estado almacenado.
 
-Invariante: si `items` tiene al menos una slide, `currentSlideId` apunta siempre a una slide existente; si no, ambos son `null`. Cualquier operación normaliza el estado hacia ese invariante.
+## 3. Semántica de items sin slides
 
-## 3. Navegación y límites
+Invariantes (sin contradicción):
 
-- `next()` avanza dentro del item; en la última slide del item salta a la primera slide del siguiente item; en la última slide del último item **no hace nada** (no-op, sin wrap, sin error). Misma regla espejada para `previous()`.
-- `goToFirst()` / `goToLast()` operan sobre la presentación completa (primera/última slide navegable global).
-- `selectItem(id)` posiciona en la primera slide de ese item; si el item existe pero no tiene slides, se selecciona el item y `currentSlideId` queda `null`.
-- `selectSlide(id)` posiciona en esa slide y sincroniza `currentItemId`.
-- Los items sin slides se **saltan** durante `next`/`previous` (no bloquean la navegación).
+1. `currentItemId` puede apuntar a un item válido **aunque ese item no tenga slides**.
+2. `currentSlideId` es `null` cuando el item seleccionado no tiene slides.
+3. Si `currentSlideId !== null`, siempre apunta a una slide **perteneciente a `currentItemId`**.
 
-Todos los comandos devuelven un **nuevo estado inmutable** (funciones puras `(state, command) => state`), sin clonado profundo de slides: se reutilizan las referencias existentes.
+Comportamiento desde un item vacío:
 
-## 4. Estados vacíos e IDs inválidos
+- `next()` → primera slide navegable de los items **posteriores**; si no existe, no-op.
+- `previous()` → última slide navegable de los items **anteriores**; si no existe, no-op.
 
-- `load([])` → estado vacío; `next`/`previous`/`goToFirst`/`goToLast` son no-ops.
-- `selectItem`/`selectSlide` con id inexistente → estado sin cambios (no lanza excepción). El motor nunca produce referencias imposibles.
-- `load()` con una presentación nueva intenta **preservar** la posición si el `currentSlideId` sigue existiendo; si desapareció, cae a la primera slide del item si aún existe, y si no, a la primera slide de la presentación; si no queda ninguna, a `null`.
+Durante la navegación normal, los items sin slides se **saltan** (no bloquean ni detienen el recorrido).
+
+## 4. Navegación y límites
+
+- `next()` avanza dentro del item; en la última slide del item salta a la primera slide del siguiente item con slides; en la última slide navegable global es **no-op** (sin wrap, sin excepción). Espejado para `previous()`.
+- `goToFirst()` / `goToLast()` → primera / última slide navegable global.
+- `selectItem(id)` → primera slide del item; si el item no tiene slides, se aplica la regla de la sección 3.
+- `selectSlide(id)` → esa slide, sincronizando `currentItemId`.
+
+Todos los comandos son funciones puras `(state, ...) => state` que devuelven estado nuevo e inmutable, reutilizando referencias de slides y del runtime (sin clonado profundo).
+
+## 5. Estados vacíos e IDs inválidos
+
+- `load([])` → estado vacío; `next` / `previous` / `goToFirst` / `goToLast` son no-ops.
+- `selectItem` / `selectSlide` con id inexistente → estado **sin cambios** (misma referencia), nunca excepción ni referencia imposible.
+- `load()` con presentación nueva preserva la posición si `currentSlideId` sigue existiendo; si no, cae a la primera slide del item si aún existe; si no, a la primera slide navegable; si no queda ninguna, a `null`.
 - `reset()` vuelve al estado inicial vacío.
 
-## 5. Song → PresentationItem
+## 6. Song → PresentationItem
 
-Sí se implementa en esta fase, como transformación **pura** e independiente de Projects:
+Transformación pura, independiente de Projects:
 
 ```ts
-songToPresentationItem(song: Song, options?): PresentationItem
+songToPresentationItem(song: Song, options: { itemId: string; order?: number }): PresentationItem
 ```
 
-Estrategia de división (versión 1, simple y determinista): **una sección = una slide**. El contenido se normaliza a líneas (`split("\n")`, se recortan líneas en blanco al inicio/fin). Las secciones cuyo contenido queda vacío se omiten. El `label` de la sección se copia en la slide.
+- `item.id = options.itemId` (suministrado por quien compone la presentación; en Fase 4 lo suministran los tests).
+- `sourceId = song.id`, `type = "song"`, `title = song.title`.
+- IDs de slide: `${itemId}:${sectionId}:${chunkIndex}` — estables mientras se use el mismo `itemId`, y sin colisiones al repetir la canción con otro `itemId`.
 
-Motivo: dividir por número de líneas o por altura requiere conocer tipografía y tamaño de output, que pertenecen a Presets (Fase 7) y Outputs (Fase 6). Para no cerrar la puerta, la firma acepta un parámetro opcional `splitStrategy` con una única implementación registrada hoy (`wholeSection`), de modo que en Fase 7 se añada `maxLinesPerSlide` sin tocar llamadas existentes.
+**División (versión 1): una sección = una slide.** El contenido se normaliza a líneas (`split("\n")`, recorte de líneas en blanco al inicio y al final). Las secciones cuyo contenido queda vacío se omiten. El `label` de la sección se copia en la slide.
 
-IDs de slide deterministas: `${itemId}:${sectionId}:${chunkIndex}` — estables entre conversiones repetidas de la misma canción, lo que permite reconciliar posición tras editar.
+Sin abstracción `splitStrategy` en esta fase: existiría una sola implementación. La firma ya recibe un objeto `options`, así que añadir `maxLinesPerSlide` en Fase 7 no rompe llamadas existentes. Motivo de la estrategia simple: dividir por líneas o altura requiere tipografía y tamaño de output, que pertenecen a Presets (Fase 7) y Outputs (Fase 6).
 
-## 6. Preview vs Program
+## 7. Preview vs Program
 
-Se **pospone** la separación. En esta fase existe una sola posición (`currentSlideId`). Añadir ahora `selectedSlideId` + `programSlideId` duplicaría estado sin ningún consumidor y contradice el principio de evitar estado derivable/innecesario.
+Se **pospone** la separación: una sola posición (`currentSlideId`). Añadir hoy `selectedSlideId` + `programSlideId` duplicaría estado sin consumidores.
 
-Mitigación arquitectónica: los selectores públicos se llaman `getProgramSlide()` / `getProgramItem()` desde el inicio. Cuando Live introduzca Preview (Fase 5), se añade `previewSlideId` como estado adicional y un comando `takeToProgram()` sin renombrar nada de lo que ya consuman los outputs.
+Nomenclatura **neutral** ahora: `getCurrentSlide()` / `getCurrentItem()`. No se usa `getProgramSlide()` / `getProgramItem()`, porque el estado actual todavía no representa Program; introducir esa semántica hoy sería falsa. En Fase 5, cuando existan `previewSlideId` y `programSlideId`, se hará un rename controlado y se añadirán `getPreviewSlide()` / `getProgramSlide()`. Queda registrado en la ADR.
 
-Igualmente, `clear` / `black` / `logo` quedan **fuera**: son estado de salida, no de contenido. No se añade ningún campo placeholder.
+`clear` / `black` / `logo` quedan fuera: son estado de salida, no de contenido. No se añade ningún campo placeholder.
 
-## 7. Estado global: decisión
+## 8. Estado global: store vanilla, sin Zustand
 
-**Opción B — store vanilla propio, sin dependencias nuevas.**
+- Dominio (`src/domain/presentation/`): funciones puras y runtime derivado.
+- Store mínimo framework-agnóstico (~40 líneas): `getState()`, `subscribe(listener)`, métodos que aplican los comandos puros. Si un comando no cambia nada, devuelve la misma referencia de estado y **no** notifica (evita renders inútiles).
+- React: `PresentationProvider` + `usePresentation()` sobre `useSyncExternalStore`, con `getServerSnapshot` explícito (estado inicial determinista) para SSR en TanStack Start.
 
-- El dominio (`src/domain/presentation/`) son funciones puras: `createInitialState`, `load`, `next`, `previous`, `selectItem`, `selectSlide`, `goToFirst`, `goToLast`, `reset` + selectores.
-- Encima, un store mínimo framework-agnóstico (~40 líneas): `getState()`, `subscribe(listener)`, y métodos que aplican los comandos puros. Es exactamente el contrato que consume `useSyncExternalStore` de React 19, y también una ventana de output o un futuro puente de sincronización, sin pasar por React.
-- En React: `PresentationProvider` + `usePresentation()` sobre `useSyncExternalStore`.
+Documentar explícitamente que el store permite suscripciones **dentro de un mismo runtime JS**, que **no** sincroniza ventanas distintas por sí mismo, y que la sincronización entre ventanas llegará por otro mecanismo en su fase.
 
-Por qué no Zustand: aportaría prácticamente lo mismo que estas ~40 líneas, mientras que el requisito duro (motor independiente de React) ya obliga a la separación dominio/store. Por qué no Context+reducer solo: ataría el estado al árbol de React, y las ventanas de output de Fase 6 no comparten árbol. Se registra como ADR-014/015.
+Por qué no Zustand: aportaría lo mismo que estas ~40 líneas y el requisito de independencia de React ya obliga a separar dominio y store. Por qué no Context+reducer solo: ataría el estado al árbol de React, y las ventanas de output de Fase 6 no comparten árbol.
 
-## 8. Archivos
+## 9. Archivos
 
 Crear:
 
-- `src/domain/presentation/presentation.ts` — tipos (`Slide`, `PresentationItem`, `PresentationState`).
-- `src/domain/presentation/presentation-engine.ts` — comandos puros + índice interno.
-- `src/domain/presentation/presentation-selectors.ts` — selectores derivados.
+- `src/domain/presentation/presentation.ts` — tipos (`Slide`, `PresentationItem`, `PresentationRuntime`, `PresentationState`).
+- `src/domain/presentation/presentation-runtime.ts` — `buildPresentationRuntime`.
+- `src/domain/presentation/presentation-engine.ts` — comandos puros.
+- `src/domain/presentation/presentation-selectors.ts` — selectores derivados (`getCurrentItem`, `getCurrentSlide`, `getNextSlide`, `getPreviousSlide`, índices).
 - `src/domain/presentation/song-to-presentation.ts` — transformación Song → PresentationItem.
 - `src/stores/presentation-store.ts` — store vanilla con `subscribe`.
-- `src/features/presentation/presentation-context.tsx` — provider + hooks con `useSyncExternalStore`.
+- `src/features/presentation/presentation-context.tsx` — provider + hooks con `useSyncExternalStore` y server snapshot.
+- `tests/domain/presentation-runtime.test.ts`
 - `tests/domain/presentation-engine.test.ts`
 - `tests/domain/song-to-presentation.test.ts`
 - `tests/stores/presentation-store.test.ts`
@@ -119,30 +145,32 @@ Modificar (solo documentación): `docs/ROADMAP.md`, `docs/DATA_MODEL.md`, `docs/
 
 No se modifican Projects, Songs, rutas, App Shell, `package.json` ni `bun.lock`. No se crea UI ni harness temporal: la validación es por tests.
 
-## 9. Tests (`bun test`)
+## 10. Tests (`bun test`)
 
-- **Vacío**: load vacío, next/previous/goToFirst/goToLast no-ops, selección inexistente.
-- **Navegación**: seleccionar item y slide, next/previous dentro del item, cruce entre items en ambos sentidos, límites inicial y final sin wrap, saltar items sin slides.
-- **Mutaciones**: reemplazar presentación preservando posición, posición perdida, item sin slides, IDs inválidos, reset.
-- **Songs**: conversión determinista (mismos IDs en dos ejecuciones), orden de secciones y slides, sección vacía omitida, múltiples secciones, canción sin secciones.
-- **Store**: notificación a suscriptores, `unsubscribe`, identidad de estado estable cuando un comando no cambia nada (evita renders inútiles).
-- **Selectores**: derivación correcta de índices, next/previous slide en bordes.
+- **Runtime**: construcción de índices, orden global de slides navegables, items vacíos excluidos de `navigableSlideIds` pero presentes en `itemIndexById`, inmutabilidad.
+- **Vacío**: load vacío, comandos no-op, selección inexistente.
+- **Navegación**: seleccionar item y slide, next/previous dentro del item, cruce entre items en ambos sentidos, límites inicial y final sin wrap, items sin slides saltados.
+- **Items vacíos**: `selectItem` sobre item sin slides (item seleccionado, slide `null`), `next` desde item vacío hacia slide posterior, `previous` hacia slide anterior, no-op cuando no hay nada en esa dirección.
+- **Mutaciones**: reemplazar presentación preservando posición, posición perdida, IDs inválidos, reset.
+- **Songs**: conversión determinista (mismos IDs en dos ejecuciones con el mismo `itemId`), misma Song con dos `itemId` distintos sin colisiones, `sourceId` correcto, orden de secciones y slides, sección vacía omitida, canción sin secciones.
+- **Store**: notificación a suscriptores, `unsubscribe`, identidad de estado estable y sin notificación cuando un comando no cambia nada.
+- **Selectores**: derivación de índices, next/previous en bordes.
 
-## 10. ADR propuestas
+## 11. ADR propuestas
 
-- **ADR-014 — Presentation Engine como dominio puro**: comandos puros + selectores derivados; `currentSlideId` como única fuente de verdad posicional.
-- **ADR-015 — Store vanilla en lugar de Zustand**: cierra ADR-008 sin añadir dependencias.
-- **ADR-016 — Slides de runtime derivadas**: las slides no se persisten en Fase 4; se derivan de la Song mediante transformación determinista.
-- **ADR-017 — Preview/Program pospuesto**: una sola posición ahora, nomenclatura `program*` desde el inicio.
+- **ADR-014 — Presentation Engine como dominio puro**: comandos puros, runtime derivado explícito mediante `buildPresentationRuntime`, sin caches mutables ocultos; `currentItemId` + `currentSlideId` como única fuente de verdad posicional, con la semántica de items vacíos documentada.
+- **ADR-015 — Store vanilla en lugar de Zustand**: cierra ADR-008 sin dependencias nuevas; alcance limitado a un runtime JS, sin sincronización entre ventanas.
+- **ADR-016 — Slides de runtime derivadas**: no se persisten en Fase 4; identidad de instancia (`item.id`) separada de identidad de origen (`sourceId`); IDs de slide `${itemId}:${sectionId}:${chunkIndex}`.
+- **ADR-017 — Nomenclatura neutral y Preview/Program pospuesto**: `getCurrentSlide()` / `getCurrentItem()` hoy; rename controlado en Fase 5 en lugar de semántica falsa anticipada.
 
-## 11. Fuera de alcance
+## 12. Fuera de alcance
 
 Rundown funcional, Songs en Projects, drag & drop, Live UI, Preview UI, Program UI, outputs (`/output/*`), BroadcastChannel, Remote, Bible, Media, Presets, PWA, IndexedDB, Supabase, Sync, Clear/Black/Logo, transiciones, backgrounds, lower thirds, video.
 
-## 12. Riesgos y decisiones que requieren tu aprobación
+## 13. Riesgos y decisiones
 
-1. **Una sección = una slide**: canciones con secciones muy largas producirán slides con demasiado texto hasta Fase 7. Aceptado como versión 1.
-2. **Slides embebidas en el item de runtime** en lugar de `slideIds`: divergencia consciente respecto al modelo persistido documentado.
-3. **Preview/Program pospuesto**: si prefieres la separación desde ya, lo ajusto antes de ejecutar.
-4. **Store propio en vez de Zustand**: cero dependencias nuevas, a cambio de ~40 líneas mantenidas por nosotros.
-5. **Sin UI de validación**: el motor no será observable en el navegador hasta la Fase 5; toda la confianza viene de los tests.
+1. **Una sección = una slide**: secciones largas producirán slides con mucho texto hasta Fase 7. Aprobado provisionalmente.
+2. **Slides embebidas en el item de runtime** en lugar de `slideIds`: divergencia consciente respecto al modelo persistido.
+3. **Rename en Fase 5** de los selectores actuales cuando aparezca Program: aceptado como preferible a semántica anticipada.
+4. **Store propio**: cero dependencias nuevas a cambio de ~40 líneas propias; sin sincronización entre ventanas.
+5. **Sin UI de validación**: el motor no será observable en el navegador hasta Fase 5; la confianza viene de los tests.
