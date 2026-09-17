@@ -66,35 +66,64 @@ recibir; cualquier mensaje con forma inválida se ignora en silencio.
 snapshot es pequeño y así una ventana nueva y una ventana antigua convergen
 con el mismo mensaje.
 
+### Política de sesión: un Output, un Live
+
+Output NO adopta cualquier `sessionId` que reciba. Regla explícita:
+
+- Al recibir el **primer snapshot válido**, Output queda **vinculado** a ese
+  `sessionId`.
+- Mientras esa sesión siga viva, ignora `snapshot` y `update` de cualquier
+  otro `sessionId`. Esto evita que dos ventanas Live abiertas hagan que
+  Output alterne entre ellas.
+- La sesión termina por `bye` o por timeout de heartbeat (punto 3.2). Solo
+  entonces Output queda libre y puede adoptar la primera sesión válida que
+  responda.
+- Si Output abre con dos Live ya activos, adopta el primero que responda y lo
+  mantiene. **Limitación documentada:** no hay selección manual de sesión en
+  esta fase; la recomendación operativa es tener un solo Live abierto.
+
+### Liveness: heartbeat, no `bye`
+
+`bye` se envía como optimización (desconexión inmediata), pero NO es la
+garantía: un cierre de pestaña, crash o suspensión puede impedir que llegue.
+La garantía real es el heartbeat:
+
+- Output envía `hello` cada **2 s**, siempre, esté conectado o no.
+- Live responde a cada `hello` con un `snapshot` (o `heartbeat` si nada
+  cambió desde el último envío a esa sesión; en la práctica el snapshot
+  completo es barato y simplifica el protocolo, así que se responde siempre
+  con snapshot).
+- Si Output no recibe ninguna señal válida de **su sesión vinculada** durante
+  **5 s**, considera a Live desconectado: pasa a salida segura vacía, queda
+  libre de sesión y sigue escuchando y reintentando.
+- Nada de polling de estado de aplicación ni de storage: el heartbeat vive
+  solo en el protocolo Output Sync.
+
 ### Inicialización de una ventana nueva
 
-- **Output abre después de Live:** Output emite `hello`; Live responde con
-  `snapshot`. Un único viaje, sin polling.
-- **Live abre después de Output:** Live emite `snapshot` al montar, así que
-  el Output que ya estaba escuchando se actualiza solo. Además Output
-  reintenta `hello` cada 2 s mientras no haya recibido nada (cinturón y
-  tirantes barato, se detiene con la primera respuesta).
+- **Output abre después de Live:** el `hello` periódico obtiene `snapshot`
+  en el primer ciclo (latencia máxima ~2 s; el primer `hello` se envía al
+  montar, así que en la práctica es inmediato).
+- **Live abre después de Output:** Live emite `snapshot` al montar y además
+  responde al `hello` periódico; Output lo adopta como primera sesión.
 - **Output se cierra y se reabre / se recarga:** repite `hello` y recibe el
   estado actual. No hay estado que restaurar.
-- **Varias ventanas Output:** el canal es difusión pura. El `hello` de una
-  provoca un `snapshot` que las demás también reciben, y como es el estado
-  completo y con `sequence`, es idempotente.
+- **Varias ventanas Output:** el canal es difusión pura. Cada Output mantiene
+  su propia vinculación de sesión y su propio contador de secuencia; todas
+  convergen al mismo contenido.
 
 ### Live ausente
 
-Output no recibe respuesta a `hello`: se queda en la salida vacía segura
-(negra). Sin texto de error, sin spinner, sin nada proyectable. Con `bye`, o
-tras un tiempo sin señal, Output vuelve a vacío en lugar de congelar la última
-slide: dejar contenido antiguo al aire es peor que dejar negro.
-
-El único indicador de desconexión vive dentro del overlay de configuración
-(punto 7), que solo aparece con actividad del ratón o del teclado.
+Sin respuesta a `hello` durante 5 s (o `bye` recibido): salida vacía segura
+(negra). Sin texto de error, sin spinner, sin nada proyectable. El único
+indicador de desconexión vive dentro del overlay de configuración (punto 7),
+que solo aparece con actividad del ratón o del teclado.
 
 ### Reconexión
 
-Output nunca deja de escuchar el canal ni de reintentar `hello`. Cuando
-aparece una sesión Live nueva, su `snapshot` inicial llega igualmente y Output
-adopta el nuevo `sessionId` y reinicia su contador de secuencia.
+Output nunca deja de emitir `hello` ni de escuchar. Cuando aparece una sesión
+Live nueva, su `snapshot` llega en respuesta al siguiente `hello` y, como
+Output ya está libre, la adopta: nuevo `sessionId`, secuencia reiniciada.
 
 ---
 
@@ -104,14 +133,12 @@ Ambos, sí, y son baratos.
 
 - `sessionId`: identificador efímero generado al montar Live (nunca en módulo
   ni en SSR: se crea en `useEffect`, regla de la plataforma). No se persiste.
-  Evita que un Output viejo mezcle mensajes de una sesión Live cerrada con los
-  de la nueva. Output adopta el `sessionId` del primer mensaje válido que
-  recibe y, si llega otro distinto, lo acepta como sesión nueva y resetea su
-  secuencia.
-- `sequence`: entero incremental por sesión. Output descarta cualquier mensaje
-  con `sequence` menor o igual al último aplicado **de la misma sesión**.
-  Protege contra el reordenamiento que puede producir el `snapshot` de
-  respuesta a un `hello` cruzándose con un `update`.
+  Sirve para la vinculación de sesión del punto 3.1.
+- `sequence`: entero incremental **por sesión**. Output descarta cualquier
+  mensaje con `sequence` menor o igual al último aplicado **de su sesión
+  vinculada**. Protege contra el reordenamiento que puede producir el
+  `snapshot` de respuesta a un `hello` cruzándose con un `update`. Al adoptar
+  una sesión nueva, la secuencia se reinicia.
 
 ---
 
@@ -139,9 +166,23 @@ devuelve `slide: null` en `clear` y `black`. No viaja Preview, ni el rundown,
 ni títulos, ni etiquetas de sección: nada de eso se pinta en la salida.
 
 Publicación sin retardo: el publisher se suscribe al `PresentationStore`,
-recalcula el snapshot y, si cambia respecto al anterior (comparación
-superficial de `mode` e `id` de slide), publica al instante. Sin debounce.
-Un TAKE y un cambio de modo salen en el mismo tick del cambio de estado.
+recalcula el snapshot y publica al instante si cambia **cualquier cosa que
+Output deba pintar**. La comparación NO es solo `mode` + `slide.id`: incluye
+el contenido. Regla concreta:
+
+```text
+cambió mode  → publicar
+cambió slide.id  → publicar
+cambió slide.lines (mismo id)  → publicar
+cualquier otra cosa (Preview, navegación…)  → NO publicar
+```
+
+El caso real que cubre: se edita una Song, el operador pulsa "Recargar
+presentación", la slide conserva su id determinista pero su letra cambió, y
+Output recibe el texto nuevo. La comparación se implementa como función pura
+`snapshotsEqual(a, b)` (compara `mode`, `slide.id` y `lines` elemento a
+elemento), simple y testeable, sin hashes. Sin debounce: un TAKE, un cambio
+de modo o una recarga con contenido nuevo salen en el mismo tick.
 
 ---
 
@@ -229,18 +270,24 @@ No se tocan el Presentation Engine ni el store: Output se construye encima de
 `bun test`, con transporte en memoria (nada depende de BroadcastChannel real):
 
 - Serialización y validación de `OutputSnapshot` y de cada mensaje.
+- `snapshotsEqual`: mismo `slide.id` con `lines` distintas → NO son iguales →
+  se publica `update` (el caso "editar la Song y recargar").
 - `hello` → `snapshot`; `update` en cada cambio de Program; `bye`.
 - Output que abre después de Live obtiene el estado actual.
 - Output que abre antes de Live recibe el `snapshot` inicial.
 - `sequence`: mensajes fuera de orden descartados; sesión nueva aceptada y
   secuencia reiniciada.
-- `sessionId`: mensajes de otra sesión no mezclados con la actual.
+- Vinculación de sesión: Output vinculado a Live A ignora `snapshot`/`update`
+  de Live B; Live A termina (`bye` o timeout) → Output queda libre y puede
+  adoptar Live B.
+- Heartbeat: Live desaparece sin `bye` → tras el timeout Output pasa a salida
+  segura; Live vuelve → Output recupera el snapshot; `bye` → desconexión
+  inmediata sin esperar al timeout.
 - Múltiples subscribers reciben el mismo snapshot.
 - Mensajes inválidos (forma incorrecta, campos faltantes, JSON ajeno)
   ignorados sin lanzar.
 - `content` con slide, `clear`, `black`, Program vacío.
 - Preview que se mueve NO produce publicación.
-- Reconexión: `bye` → salida vacía → nuevo Live → snapshot adoptado.
 
 **Verificación en navegador** (Playwright, 1920×1080 y ventana secundaria):
 la secuencia completa de 20 pasos del pedido, incluidos dos Outputs
@@ -254,7 +301,9 @@ simultáneos y la recarga de Output.
   no `localStorage`, `postMessage` ni `SharedWorker`; límite explícito a un
   mismo navegador y dispositivo.
 - **ADR-028 — Protocolo Output Sync**: `hello` / `snapshot` / `update` / `bye`,
-  estado completo en cada mensaje, `sessionId` efímero y `sequence`.
+  estado completo en cada mensaje, `sessionId` efímero, `sequence` por sesión,
+  heartbeat cada 2 s con timeout de 5 s como garantía de liveness, y política
+  de vinculación de sesión (un Output, un Live).
 - **ADR-029 — Live es la única autoridad**: flujo unidireccional, Output sin
   comandos.
 - **ADR-030 — Salida segura por defecto**: sin Live, sin Program o con datos
@@ -279,8 +328,8 @@ Sin dependencias nuevas.
    llega con Presets.
 2. **Sin señal de Live = salida vacía, no última slide congelada.** Si
    prefieres congelar el último contenido, cámbialo aquí.
-3. **Tiempo de espera antes de vaciar** tras perder la señal: propongo
-   inmediato con `bye` y 5 s sin respuesta al reintento. Ajustable.
+3. **Ritmo del heartbeat:** `hello` cada 2 s y desconexión a los 5 s sin
+   señal válida. Ajustable.
 4. **Overlay y ocultado de cursor a los 3 s.** Se puede subir o quitar.
 5. **Riesgo aceptado:** BroadcastChannel no funciona entre navegadores ni
    dispositivos distintos, ni en modo incógnito contra una ventana normal. La
