@@ -1,4 +1,6 @@
-# Fase 4.5 — Project Rundown / Composition
+# Fase 5 — Project Rundown / Composition
+
+Renumeración documental: esta fase pasa a ser **Fase 5**, y las posteriores se desplazan (Fase 6 — Live Mode, Fase 7 — Main Output, Fase 8 — Presets, Fase 9 — Bible, Fase 10 — Media, Fase 11 — Stage + Stream, Fase 12 — PWA + Offline, Fase 13 — Supabase, Fase 14 — Sync Engine, Fase 15 — Backups, Fase 16 — Mobile Remote, Fase 17 — Optimización). No cambia el alcance funcional.
 
 Conectar Projects + Songs + Presentation Engine. El Project pasa a tener un rundown real, ordenado y repetible. Sin Live, sin outputs, sin nuevas dependencias.
 
@@ -61,8 +63,8 @@ Layout de dos columnas en escritorio, densidad broadcast:
 
 - Agregar: crea `RundownItem` con `id` nuevo (`crypto.randomUUID()`), `sourceId = song.id`, `title` snapshot, al final, y renormaliza `order`. La Song no se modifica.
 - Repetir: agregar dos veces la misma Song produce dos items con el mismo `sourceId` y distinto `id`. No hay deduplicación en ningún punto.
-- Reordenar: botones subir/bajar, como en las secciones de Song. Drag & drop se descarta en esta fase: requeriría dependencia nueva o un implementación a medida con coste de accesibilidad; se evalúa en Fase 5 junto con la UI Live.
-- Eliminar: quita solo esa instancia y renormaliza `order`. Confirmación ligera (la acción es de bajo riesgo y reversible re-agregando).
+- Reordenar: botones subir/bajar, como en las secciones de Song. Drag & drop se descarta en esta fase: requeriría dependencia nueva o una implementación a medida con coste de accesibilidad; se evalúa en Fase 6 junto con la UI Live.
+- Eliminar: quita solo esa instancia del rundown y renormaliza `order`; nunca afecta a la Song original ni a otras instancias. Confirmación ligera. No se describe como reversible: volver a agregar la canción genera otro `RundownItem.id` y no restaura la posición anterior.
 
 ## 6. Referencias rotas
 
@@ -81,7 +83,17 @@ Estrategia aprobada por preferencia del usuario: **advertir, no bloquear**.
 
 Al eliminar una Song, el diálogo de confirmación indica en cuántos proyectos está en uso y los nombra (hasta unos pocos). Si el usuario confirma, la Song se elimina y las referencias quedan rotas, visibles como "Contenido faltante". Bloquear obligaría a editar proyectos antiguos solo para limpiar la biblioteca; borrar en cascada destruiría trabajo del usuario en silencio.
 
-El cálculo de uso es una función pura de dominio sobre los projects cargados; Songs no adquiere dependencia de la persistencia de Projects (el recuento se pasa desde la capa de feature).
+**Sin dependencia Songs → Projects.** `features/songs` no importa lógica, contextos ni servicios de `features/projects`. La composición ocurre en la capa superior:
+
+```text
+Ruta /songs (composition layer)
+  → lee Songs (SongsProvider)
+  → lee Projects (ProjectsProvider)
+  → calcula uso con una función pura de dominio
+  → pasa usageInfo como prop a los componentes de Songs
+```
+
+La regla de uso vive en `src/domain/projects/rundown-rules.ts` (`findSongUsage(projects, songId)`), es pura y testeable, y devuelve solo datos planos (cantidad y nombres de proyectos). Los componentes de Songs reciben `usage` opcional por props y no saben de dónde viene: cero dependencias circulares entre features.
 
 ## 8. Rundown → PresentationItems
 
@@ -95,13 +107,13 @@ projectToPresentation(project: Project, songs: readonly Song[]): PresentationIte
 - Para `type: "song"` con Song existente: `songToPresentationItem(song, { itemId: item.id, order: item.order })` — cero duplicación de lógica.
 - Para referencia rota o tipo aún no implementado: item con `slides: []`, `title` snapshot, `sourceId` y `order` conservados.
 
-La UI de esta fase **no** carga el Presentation Engine: composición y motor siguen desacoplados. La función queda cubierta por tests y disponible para Fase 5.
+La UI de esta fase **no** carga el Presentation Engine: composición y motor siguen desacoplados. La función queda cubierta por tests y disponible para Fase 6 (Live Mode).
 
 ## 9. Archivos
 
 Crear:
 - `src/domain/projects/rundown.ts` — tipos `RundownItem`, `RundownItemType`.
-- `src/domain/projects/rundown-rules.ts` — add, remove, move, normalización de `order`, recuento de uso de una Song.
+- `src/domain/projects/rundown-rules.ts` — add, remove, move, normalización de `order`, y `findSongUsage(projects, songId)` como función pura.
 - `src/domain/presentation/project-to-presentation.ts` — `projectToPresentation`.
 - `src/features/projects/components/rundown-list.tsx`, `rundown-row.tsx`, `song-picker-panel.tsx`.
 - `tests/domain/rundown-rules.test.ts`
@@ -114,9 +126,11 @@ Modificar:
 - `src/services/projects/local-storage-project-repository.ts` — clave v2, migración desde v1, validación por item.
 - `src/features/projects/project-service.ts` y `projects-context.tsx` — operaciones de rundown.
 - `src/routes/_app.projects.$projectId.tsx` — pantalla de preparación; envolver la rama Projects con `SongsProvider` para acceder a la biblioteca.
-- `src/features/songs/components/song-actions.tsx` — aviso de uso antes de eliminar.
+- `src/features/songs/components/song-actions.tsx` — recibe `usage` por props y lo muestra antes de eliminar; sin importar nada de `features/projects`.
+- `src/routes/_app.songs.index.tsx` — capa de composición: combina Songs y Projects y calcula el uso con la función pura.
 - `tests/services/local-storage-project-repository.test.ts`, `tests/domain/project-rules.test.ts` — actualizados al nuevo modelo.
-- `docs/ROADMAP.md` (nueva Fase 4.5 entre 4 y 5), `docs/DATA_MODEL.md`, `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/TESTING.md`.
+- `docs/ROADMAP.md` — renumeración completa: esta fase como Fase 5 y desplazamiento de todas las posteriores.
+- `docs/DATA_MODEL.md`, `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/TESTING.md`.
 
 No se modifican `package.json` ni `bun.lock`.
 
@@ -135,7 +149,7 @@ Duplicar project: rundown copiado con ids de instancia nuevos y mismos `sourceId
 - **ADR-018 — Rundown embebido en Project**: justificación frente a colección separada; `itemIds` eliminado.
 - **ADR-019 — Migración versionada de la clave de Projects**: v1 → v2 sin destruir datos, respaldo conservado, validación por item no destructiva a nivel de lista.
 - **ADR-020 — Referencias rotas conservadas**: nunca se borran en cascada; se muestran como contenido faltante y se convierten en items sin slides.
-- **ADR-021 — Eliminar Song usada: advertir, no bloquear**.
+- **ADR-021 — Eliminar Song usada: advertir, no bloquear**, con el cálculo de uso compuesto en la ruta y sin dependencia de Songs hacia Projects.
 
 ## 12. Fuera de alcance
 
@@ -148,4 +162,4 @@ Live UI, Preview, Program, outputs, Clear/Black/Logo, BroadcastChannel, Remote, 
 3. **Advertir sin bloquear** al eliminar una Song en uso: aparecerán referencias rotas si el usuario confirma.
 4. **Sin drag & drop** en esta fase; solo subir/bajar.
 5. **Panel lateral persistente** para agregar canciones, en lugar de dialog o command palette.
-6. **La UI no carga el Presentation Engine**: la conversión existe y está testeada, pero no será observable en pantalla hasta Fase 5.
+6. **La UI no carga el Presentation Engine**: la conversión existe y está testeada, pero no será observable en pantalla hasta Fase 6 (Live Mode).
