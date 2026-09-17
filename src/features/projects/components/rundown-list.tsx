@@ -1,6 +1,7 @@
 import { ListEnd } from "lucide-react";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { passageCaption } from "@/domain/bible/bible";
 import type { Preset } from "@/domain/presets/preset";
 import type { RundownItem } from "@/domain/projects/rundown";
 import type { Song } from "@/domain/songs/song";
@@ -31,14 +32,24 @@ export function RundownList({ items, songs, presets, onMove, onRemove, onSetPres
   return (
     <ol className="grid gap-px overflow-hidden rounded-md border border-border bg-border">
       {items.map((item, index) => {
+        // El pasaje bíblico viaja dentro del item: no depende de que la
+        // traducción siga instalada (ADR-042).
+        const passage = item.payload?.kind === "bible" ? item.payload.passage : undefined;
         const song = item.type === "song" ? songsById.get(item.sourceId) : undefined;
+        const sourceTitle =
+          item.type === "bible" ? (passage ? passageCaption(passage) : undefined) : song?.title;
+        const sourceAuthor =
+          item.type === "bible" && passage
+            ? `${passage.verses.length} ${passage.verses.length === 1 ? "versículo" : "versículos"}`
+            : song?.author;
+
         return (
           <RundownRow
             key={item.id}
             item={item}
             position={index + 1}
-            sourceTitle={song?.title}
-            sourceAuthor={song?.author}
+            sourceTitle={sourceTitle}
+            sourceAuthor={sourceAuthor}
             isFirst={index === 0}
             isLast={index === items.length - 1}
             presets={presets}

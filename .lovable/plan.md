@@ -71,14 +71,19 @@ vista previa con el renderer compartido (mismo que Live y Output) y el botón
 ## 3. Bible en el rundown y en Live
 
 - El rundown acepta items de tipo `bible`, con la referencia como título.
-- Cada item guarda el pasaje resuelto en el momento de agregarlo, de modo que
-  el show sigue funcionando aunque después se elimine la traducción.
-- Conversión: un versículo = una slide, con las líneas originales y la
-  referencia como etiqueta.
+- Cada item guarda el pasaje completo (texto incluido) en el momento de
+  agregarlo: es autosuficiente.
+- Conversión: un versículo = una slide, con las líneas originales; la
+  referencia viaja como texto secundario visible en la proyección.
 - Presets se aplican por aparición igual que en las canciones; Live, TAKE,
   auto-advance, Clear/Black y Output Main funcionan sin cambios.
-- Un pasaje cuya traducción ya no existe se comporta como contenido faltante,
-  igual que una canción borrada.
+- **Eliminar una traducción no rompe los proyectos.** Se advierte al usuario,
+  se borra la traducción y los pasajes ya agregados siguen funcionando con su
+  copia guardada: Live, TAKE y Output intactos. Nada reescribe los proyectos.
+  La traducción instalada solo hace falta para navegar `/bible` y crear
+  pasajes nuevos.
+- "Contenido faltante" aparece únicamente si la copia guardada del pasaje
+  falta o está corrupta.
 
 ## Detalles técnicos
 
@@ -105,9 +110,13 @@ vista previa con el renderer compartido (mismo que Live y Output) y el botón
   en el item (`payload`) porque no hay entidad de origen editable. Migración de
   almacenamiento de Projects solo si el esquema lo requiere; los proyectos
   existentes siguen siendo válidos.
-- `projectToPresentation` incorpora la rama `bible` reutilizando la función pura
-  de dominio; el Presentation Engine, el snapshot de Live y `OutputSnapshot` no
-  cambian.
+- `projectToPresentation` incorpora la rama `bible` leyendo únicamente el
+  payload del item: nunca consulta `BibleRepository`. El Presentation Engine y
+  Live tampoco lo hacen.
+- `Slide` gana `secondaryText?: string` genérico (`label` sigue siendo interno,
+  para la rejilla). El renderer compartido lo pinta como línea secundaria
+  discreta bajo el texto principal, y viaja en `OutputSnapshot`. En Bible
+  contiene `Juan 3:16 · NVI`; las canciones no lo usan.
 - SSR: IndexedDB y la lectura de archivos solo tras el montaje en cliente.
 - Sin dependencias nuevas, sin backend, sin peticiones de red.
 
@@ -120,9 +129,11 @@ vista previa con el renderer compartido (mismo que Live y Output) y el botón
 - Parseo de referencias: nombre completo, abreviatura, acentos, rango, rango
   inválido, capítulo fuera de límites.
 - `passageToPresentationItem`: una slide por versículo, líneas conservadas,
-  etiquetas de referencia.
-- Integración: pasaje en el rundown → Live → TAKE → Output Main; pasaje cuya
-  traducción se eliminó se muestra como contenido faltante.
+  texto secundario con referencia y abreviatura.
+- Integración: pasaje en el rundown → Live → TAKE → Output Main.
+- Traducción eliminada: el pasaje ya agregado sigue generando sus slides, se
+  abre en Live, admite TAKE y llega a Output; el proyecto no se reescribe.
+- Payload ausente o corrupto: ese sí aparece como contenido faltante.
 - Verificación en navegador con una Biblia real importada, en 1920×1080 y
   1366×768, con la consola limpia.
 

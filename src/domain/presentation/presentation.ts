@@ -21,8 +21,14 @@ export interface Slide {
   /** Orden dentro del item, normalizado a 0..n-1. */
   order: number;
   content: SlideContent;
-  /** Etiqueta de origen (Verso 1, Coro…). */
+  /** Etiqueta de origen (Verso 1, Coro…). Es interna: no se proyecta. */
   label?: string | undefined;
+  /**
+   * Texto secundario PROYECTABLE, genérico para cualquier tipo de contenido.
+   * Bible lo usa para la referencia (`Juan 3:16 · NVI`); las canciones no lo
+   * usan hoy. El renderer lo pinta discreto bajo el texto principal.
+   */
+  secondaryText?: string | undefined;
   sourceSectionId?: string | undefined;
   /**
    * Estilo YA RESUELTO y congelado por el snapshot de Live (ADR-038). La
