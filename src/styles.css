@@ -54,6 +54,8 @@
   --color-live-foreground: var(--live-foreground);
   --color-stage: var(--stage);
   --color-stage-foreground: var(--stage-foreground);
+  --color-output-safe: var(--output-safe);
+  --color-output-base: var(--output-base);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
