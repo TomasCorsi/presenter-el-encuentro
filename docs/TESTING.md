@@ -280,3 +280,28 @@ importar las Biblias reales NVI (27 MB) y RVR1960 (23 MB), navegar libro/capítu
 `jn 3:2-4`, previsualizar, agregar al Project, eliminar la traducción y
 comprobar que el item sigue funcionando en el rundown, en Live (TAKE,
 auto-advance) y en `/output/main` con la referencia secundaria visible.
+
+## Fase 9.1 — Live Operator Workspace
+
+- **`goLive`** (`tests/domain/presentation-live.test.ts`): desde `content`
+  mueve Preview y Program; desde `clear` y desde `black` vuelve a `content`
+  con la slide al aire; no-op con un id desconocido.
+- **Alta incremental** (`tests/domain/presentation-append.test.ts`): el item se
+  añade al final sin tocar Preview, Program ni `programMode`; los items
+  existentes conservan su contenido congelado; la nueva slide queda navegable;
+  con el show vacío sí posiciona Preview; id repetido es no-op.
+- **Sesión de Live** (`tests/features/live-session.test.ts`): arranque sin
+  desfase; detección de cambio externo; agregar contenido no genera falso
+  aviso; un desfase previo se conserva tras agregar; la recarga explícita
+  incorpora los cambios.
+- **Búsqueda de biblioteca** (`tests/features/library-search.test.ts`): orden
+  por título sin consulta, coincidencia por título y autor ignorando acentos,
+  consulta sin resultados.
+
+Verificación manual en navegador (1366×768 y 1920×1080, consola limpia):
+enviar una canción al aire desde el dock; Black seguido de clic en una slide
+devuelve el contenido a Output al instante; clic en un RundownItem no cambia
+Program; "Rundown" agrega el item sin tocar Program ni Preview; `/` enfoca el
+buscador del dock; escribir "black cosa" no dispara B ni C; Esc devuelve el
+foco; B, C y Enter funcionan fuera del input; controles visibles y sin scroll
+global en ambas resoluciones.
