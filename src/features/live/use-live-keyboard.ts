@@ -4,6 +4,12 @@ export interface LiveKeyboardHandlers {
   onPrevious(): void;
   onNext(): void;
   onTake(): void;
+  onBlack(): void;
+  onClear(): void;
+  /** `/`: abre y enfoca la biblioteca operativa. */
+  onSearch(): void;
+  /** `Esc`: devuelve el foco a la consola o colapsa la biblioteca. */
+  onEscape(): void;
   /** Los atajos solo actúan cuando hay un show cargado. */
   enabled: boolean;
 }
@@ -25,21 +31,45 @@ export function shouldIgnoreLiveKey(event: KeyboardEvent): boolean {
   return target.closest("[role='dialog']") !== null;
 }
 
+/** `Esc` es el único atajo que también actúa mientras se escribe. */
+function isEscape(event: KeyboardEvent): boolean {
+  return event.key === "Escape" && !event.ctrlKey && !event.metaKey && !event.altKey;
+}
+
 /**
  * Atajos de operación. Solo se registran mientras la consola Live está
  * montada; nunca interceptan teclas en el resto de la aplicación.
  */
-export function useLiveKeyboard({ onPrevious, onNext, onTake, enabled }: LiveKeyboardHandlers): void {
+export function useLiveKeyboard({
+  onPrevious,
+  onNext,
+  onTake,
+  onBlack,
+  onClear,
+  onSearch,
+  onEscape,
+  enabled,
+}: LiveKeyboardHandlers): void {
   useEffect(() => {
     if (!enabled) return;
 
     function handle(event: KeyboardEvent): void {
+      if (isEscape(event)) {
+        event.preventDefault();
+        onEscape();
+        return;
+      }
+
       if (shouldIgnoreLiveKey(event)) return;
 
+      const key = event.key.toLowerCase();
       const action =
         event.key === "ArrowLeft" ? onPrevious
         : event.key === "ArrowRight" ? onNext
         : event.key === "Enter" || event.key === " " ? onTake
+        : key === "b" ? onBlack
+        : key === "c" ? onClear
+        : event.key === "/" ? onSearch
         : null;
 
       if (!action) return;
@@ -52,5 +82,5 @@ export function useLiveKeyboard({ onPrevious, onNext, onTake, enabled }: LiveKey
 
     window.addEventListener("keydown", handle);
     return () => window.removeEventListener("keydown", handle);
-  }, [enabled, onNext, onPrevious, onTake]);
+  }, [enabled, onBlack, onClear, onEscape, onNext, onPrevious, onSearch, onTake]);
 }

@@ -1,5 +1,6 @@
 import type { PresentationState } from "./presentation";
-import { next, previous } from "./presentation-engine";
+import { next, previous, selectSlide } from "./presentation-engine";
+import { take } from "./presentation-program";
 
 /**
  * Comandos OPERATIVOS de Live, por encima del engine base.
@@ -55,4 +56,18 @@ export function nextLive(state: PresentationState): PresentationState {
 /** Slide anterior; arrastra Program dentro del item al aire. */
 export function previousLive(state: PresentationState): PresentationState {
   return advance(state, previous);
+}
+
+/**
+ * Operación explícita de la rejilla de slides: LA SLIDE VA AL AIRE (ADR-043).
+ *
+ * Es la misma transición de TAKE (Preview → Program → `content`), precedida de
+ * la selección, para no duplicar lógica. Fuerza `content`: si la salida estaba
+ * en Clear o Black, el clic la devuelve al contenido y muestra la slide.
+ * No-op cuando el id no existe en el runtime.
+ */
+export function goLive(state: PresentationState, slideId: string): PresentationState {
+  const selected = selectSlide(state, slideId);
+  if (selected.previewSlideId !== slideId) return state;
+  return take(selected);
 }

@@ -244,7 +244,9 @@ function BibleNavigatorPage() {
           passage={passage}
           projects={projects}
           defaultProjectId={activeProjectId}
-          onAdd={(projectId, value) => addPassageToProject(projectId, value)}
+          onAdd={async (projectId, value) => {
+            await addPassageToProject(projectId, value);
+          }}
         />
       </div>
     </Page>

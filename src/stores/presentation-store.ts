@@ -4,6 +4,7 @@ import type {
   ProgramMode,
 } from "@/domain/presentation/presentation";
 import {
+  appendPresentationItem,
   createInitialPresentationState,
   goToFirst,
   goToLast,
@@ -13,7 +14,7 @@ import {
   selectItem,
   selectSlide,
 } from "@/domain/presentation/presentation-engine";
-import { nextLive, previousLive } from "@/domain/presentation/presentation-live";
+import { goLive, nextLive, previousLive } from "@/domain/presentation/presentation-live";
 import {
   setProgramMode,
   take,
@@ -29,6 +30,10 @@ export interface PresentationStore {
   loadPresentation(items: PresentationItem[]): void;
   /** Recarga explícita: conserva Preview y Program cuando siguen existiendo. */
   reloadPresentation(items: PresentationItem[]): void;
+  /** Alta incremental al final del show; no reconstruye los items existentes. */
+  appendPresentationItem(item: PresentationItem): void;
+  /** Un clic en una slide: al aire inmediatamente y en modo `content`. */
+  goLive(slideId: string): void;
   reset(): void;
   selectItem(itemId: string): void;
   selectSlide(slideId: string): void;
@@ -73,6 +78,8 @@ export function createPresentationStore(
     },
     loadPresentation: (items) => apply(loadPresentation(state, items)),
     reloadPresentation: (items) => apply(reloadPresentation(state, items)),
+    appendPresentationItem: (item) => apply(appendPresentationItem(state, item)),
+    goLive: (slideId) => apply(goLive(state, slideId)),
     reset: () => apply(reset()),
     selectItem: (itemId) => apply(selectItem(state, itemId)),
     selectSlide: (slideId) => apply(selectSlide(state, slideId)),

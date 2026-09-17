@@ -271,3 +271,21 @@ Reglas de layout para pantallas de operación en directo (`/live`):
   mostrar los dos estados a la vez.
 - **Densidad:** separadores de 1px, padding reducido, sin tarjetas grandes ni
   espacios decorativos.
+
+## Consola de operación (Fase 9.1)
+
+Amplía las reglas de la Fase 8.2 con la capa operativa:
+
+- **Barra de operación fija arriba**, bajo la barra de show: transporte
+  (Previous, Next, TAKE), salidas (Clear, Black) y Buscar. Nunca se desplaza
+  ni depende del scroll de ninguna columna.
+- **Library Dock al pie**, colapsable, con scroll propio y altura acotada para
+  no robar espacio a las slides. Pestañas Songs | Bible.
+- **Acciones explícitas, nunca implícitas**: cada resultado ofrece "Rundown"
+  (agregar) y "Al aire" (agregar y proyectar). Sin arrastrar ni doble clic.
+- **Afordancia de proyección**: la rejilla de slides rotula "un clic envía al
+  aire" y cada slide expone `aria-label` "Enviar al aire la slide…".
+- **Un solo buscador**: el botón Buscar y la tecla `/` abren y enfocan el
+  campo de la pestaña activa del dock; no hay un quick search paralelo.
+- **Sin Project activo** el dock sigue buscando, pero las acciones quedan
+  deshabilitadas con una explicación compacta de una línea.

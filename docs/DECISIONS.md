@@ -791,3 +791,48 @@ navegar `/bible`, buscar referencias y crear pasajes nuevos.
 "Contenido faltante" aparece solo si el propio payload está ausente, inválido
 o corrupto: un payload ilegible se descarta sin invalidar el item, que queda
 como placeholder.
+
+## ADR-043 — Un clic en una slide la envía al aire
+
+**Estado:** aceptada (Fase 9.1).
+
+En operación real el operador hace clic en la slide que quiere ver. Exigir
+clic + TAKE producía el error más caro posible: creer que se proyectó algo
+mientras la pantalla seguía igual.
+
+`goLive(state, slideId)` es una operación explícita del dominio
+(`presentation-live.ts`) que reutiliza internamente `selectSlide` + `take` y
+**además fuerza `programMode = "content"`**. Desde Clear o Black, un clic
+directo vuelve a contenido y muestra la slide inmediatamente en Program y en
+Output. Es no-op si el id no existe en el runtime.
+
+TAKE conserva su semántica: Preview → Program → `content`. El clic sobre un
+RundownItem sigue moviendo solo la selección/Preview, para no cambiar una
+canción entera por accidente.
+
+## ADR-044 — Alta incremental desde Live, sin recarga genérica
+
+**Estado:** aceptada (Fase 9.1).
+
+Agregar contenido desde el Library Dock no puede reconstruir el show: Live
+trabaja sobre un snapshot congelado y una recarga implícita cambiaría items
+que ya están al aire.
+
+Se distinguen dos operaciones:
+
+- **Recargar presentación:** acción explícita del operador
+  (`reloadLiveSession`); incorpora todos los cambios externos detectados.
+- **Agregar desde Live:** `appendPresentationItem(state, item)` añade un único
+  `PresentationItem` al final del runtime. No reconstruye los items
+  existentes, no toca `programMode` ni Program, y solo posiciona Preview si no
+  había ninguna selección.
+
+`appendToLiveSession` adopta la nueva firma del Project (para que la propia
+alta no genere un falso aviso de desfase) pero conserva `staleExternal`: un
+cambio externo pendiente sigue pendiente y el aviso de "Recargar presentación"
+permanece.
+
+"Rundown" persiste el item y extiende el runtime sin tocar Program ni Preview.
+"Al aire" hace lo mismo y además aplica `goLive` sobre la primera slide nueva.
+No existen items temporales: lo que se ve en el show está siempre en el
+Project.
