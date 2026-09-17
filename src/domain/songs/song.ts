@@ -25,7 +25,7 @@ export interface Song {
   id: string;
   workspaceId: string;
   title: string;
-  author?: string;
+  author?: string | undefined;
   sections: SongSection[];
   createdAt: string;
   updatedAt: string;

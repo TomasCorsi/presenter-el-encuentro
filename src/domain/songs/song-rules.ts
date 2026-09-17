@@ -195,6 +195,7 @@ export function moveSection(
 
   const sections = [...song.sections];
   const [moved] = sections.splice(index, 1);
+  if (!moved) return song;
   sections.splice(target, 0, moved);
 
   return { ...song, sections: normalizeSectionOrder(sections), updatedAt: now() };
