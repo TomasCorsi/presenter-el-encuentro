@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 import {
   parseOutputMessage,
@@ -25,7 +25,7 @@ describe("toOutputSnapshot", () => {
         slide: {
           id: "song:1:slide:0",
           itemId: "song:1",
-          content: { kind: "text", lines: ["Hola", "Mundo"] },
+          order: 0, content: { kind: "text", lines: ["Hola", "Mundo"] },
         },
       },
       "s1",

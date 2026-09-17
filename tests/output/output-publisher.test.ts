@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 import type { ProgramOutput } from "@/domain/presentation/presentation-selectors";
 import { createOutputPublisher } from "@/services/output-sync/output-publisher";
@@ -10,7 +10,7 @@ import {
 function output(lines: string[], id = "song:1:slide:0"): ProgramOutput {
   return {
     mode: "content",
-    slide: { id, itemId: "song:1", content: { kind: "text", lines } },
+    slide: { id, itemId: "song:1", order: 0, content: { kind: "text", lines } },
   };
 }
 
