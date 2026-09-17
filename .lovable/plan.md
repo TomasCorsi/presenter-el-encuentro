@@ -1,146 +1,82 @@
-# Fase 8 — Presets
+# Fase 8.1 — Auto-advance de Program dentro del item al aire
 
-Contenido y apariencia quedan separados: la Song guarda texto, el Preset guarda cómo se ve, y un único renderer compartido dibuja la combinación en Preview, Program, Output y el editor.
+Next / Previous siguen moviendo Preview, pero cuando Preview y Program están en el MISMO item y el salto no cruza el borde de ese item, Program avanza con Preview. Cruzar de item sigue exigiendo TAKE.
 
-## 1. Modelo de Preset
+## 1. Dónde vive la lógica
 
-`src/domain/presets/preset.ts`:
+En dominio, no en React ni en la ruta. Se crean comandos operativos de Live por encima del engine base:
+
+- `src/domain/presentation/presentation-live.ts` (nuevo)
+  - `nextLive(state): PresentationState`
+  - `previousLive(state): PresentationState`
+
+`next()` / `previous()` del engine no cambian: siguen siendo navegación pura de Preview y los usan `nextLive`/`previousLive` internamente. Así los tests existentes de engine quedan intactos y la nueva regla es testeable por separado.
 
 ```ts
-type PresetFontFamily = "sans" | "serif" | "mono";   // stacks locales, sin CDN
-type HorizontalAlign = "left" | "center" | "right";
-type VerticalAlign = "top" | "center" | "bottom";
-
-interface PresetStyle {
-  fontFamily: PresetFontFamily;
-  fontSize: number;      // % de la ALTURA del lienzo (1..30), ver §"Tamaño"
-  fontWeight: 400 | 600 | 700;
-  lineHeight: number;    // multiplicador 1.0..2.0
-  align: HorizontalAlign;
-  verticalAlign: VerticalAlign;
-  textColor: string;     // hex, dato del usuario
-  background: { type: "solid"; color: string }; // discriminado desde el inicio
-  safeAreaX: number;     // % del ancho  (0..20)
-  safeAreaY: number;     // % de la altura (0..20)
-}
-
-interface Preset {
-  id: string; workspaceId: string; name: string;
-  style: PresetStyle;
-  createdAt: string; updatedAt: string;
+function advance(state, move) {
+  const moved = move(state);                    // next() o previous()
+  if (moved === state) return state;            // no-op (límites) → nada
+  if (!state.programSlideId) return moved;      // no hay Program
+  const programItemId = itemIdOfSlide(state, state.programSlideId);
+  if (!programItemId) return moved;             // referencia rota
+  if (state.previewItemId !== programItemId) return moved;   // Preview ya en otro item
+  if (moved.previewItemId !== programItemId) return moved;   // el salto cruzó el item
+  if (!moved.previewSlideId) return moved;      // sin slide destino
+  return { ...moved, programSlideId: moved.previewSlideId }; // programMode intacto
 }
 ```
 
-Sin propiedades anticipadas (nada de imagen, vídeo, overlays, transiciones).
+## 2. Cómo se detecta "mismo item"
 
-**Background.** `background` es una unión discriminada desde la Fase 8, con un único caso válido `{ type: "solid"; color }`. Así añadir `image` o `video` en la fase de Media es ampliar la unión, no migrar el modelo. No existe caso `transparent` en esta fase: `/output/main` es una ventana opaca del navegador y una salida "transparente" solo tendría sentido con browser source real; se evalúa cuando exista ese consumidor. El renderer valida el tipo y cae al Default ante un background desconocido.
+Con `runtime.slideLocationById` (igual que `getProgramItem`): el item de Program se deriva de `programSlideId`, nunca se almacena. Se comparan tres cosas: item de Program, `previewItemId` ANTES del salto y `previewItemId` DESPUÉS del salto. Los tres deben coincidir.
 
-**Tamaño de texto (opción D).** `fontSize` es un número relativo a la altura del lienzo. El renderer envuelve la slide en un contenedor 16:9 con `container-type: size` y expresa tipografía y safe area en unidades de contenedor (`cqh` / `cqw`). Así el Preview pequeño de Live, el Program y `/output/main` a 1920×1080 se ven proporcionalmente idénticos, y un cambio de resolución no rompe nada. Sin píxeles fijos en ningún caso.
+## 3. Cruce de límites
 
-**Colores.** Los colores del Preset son datos del usuario y se aplican por `style` inline dentro del renderer. Los componentes de la aplicación (paneles, listas, botones) siguen usando exclusivamente tokens semánticos.
+Si la slide destino pertenece a otro item, Preview se mueve normalmente y `programSlideId` / `programMode` quedan exactamente como estaban. Igual en la primera/última slide global: `next()`/`previous()` ya son no-op sin wrap, y el comando devuelve la misma referencia (sin notificar al store).
 
-## 2. Default Preset
+Item vacío o referencia rota: como `previewSlideId` es `null` o el item no coincide, nunca se auto-envía nada.
 
-Constante de dominio `DEFAULT_PRESET` con id reservado `preset-default`: texto blanco, fondo oscuro sobrio, centrado horizontal y vertical, safe area 8%/8%. No se persiste; el servicio la antepone siempre a la lista. No se puede eliminar ni editar (se duplica para partir de ella). Resultado: el sistema nunca queda sin estilo válido, ni siquiera con el almacenamiento vacío o corrupto.
+## 4. Clear / Black
 
-## 3. Asignación y resolución
+`programMode` NO se toca en el auto-advance. Con `clear` o `black`, `programSlideId` avanza internamente y la salida sigue vacía/negra; al volver a `content` aparece la slide correcta. Solo TAKE fuerza `content`. Esto es coherente con ADR-024 (el modo es estado de salida, ortogonal al contenido).
 
-`RundownItem` gana `presetId?: string` (opcional, migración no destructiva: ausente = default). Es el nivel correcto porque la misma Song puede aparecer dos veces con estilos distintos sin tocar la Song.
+Consecuencia visible: en clear/black el monitor Program sigue mostrando su badge de modo, y la marca "en program" de la rejilla de slides se mueve — señal útil de dónde quedará el contenido al volver.
 
-Resolución pura `resolvePreset(presetId, presets) → Preset`: si no hay id, o el id ya no existe, devuelve el Default. `projectToPresentation` propaga `presetId` al `PresentationItem`; el estilo del Program se resuelve por su item.
+## 5. Store y UI
 
-En `/projects/$projectId` cada fila del rundown gana un selector compacto de Preset (acción secundaria), sin convertir el rundown en formulario.
+- `src/stores/presentation-store.ts`: `next()` y `previous()` pasan a delegar en `nextLive`/`previousLive`. No se añaden métodos nuevos; Live ya llama `store.next()` / `store.previous()`, y el teclado (`ArrowRight`/`ArrowLeft`) hereda la nueva semántica sin tocar `use-live-keyboard.ts`.
+- `src/features/live/components/live-controls.tsx`: solo textos de tooltip — "Avanza al aire dentro del item actual" en Previous/Next, "Envía la slide seleccionada a Program" en TAKE. Sin toggle ni configuración.
 
-## 4. Los Presets forman parte del snapshot de Live (ADR-023 extendido)
+Si prefieres que el store exponga `nextLive`/`previousLive` como métodos separados y deje `next`/`previous` puros, se hace así; entonces la ruta Live cambia sus dos callbacks. Dime tu preferencia (por defecto tomo la opción de arriba: el store de Live es operativo).
 
-Los estilos se congelan igual que el contenido: editar un Preset en `/presets` mientras Live está operando NO cambia el show al aire.
+## 6. Tests
 
-`buildLiveSnapshot(project, songs, presets)` resuelve el Preset de cada RundownItem en el momento de la carga y deja el estilo **ya resuelto** dentro de la presentación:
+Nuevo `tests/domain/presentation-live.test.ts`:
 
-```ts
-interface PresentationItem { …; presetId?: string; style: PresetStyle }
-```
+1. Program A/1 + Next → Preview y Program en A/2.
+2. Program A/2 + Previous → ambos en A/1.
+3. Auto-advance dentro del item conserva `programMode = "content"`.
+4. Igual con `clear`: `programSlideId` avanza, modo sigue `clear`.
+5. Igual con `black`.
+6. Next desde la última slide de A → Preview a B/1, Program sigue en A/última.
+7. Previous desde la primera de B → Preview a A/última, Program sigue en B.
+8. Preview en item distinto de Program → Next no toca Program.
+9. Sin Program / item vacío / referencia rota → nunca se auto-envía.
+10. TAKE conserva su semántica (fuerza `content`).
+11. No-op en límites globales devuelve la MISMA referencia de estado.
 
-El estilo resuelto se propaga al `Slide` durante la composición, de modo que el Presentation Engine nunca consulta el repositorio de Presets ni el provider: sigue recibiendo todo resuelto, exactamente como hoy con el texto. (Alternativa considerada: un mapa `resolvedPresetByItemId` paralelo al runtime. Se descarta porque obligaría a los selectores, al publisher y a cada superficie a llevar dos fuentes en paralelo y a mantenerlas sincronizadas; con el estilo en el item/slide hay una sola.)
+Se amplía `tests/stores/presentation-store.test.ts` con un caso de auto-advance vía store.
 
-`presentationSignature` incorpora, por cada item, el `presetId` efectivo y el `updatedAt` del Preset resuelto. Así:
+## 7. Archivos
 
-- editar un Preset usado por el show → Live muestra **Contenido actualizado / Recargar presentación**, igual que al editar una Song;
-- editar un Preset que el show no usa → sin desfase;
-- solo `reloadPresentation` incorpora los nuevos estilos, conservando Preview y Program cuando sus ids siguen existiendo;
-- al recargar, el estilo cambia y el publisher emite `update` aunque la slide y el texto sean idénticos.
+Crear: `src/domain/presentation/presentation-live.ts`, `tests/domain/presentation-live.test.ts`.
 
-`/presets/$presetId` y el rundown siguen leyendo los Presets vivos: la congelación es exclusiva de Live.
+Modificar: `src/stores/presentation-store.ts`, `src/features/live/components/live-controls.tsx` (tooltips), `tests/stores/presentation-store.test.ts`, `docs/ROADMAP.md`, `docs/ARCHITECTURE.md`, `docs/DECISIONS.md` (ADR-037 extendiendo ADR-025), `docs/TESTING.md`.
 
-## 5. Renderer compartido
+Sin dependencias nuevas. Sin cambios en Presets, Output protocol ni Presentation Engine base.
 
-`src/features/presentation/components/slide-renderer.tsx`: componente puro que recibe `{ lines, style }` y no conoce ni el App Shell ni ningún provider. Lo consumen Live Preview, Live Program, `/output/main` y la vista previa del editor de Presets. Ninguna de esas superficies define tipografía o fondo por su cuenta.
+## 8. Riesgos de regresión
 
-## 6. Output Snapshot
-
-`OutputSnapshot` pasa a llevar el estilo **resuelto**:
-
-```ts
-snapshot.slide = { id, lines, style: PresetStyle } | null
-```
-
-Output nunca lee repositories ni conoce `presetId`. `snapshotsEqual` compara además el estilo completo, así que un cambio de estilo con la misma slide y el mismo texto produce un `update` inmediato.
-
-El publisher tampoco resuelve nada: recibe el estilo desde el snapshot de Live ya cargado. La cadena queda repositories → composición/snapshot → Presentation Engine → OutputPublisher → Output, en un solo sentido. En la práctica el estilo viaja en el `Slide` del runtime, así que `getProgramOutput` ya lo entrega resuelto y `toOutputSnapshot` solo lo copia.
-
-## 7. CLEAR / BLACK
-
-Sin cambios de semántica: `black` → negro puro (`--output-safe`), ignora el Preset. `clear` → fondo base opaco (`--output-base`), ignora el Preset. Sin sesión Live → negro puro. El Preset solo pinta en `content` con slide.
-
-## 8. Biblioteca y editor
-
-- `/presets`: tabla compacta con búsqueda, crear, abrir, renombrar, duplicar, eliminar. El Default aparece marcado, sin eliminar ni renombrar.
-- `/presets/$presetId`: panel de configuración a la izquierda, vista previa 16:9 en vivo a la derecha, con texto de ejemplo propio ("Esta es una vista previa del texto" + varias líneas), nunca letras reales.
-- Autoguardado con el mismo patrón que Songs: borrador local, debounce, indicador Guardando… / Guardado / Error al guardar.
-
-## 9. Eliminar un Preset en uso
-
-Se calcula el uso (items del rundown por project) y se advierte antes de eliminar, nombrando cuántos items y qué projects. Al confirmar, el preset se borra y los items afectados caen al Default por la resolución tolerante; no se reescriben los Projects. Motivo: evita una escritura masiva y mantiene una sola regla de fallback, la misma que cubre datos corruptos.
-
-## Archivos
-
-**Nuevos:** `src/domain/presets/preset.ts`, `preset-rules.ts`, `preset-resolution.ts`; `src/services/presets/preset-repository.ts`, `local-storage-preset-repository.ts` (`broadcast-control.presets.v1`); `src/features/presets/preset-service.ts`, `presets-context.tsx`, `components/preset-list.tsx`, `preset-row.tsx`, `preset-editor.tsx`, `preset-style-form.tsx`, `preset-picker.tsx`; `src/features/presentation/components/slide-renderer.tsx`; `src/routes/_app.presets.index.tsx`, `_app.presets.$presetId.tsx`.
-
-**Modificados:** `src/routes/_app.presets.tsx` (layout con `Outlet`), `src/routes/_app.tsx` (montar `PresetsProvider` junto a los demás, ADR-031), `src/domain/projects/rundown.ts` y `rundown-rules.ts` (`presetId` opcional + comando para asignarlo), `project-to-presentation.ts` y `presentation.ts` (`presetId` en el item), `src/domain/output/output-snapshot.ts` y `output-publisher.ts` (estilo resuelto y comparación), `src/features/live/components/slide-surface.tsx` y `live-slide-grid.tsx`, `src/features/output/components/output-surface.tsx`, `src/features/projects/components/rundown-row.tsx`, `src/services/projects/local-storage-project-repository.ts` (aceptar `presetId`), `src/styles.css` (stacks de fuente), docs.
-
-## Tests (`bun test`, sin dependencias nuevas)
-
-Crear/editar/validar nombre, duplicar (`— copia`, id y fechas nuevas), default presente, default no eliminable, eliminar preset en uso, fallback a Default con id inexistente, persistencia y datos inválidos, resolución RundownItem → Preset, alineaciones y background del renderer (prueba pura del cálculo de estilo), background desconocido → Default, y OutputSnapshot con estilo resuelto.
-
-Snapshot de Live (bloque crítico):
-
-- editar un Preset con el show cargado NO altera Preview ni Program;
-- cambiar un Preset usado por el show produce el estado de desfase;
-- `reloadPresentation` incorpora los nuevos estilos, conservando Preview y Program cuando sus ids siguen existiendo;
-- mismo `slide.id` y mismas `lines` con `style` distinto tras el reload → el publisher emite `update`;
-- cambio de Preset que NO usa el show → no produce desfase.
-
-## ADR propuestas
-
-- ADR-032 Preset separado del contenido.
-- ADR-033 Default Preset con id reservado, no persistido ni editable.
-- ADR-034 Preset asignado por RundownItem, con resolución tolerante.
-- ADR-035 Renderer de slide compartido por Preview, Program, Output y editor.
-- ADR-036 Estilo resuelto dentro de OutputSnapshot.
-- ADR-037 Tamaño tipográfico relativo al lienzo mediante unidades de contenedor.
-- ADR-038 Los Presets forman parte del snapshot de Live y de su firma de desfase.
-- ADR-039 `background` como unión discriminada, solo `solid` en Fase 8.
-
-Documentación actualizada: ROADMAP, DATA_MODEL, ARCHITECTURE, DECISIONS, TESTING.
-
-## Fuera de alcance
-
-Backgrounds de imagen/vídeo/gradiente, Media, Bible, transiciones, lower thirds, Stage, Stream, Remote, fuentes externas o subidas, Supabase, IndexedDB, cloud sync, logo, temas complejos.
-
-## Decisiones que necesitan tu aprobación
-
-1. **Default Preset no editable** (solo duplicable). Es la opción más robusta: nunca hay que reparar un default roto. Alternativa: hacerlo editable y persistir un override.
-2. **Eliminar preset en uso no reescribe los Projects**; los items caen al Default por resolución. Alternativa: limpiar las referencias al borrar (más escrituras, misma apariencia final).
-3. **`fontSize` como % de la altura del lienzo** con unidades de contenedor, en lugar de px o vh. Garantiza que Preview y Output se vean iguales.
-4. **Fuentes limitadas a tres stacks del sistema** (sans, serif, mono), sin selector libre.
-5. **`presetId` vive en el RundownItem**, no en la Song ni en el Project. Un preset global de Project se podría añadir después como nivel intermedio de la jerarquía.
+- **Bajo, acotado**: el engine no cambia; solo el store enruta a los comandos operativos. Los tests actuales de `next`/`previous` siguen midiendo el comportamiento puro.
+- **Output**: cada auto-advance publica un update (como un TAKE). En `clear`/`black` el snapshot publicado no cambia (slide nula en esos modos), así que no hay tráfico ni parpadeo extra.
+- **Cambio de hábito del operador**: con la canción al aire, Next ya manda contenido inmediatamente. Es lo pedido, pero es el único riesgo real de error humano; mitigado porque nunca cruza de item.
