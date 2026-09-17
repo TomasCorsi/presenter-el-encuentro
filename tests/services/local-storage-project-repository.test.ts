@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import type { Project } from "@/domain/projects/project";
 import { ProjectService } from "@/features/projects/project-service";
-import { createLocalStorageProjectRepository, type KeyValueStorage } from "./local-storage-project-repository";
+import { createLocalStorageProjectRepository, type KeyValueStorage } from "@/services/projects/local-storage-project-repository";
 
 class MemoryStorage implements KeyValueStorage {
   private values = new Map<string, string>();

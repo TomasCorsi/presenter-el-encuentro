@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { PROJECT_NAME_MAX_LENGTH, type ProjectFactoryDependencies } from "./project";
-import { createProject, duplicateProject, filterProjects, normalizeProjectName, renameProject, sortProjectsByUpdatedAt } from "./project-rules";
+import { PROJECT_NAME_MAX_LENGTH, type ProjectFactoryDependencies } from "@/domain/projects/project";
+import { createProject, duplicateProject, filterProjects, normalizeProjectName, renameProject, sortProjectsByUpdatedAt } from "@/domain/projects/project-rules";
 
 const dependencies: ProjectFactoryDependencies = {
   createId: () => "project-1",
