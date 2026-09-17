@@ -33,8 +33,8 @@ export interface Song {
 
 export interface CreateSongInput {
   title: string;
-  author?: string;
-  workspaceId?: string;
+  author?: string | undefined;
+  workspaceId?: string | undefined;
 }
 
 export interface SongFactoryDependencies {
