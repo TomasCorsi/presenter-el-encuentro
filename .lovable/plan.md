@@ -133,14 +133,12 @@ Ambos, sí, y son baratos.
 
 - `sessionId`: identificador efímero generado al montar Live (nunca en módulo
   ni en SSR: se crea en `useEffect`, regla de la plataforma). No se persiste.
-  Evita que un Output viejo mezcle mensajes de una sesión Live cerrada con los
-  de la nueva. Output adopta el `sessionId` del primer mensaje válido que
-  recibe y, si llega otro distinto, lo acepta como sesión nueva y resetea su
-  secuencia.
-- `sequence`: entero incremental por sesión. Output descarta cualquier mensaje
-  con `sequence` menor o igual al último aplicado **de la misma sesión**.
-  Protege contra el reordenamiento que puede producir el `snapshot` de
-  respuesta a un `hello` cruzándose con un `update`.
+  Sirve para la vinculación de sesión del punto 3.1.
+- `sequence`: entero incremental **por sesión**. Output descarta cualquier
+  mensaje con `sequence` menor o igual al último aplicado **de su sesión
+  vinculada**. Protege contra el reordenamiento que puede producir el
+  `snapshot` de respuesta a un `hello` cruzándose con un `update`. Al adoptar
+  una sesión nueva, la secuencia se reinicia.
 
 ---
 
