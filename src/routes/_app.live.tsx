@@ -24,6 +24,7 @@ import {
 } from "@/features/live/live-presentation";
 import { LiveSlideGrid } from "@/features/live/components/live-slide-grid";
 import { useLiveKeyboard } from "@/features/live/use-live-keyboard";
+import { useOutputPublisher } from "@/features/output/use-output-publisher";
 import {
   PresentationProvider,
   usePresentationState,
