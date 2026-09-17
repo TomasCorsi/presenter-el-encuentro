@@ -30,6 +30,7 @@ import {
   usePresentationState,
   usePresentationStore,
 } from "@/features/presentation/presentation-context";
+import { usePresets } from "@/features/presets/presets-context";
 import { useProjects } from "@/features/projects/projects-context";
 import { useSongs } from "@/features/songs/songs-context";
 
@@ -62,6 +63,7 @@ function LivePage() {
 function LiveConsole() {
   const { projects, activeProject, hasLoaded } = useProjects();
   const { songs, hasLoaded: songsLoaded } = useSongs();
+  const { presets, hasLoaded: presetsLoaded } = usePresets();
   const store = usePresentationStore();
   const state = usePresentationState();
   const [snapshot, setSnapshot] = useState<LiveSnapshot | null>(null);
@@ -72,32 +74,34 @@ function LiveConsole() {
 
   // Carga inicial del show: un único snapshot explícito por sesión.
   useEffect(() => {
-    if (snapshot || !hasLoaded || !songsLoaded || !activeProject) return;
-    const next = buildLiveSnapshot(activeProject, songs);
+    if (snapshot || !hasLoaded || !songsLoaded || !presetsLoaded || !activeProject) return;
+    const next = buildLiveSnapshot(activeProject, songs, presets);
     setSnapshot(next);
     store.loadPresentation(next.items);
-  }, [activeProject, hasLoaded, songs, songsLoaded, snapshot, store]);
+  }, [activeProject, hasLoaded, presets, presetsLoaded, songs, songsLoaded, snapshot, store]);
 
   const showProject = projects.find((project) => project.id === snapshot?.projectId) ?? null;
   const outdated = Boolean(
-    snapshot && showProject && presentationSignature(showProject, songs) !== snapshot.signature,
+    snapshot &&
+      showProject &&
+      presentationSignature(showProject, songs, presets) !== snapshot.signature,
   );
   const changedActiveProject =
     snapshot && activeProject && activeProject.id !== snapshot.projectId ? activeProject : null;
 
   const reload = useCallback(() => {
     if (!showProject) return;
-    const next = buildLiveSnapshot(showProject, songs);
+    const next = buildLiveSnapshot(showProject, songs, presets);
     setSnapshot(next);
     store.reloadPresentation(next.items);
-  }, [showProject, songs, store]);
+  }, [presets, showProject, songs, store]);
 
   const loadActiveProject = useCallback(() => {
     if (!activeProject) return;
-    const next = buildLiveSnapshot(activeProject, songs);
+    const next = buildLiveSnapshot(activeProject, songs, presets);
     setSnapshot(next);
     store.loadPresentation(next.items);
-  }, [activeProject, songs, store]);
+  }, [activeProject, presets, songs, store]);
 
   const canTake = state.previewSlideId !== null;
   const onPrevious = useCallback(() => store.previous(), [store]);
@@ -111,7 +115,7 @@ function LiveConsole() {
     enabled: Boolean(snapshot) && state.runtime.items.length > 0,
   });
 
-  if (!hasLoaded || !songsLoaded) {
+  if (!hasLoaded || !songsLoaded || !presetsLoaded) {
     return <Page><p className="text-sm text-muted-foreground" role="status">Cargando show…</p></Page>;
   }
 

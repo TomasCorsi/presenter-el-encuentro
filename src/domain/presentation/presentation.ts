@@ -5,6 +5,8 @@
  * ejecutarse en servidor, en tests o dentro de una ventana de output.
  */
 
+import type { PresetStyle } from "@/domain/presets/preset";
+
 export interface SlideTextContent {
   kind: "text";
   lines: string[];
@@ -22,6 +24,13 @@ export interface Slide {
   /** Etiqueta de origen (Verso 1, Coro…). */
   label?: string | undefined;
   sourceSectionId?: string | undefined;
+  /**
+   * Estilo YA RESUELTO y congelado por el snapshot de Live (ADR-038). La
+   * composición de contenido no lo produce: es opcional antes de resolver y
+   * está siempre presente en el runtime que Live carga. El motor solo lo
+   * transporta; nunca interpreta ni consulta Presets.
+   */
+  style?: PresetStyle | undefined;
 }
 
 export type PresentationItemType =
@@ -42,6 +51,8 @@ export interface PresentationItem {
   slides: Slide[];
   /** Identidad de la entidad original (por ejemplo `song.id`). */
   sourceId?: string | undefined;
+  /** Preset pedido por el RundownItem; sin resolver. */
+  presetId?: string | undefined;
 }
 
 export interface SlideLocation {

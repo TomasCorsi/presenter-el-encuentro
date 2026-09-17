@@ -22,6 +22,11 @@ export interface RundownItem {
   title: string;
   /** Normalizado siempre a 0..n-1. */
   order: number;
+  /**
+   * Preset visual de ESTA aparición (ADR-034). Ausente = Default Preset, así
+   * que la misma Song puede verse distinta en dos apariciones.
+   */
+  presetId?: string | undefined;
 }
 
 export interface RundownItemFactoryDependencies {

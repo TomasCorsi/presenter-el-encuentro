@@ -18,11 +18,14 @@ function toPlaceholderItem(item: RundownItem, order: number): PresentationItem {
     order,
     slides: [],
     sourceId: item.sourceId,
+    presetId: item.presetId,
   };
 }
 
 /**
  * Transformación pura Project Rundown + biblioteca → PresentationItem[].
+ * NO conoce los Presets: propaga `presetId` sin resolverlo. La resolución del
+ * estilo ocurre en el snapshot de Live (ADR-038).
  * `PresentationItem.id` es la identidad de instancia del RundownItem, así que
  * la misma Song puede repetirse sin colisiones de IDs de slide.
  */
@@ -40,6 +43,9 @@ export function projectToPresentation(
       const song = songsById.get(item.sourceId);
       if (!song) return toPlaceholderItem(item, order);
 
-      return songToPresentationItem(song, { itemId: item.id, order });
+      return {
+        ...songToPresentationItem(song, { itemId: item.id, order }),
+        presetId: item.presetId,
+      };
     });
 }

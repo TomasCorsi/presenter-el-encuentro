@@ -7,7 +7,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
+import type { Preset } from "@/domain/presets/preset";
 import type { RundownItem } from "@/domain/projects/rundown";
+import { PresetPicker } from "@/features/presets/components/preset-picker";
 
 export interface RundownRowProps {
   item: RundownItem;
@@ -19,9 +21,12 @@ export interface RundownRowProps {
   isLast: boolean;
   onMove(direction: "up" | "down"): Promise<void>;
   onRemove(): Promise<void>;
+  /** Biblioteca de presets disponible para esta aparición. */
+  presets: readonly Preset[];
+  onSetPreset(presetId: string | undefined): Promise<void>;
 }
 
-export function RundownRow({ item, position, sourceTitle, sourceAuthor, isFirst, isLast, onMove, onRemove }: RundownRowProps) {
+export function RundownRow({ item, position, sourceTitle, sourceAuthor, isFirst, isLast, onMove, onRemove, presets, onSetPreset }: RundownRowProps) {
   const [removeOpen, setRemoveOpen] = useState(false);
   const missing = sourceTitle === undefined;
   const title = sourceTitle ?? item.title;
@@ -43,6 +48,13 @@ export function RundownRow({ item, position, sourceTitle, sourceAuthor, isFirst,
           {missing ? "Contenido faltante — la canción ya no está en la biblioteca" : (sourceAuthor ?? "Canción")}
         </p>
       </div>
+
+      <PresetPicker
+        presets={presets}
+        value={item.presetId}
+        label={`Preset de ${title}`}
+        onChange={(presetId) => run(() => onSetPreset(presetId))}
+      />
 
       <StatusBadge tone={missing ? "sync" : "neutral"} showDot={missing}>{missing ? "Faltante" : "Song"}</StatusBadge>
 

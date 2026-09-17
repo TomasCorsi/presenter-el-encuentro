@@ -20,6 +20,8 @@ import { Route as AppProjectsRouteImport } from './routes/_app.projects'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppSongsRouteImport } from './routes/_app.songs'
 import { Route as OutputMainRouteImport } from './routes/output.main'
+import { Route as AppPresetsIndexRouteImport } from './routes/_app.presets.index'
+import { Route as AppPresetsPresetIdRouteImport } from './routes/_app.presets.$presetId'
 import { Route as AppProjectsIndexRouteImport } from './routes/_app.projects.index'
 import { Route as AppProjectsProjectIdRouteImport } from './routes/_app.projects.$projectId'
 import { Route as AppSongsIndexRouteImport } from './routes/_app.songs.index'
@@ -79,6 +81,16 @@ const OutputMainRoute = OutputMainRouteImport.update({
   path: '/output/main',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppPresetsIndexRoute = AppPresetsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppPresetsRoute,
+} as any)
+const AppPresetsPresetIdRoute = AppPresetsPresetIdRouteImport.update({
+  id: '/$presetId',
+  path: '/$presetId',
+  getParentRoute: () => AppPresetsRoute,
+} as any)
 const AppProjectsIndexRoute = AppProjectsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -106,13 +118,15 @@ export interface FileRoutesByFullPath {
   '/live': typeof AppLiveRoute
   '/media': typeof AppMediaRoute
   '/outputs': typeof AppOutputsRoute
-  '/presets': typeof AppPresetsRoute
+  '/presets': typeof AppPresetsRouteWithChildren
   '/projects': typeof AppProjectsRouteWithChildren
   '/settings': typeof AppSettingsRoute
   '/songs': typeof AppSongsRouteWithChildren
   '/output/main': typeof OutputMainRoute
+  '/presets/$presetId': typeof AppPresetsPresetIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/songs/$songId': typeof AppSongsSongIdRoute
+  '/presets/': typeof AppPresetsIndexRoute
   '/projects/': typeof AppProjectsIndexRoute
   '/songs/': typeof AppSongsIndexRoute
 }
@@ -121,12 +135,13 @@ export interface FileRoutesByTo {
   '/live': typeof AppLiveRoute
   '/media': typeof AppMediaRoute
   '/outputs': typeof AppOutputsRoute
-  '/presets': typeof AppPresetsRoute
   '/settings': typeof AppSettingsRoute
   '/output/main': typeof OutputMainRoute
   '/': typeof AppIndexRoute
+  '/presets/$presetId': typeof AppPresetsPresetIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/songs/$songId': typeof AppSongsSongIdRoute
+  '/presets': typeof AppPresetsIndexRoute
   '/projects': typeof AppProjectsIndexRoute
   '/songs': typeof AppSongsIndexRoute
 }
@@ -137,14 +152,16 @@ export interface FileRoutesById {
   '/_app/live': typeof AppLiveRoute
   '/_app/media': typeof AppMediaRoute
   '/_app/outputs': typeof AppOutputsRoute
-  '/_app/presets': typeof AppPresetsRoute
+  '/_app/presets': typeof AppPresetsRouteWithChildren
   '/_app/projects': typeof AppProjectsRouteWithChildren
   '/_app/settings': typeof AppSettingsRoute
   '/_app/songs': typeof AppSongsRouteWithChildren
   '/output/main': typeof OutputMainRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/presets/$presetId': typeof AppPresetsPresetIdRoute
   '/_app/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/_app/songs/$songId': typeof AppSongsSongIdRoute
+  '/_app/presets/': typeof AppPresetsIndexRoute
   '/_app/projects/': typeof AppProjectsIndexRoute
   '/_app/songs/': typeof AppSongsIndexRoute
 }
@@ -161,8 +178,10 @@ export interface FileRouteTypes {
     | '/settings'
     | '/songs'
     | '/output/main'
+    | '/presets/$presetId'
     | '/projects/$projectId'
     | '/songs/$songId'
+    | '/presets/'
     | '/projects/'
     | '/songs/'
   fileRoutesByTo: FileRoutesByTo
@@ -171,12 +190,13 @@ export interface FileRouteTypes {
     | '/live'
     | '/media'
     | '/outputs'
-    | '/presets'
     | '/settings'
     | '/output/main'
     | '/'
+    | '/presets/$presetId'
     | '/projects/$projectId'
     | '/songs/$songId'
+    | '/presets'
     | '/projects'
     | '/songs'
   id:
@@ -192,8 +212,10 @@ export interface FileRouteTypes {
     | '/_app/songs'
     | '/output/main'
     | '/_app/'
+    | '/_app/presets/$presetId'
     | '/_app/projects/$projectId'
     | '/_app/songs/$songId'
+    | '/_app/presets/'
     | '/_app/projects/'
     | '/_app/songs/'
   fileRoutesById: FileRoutesById
@@ -282,6 +304,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OutputMainRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/presets/': {
+      id: '/_app/presets/'
+      path: '/'
+      fullPath: '/presets/'
+      preLoaderRoute: typeof AppPresetsIndexRouteImport
+      parentRoute: typeof AppPresetsRoute
+    }
+    '/_app/presets/$presetId': {
+      id: '/_app/presets/$presetId'
+      path: '/$presetId'
+      fullPath: '/presets/$presetId'
+      preLoaderRoute: typeof AppPresetsPresetIdRouteImport
+      parentRoute: typeof AppPresetsRoute
+    }
     '/_app/projects/': {
       id: '/_app/projects/'
       path: '/'
@@ -312,6 +348,20 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AppPresetsRouteChildren {
+  AppPresetsPresetIdRoute: typeof AppPresetsPresetIdRoute
+  AppPresetsIndexRoute: typeof AppPresetsIndexRoute
+}
+
+const AppPresetsRouteChildren: AppPresetsRouteChildren = {
+  AppPresetsPresetIdRoute: AppPresetsPresetIdRoute,
+  AppPresetsIndexRoute: AppPresetsIndexRoute,
+}
+
+const AppPresetsRouteWithChildren = AppPresetsRoute._addFileChildren(
+  AppPresetsRouteChildren,
+)
 
 interface AppProjectsRouteChildren {
   AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRoute
@@ -346,7 +396,7 @@ interface AppRouteChildren {
   AppLiveRoute: typeof AppLiveRoute
   AppMediaRoute: typeof AppMediaRoute
   AppOutputsRoute: typeof AppOutputsRoute
-  AppPresetsRoute: typeof AppPresetsRoute
+  AppPresetsRoute: typeof AppPresetsRouteWithChildren
   AppProjectsRoute: typeof AppProjectsRouteWithChildren
   AppSettingsRoute: typeof AppSettingsRoute
   AppSongsRoute: typeof AppSongsRouteWithChildren
@@ -358,7 +408,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppLiveRoute: AppLiveRoute,
   AppMediaRoute: AppMediaRoute,
   AppOutputsRoute: AppOutputsRoute,
-  AppPresetsRoute: AppPresetsRoute,
+  AppPresetsRoute: AppPresetsRouteWithChildren,
   AppProjectsRoute: AppProjectsRouteWithChildren,
   AppSettingsRoute: AppSettingsRoute,
   AppSongsRoute: AppSongsRouteWithChildren,

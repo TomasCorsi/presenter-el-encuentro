@@ -37,6 +37,7 @@ function isRundownItem(value: unknown): value is RundownItem {
     typeof item["sourceId"] === "string" &&
     typeof item["title"] === "string" &&
     typeof item["order"] === "number" &&
+    (item["presetId"] === undefined || typeof item["presetId"] === "string") &&
     RUNDOWN_ITEM_TYPES.includes(item["type"] as RundownItemType)
   );
 }
