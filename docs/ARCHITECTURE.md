@@ -373,3 +373,21 @@ ve proporcionalmente igual en un monitor pequeño y en 1920×1080.
 
 `clear` y `black` siguen siendo modos de salida independientes del Preset:
 `black` es negro puro y `clear` usa el fondo base opaco.
+
+## Fase 9 — Cadena de Bible
+
+```
+Archivo Bible .json
+  → BibleImportAdapter          formato externo → CanonicalBible
+  → BibleRepository (IndexedDB) instalación local, offline
+  → UI /bible                   navegar libro/capítulo/versículo, rango
+  → BiblePassage                snapshot con texto completo
+  → RundownItem.payload         congelado en el Project
+  → projectToPresentation       un versículo = una slide
+  → Live → OutputSnapshot → /output/main
+```
+
+Bible no conoce Live ni Output. Live nunca consulta IndexedDB. Output no
+conoce Bible: recibe slides con `lines`, `secondaryText` y estilo resuelto.
+`BibleService` y `BibleProvider` viven en `src/features/bible`; el repositorio
+IndexedDB se instancia solo en cliente, después del montaje.

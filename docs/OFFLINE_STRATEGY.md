@@ -134,3 +134,13 @@ La aplicación se renderiza también en el servidor. Por lo tanto:
   estrategia de actualización explícita en la Fase 11.
 
 Nada de esto se implementa en la Fase 0.
+
+## Fase 9 — Biblias instaladas
+
+Una Biblia importada queda guardada en IndexedDB del dispositivo y funciona
+sin Internet: listar traducciones, navegar, buscar referencias y crear
+pasajes. La importación es 100% local (lectura del archivo en el navegador);
+nada se sube a ningún servidor.
+
+Los pasajes ya agregados a un Project no dependen de IndexedDB: llevan su
+propio texto y se proyectan aunque la traducción se elimine (ADR-042).

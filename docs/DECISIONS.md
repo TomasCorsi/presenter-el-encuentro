@@ -736,3 +736,52 @@ item, item vacío, referencia rota, sin Program— solo se mueve Preview.
 `programMode` nunca cambia en el auto-advance: en `clear` o `black` el
 contenido avanza internamente y la salida sigue vacía o negra (ADR-024). Solo
 TAKE fuerza `content`.
+
+## ADR-039 — Modelo canónico de Biblia separado del formato externo
+
+**Estado:** aceptada (Fase 9).
+
+El JSON de importación no es el modelo de dominio. Existe una capa de
+adaptadores (`BibleImportAdapter`: `formatName`, `canImport`, `toCanonical`)
+que convierte cualquier formato externo en `CanonicalBible`. El primer
+adaptador cubre el formato `version_id` + `books[].chapters[].items[]`.
+
+Se conserva solo lo necesario para navegar y presentar: abreviatura, título,
+idioma, publisher, copyright, `book_usfm`, nombre de libro, número de capítulo
+y número de versículo con sus líneas de texto. Se descarta `chapter_html`,
+todo el markup, los enlaces previous/next y la metadata duplicada. Dominio,
+repositorio y UI nunca ven la forma externa, así que agregar otro formato es
+agregar otro adaptador.
+
+## ADR-041 — Un versículo por slide y líneas originales
+
+**Estado:** aceptada (Fase 9).
+
+`passageToPresentationItem` genera una slide por versículo. Las `lines` del
+versículo se conservan tal cual (un versículo multilínea proyecta varias
+líneas); las líneas vacías se descartan. Cada slide lleva `label` interno
+(`Juan 3:16`, usado por la rejilla de Live) y `secondaryText` proyectable
+(`Juan 3:16 · NVI`).
+
+`Slide.secondaryText?: string` es genérico, no bíblico: el renderer compartido
+lo pinta como una línea secundaria discreta bajo el texto principal y viaja en
+`OutputSnapshot`. Las Songs simplemente no lo usan.
+
+## ADR-042 — El pasaje se congela en el Rundown
+
+**Estado:** aceptada (Fase 9).
+
+Al agregar un pasaje al Project se guarda el texto completo en
+`RundownItem.payload` (`{ kind: "bible"; passage }`). `projectToPresentation`
+lee únicamente ese payload y nunca consulta `BibleRepository`; Live tampoco
+toca IndexedDB y Output no conoce Bible.
+
+Consecuencia deliberada: eliminar una traducción instalada muestra una
+advertencia, borra la Biblia de IndexedDB y **no** reescribe ningún Project.
+Los items Bible existentes se siguen convirtiendo en slides, se abren en Live,
+hacen TAKE y llegan a Output. La traducción instalada solo hace falta para
+navegar `/bible`, buscar referencias y crear pasajes nuevos.
+
+"Contenido faltante" aparece solo si el propio payload está ausente, inválido
+o corrupto: un payload ilegible se descarta sin invalidar el item, que queda
+como placeholder.

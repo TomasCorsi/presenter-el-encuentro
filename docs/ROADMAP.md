@@ -13,7 +13,7 @@ No comenzar una fase nueva hasta validar la anterior.
 
 - Fase actual completada: **Fase 8.2 — Rediseño del espacio de trabajo Live**
   (sobre la Fase 8.1 — Auto-advance).
-- Próxima fase: **Fase 9 — Bible** (pendiente de aprobación).
+- Próxima fase: **Fase 10 — Media** (pendiente de aprobación).
 - Backend: no conectado. Se decide en la Fase 13.
 - Dependencias añadidas hasta la Fase 6: ninguna.
 - Renumeración: Rundown pasa a ser la Fase 5 y las fases posteriores se
@@ -287,14 +287,20 @@ Project activo no altera el show en curso sin acción del operador.
 
 ## Fase 9 — Bible
 
-- [ ] Versiones.
-- [ ] Libros.
-- [ ] Capítulos.
-- [ ] Versículos.
-- [ ] Rangos.
-- [ ] Buscar.
-- [ ] Presentar.
-- [ ] Presets.
+Completada.
+
+- [x] Importación local de Biblias desde archivo `.json` (sin red, sin backend).
+- [x] Capa de adaptadores `ExternalBibleJson → BibleImportAdapter → CanonicalBible`.
+- [x] Instalación y lectura offline en IndexedDB (`BibleRepository`).
+- [x] Listado de traducciones instaladas con Abrir y Eliminar.
+- [x] Navegación libro → capítulo → versículo y selección de rango.
+- [x] Búsqueda por referencia tolerante (`jn 3:16-18`, acentos, abreviaturas).
+- [x] Vista previa del pasaje con el renderer compartido.
+- [x] Pasaje agregado al Rundown como snapshot autosuficiente.
+- [x] Un versículo = una slide, con líneas originales y referencia secundaria.
+- [x] Presets aplicables al item Bible igual que a una Song.
+- [x] Live y Output sin conocer Bible ni IndexedDB.
+- [x] Eliminar una traducción no rompe los pasajes ya agregados.
 
 ---
 

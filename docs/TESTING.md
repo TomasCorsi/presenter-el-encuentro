@@ -258,3 +258,24 @@ automatizadas de dominio y store siguen siendo la red de seguridad):
 - Elemento sin contenido: mensaje compacto, TAKE deshabilitado.
 - Teclado (← → Enter) y foco visible; consola sin errores.
 - `/output/main` sin regresiones: sigue reflejando Program.
+
+## Fase 9 — Bible
+
+- **Importación** (`tests/domain/bible-import.test.ts`): conversión al modelo
+  canónico, versículos multilínea, descarte de HTML y metadata redundante,
+  JSON inválido, formato desconocido, archivo sin libros legibles, valores por
+  defecto de metadata.
+- **Referencias** (`tests/domain/bible-reference.test.ts`): abreviaturas,
+  acentos, rangos, referencia inexistente, `buildPassage`, `verseRange`.
+- **Pasaje → presentación** (`tests/domain/bible-passage-presentation.test.ts`):
+  un versículo = una slide con `secondaryText`; el pasaje se clona al entrar al
+  rundown; la conversión no usa `BibleRepository`; "contenido faltante" solo
+  con payload ausente o corrupto; el preset del item se conserva.
+- **Repositorio** (`tests/services/bible-repository.test.ts`): instalar,
+  listar, leer por capítulo, reinstalar sin duplicar, eliminar por completo.
+
+Verificación manual en navegador (1366×768 y 1440×900, consola limpia):
+importar una Biblia real, navegar libro/capítulo/versículo, buscar
+`jn 3:2-4`, previsualizar, agregar al Project, eliminar la traducción y
+comprobar que el item sigue funcionando en el rundown, en Live (TAKE,
+auto-advance) y en `/output/main` con la referencia secundaria visible.
