@@ -18,7 +18,7 @@ function excerpt(lines: string[]): string {
  * solo del color: cada miniatura lleva además una etiqueta textual, y una
  * misma slide puede mostrar las dos a la vez.
  */
-export function LiveSlideGrid({ item, previewSlideId, programSlideId, onSelect }: LiveSlideGridProps) {
+export function LiveSlideGrid({ item, previewSlideId, programSlideId, onGoLive }: LiveSlideGridProps) {
   if (!item) {
     return (
       <p className="px-3 py-2 text-sm text-muted-foreground">
@@ -52,9 +52,10 @@ export function LiveSlideGrid({ item, previewSlideId, programSlideId, onSelect }
           <li key={slide.id}>
             <button
               type="button"
-              onClick={() => onSelect(slide.id)}
+              onClick={() => onGoLive(slide.id)}
               aria-current={isPreview ? "true" : undefined}
-              aria-label={`Slide ${position}${slide.label ? ` ${slide.label}` : ""}${states ? `, ${states}` : ""}`}
+              title="Enviar esta slide al aire"
+              aria-label={`Enviar al aire la slide ${position}${slide.label ? ` ${slide.label}` : ""}${states ? `, ${states}` : ""}`}
               className={cn(
                 "flex h-full w-full flex-col rounded-md border bg-card text-left transition-colors",
                 "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
