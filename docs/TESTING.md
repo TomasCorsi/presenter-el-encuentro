@@ -230,3 +230,14 @@ dependencias antes de que su fase las requiera.
 - **Persistencia** (`tests/services/local-storage-preset-repository.test.ts`):
   CRUD, datos corruptos ignorados, id reservado nunca persistido y estilo
   inválido normalizado.
+
+## Fase 8.1 — Auto-advance de Program
+
+- **Dominio** (`tests/domain/presentation-live.test.ts`): Next/Previous
+  arrastran Program dentro del item al aire; `clear` y `black` conservan el
+  modo mientras avanza `programSlideId`; cruzar de item (adelante y atrás)
+  deja Program intacto; Preview en otro item, ausencia de Program, item vacío
+  y referencia rota nunca auto-envían; TAKE mantiene su semántica y fuerza
+  `content`; los límites globales devuelven la misma referencia de estado.
+- **Store** (`tests/stores/presentation-store.test.ts`): `next()` auto-avanza
+  dentro del item y se detiene al cruzar al siguiente.

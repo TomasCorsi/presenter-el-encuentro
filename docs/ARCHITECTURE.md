@@ -284,7 +284,11 @@ reutiliza `songToPresentationItem`. Desde la Fase 6, `/live` consume esa
 conversión mediante `buildLiveSnapshot`: compone el show UNA vez y opera
 siempre sobre ese snapshot. Editar el rundown o una canción no altera el show
 en curso; Live avisa del desfase y el operador decide recargar (ADR-023).
-La navegación mueve Preview y solo TAKE escribe en Program (ADR-022, ADR-025).
+La navegación mueve Preview y solo TAKE cambia de item en Program (ADR-022,
+ADR-025). Desde la Fase 8.1, Next/Previous arrastran también Program cuando
+Preview y Program están en el MISMO item y el salto no cruza su borde: la
+regla vive en `presentation-live.ts` (`nextLive` / `previousLive`), por encima
+de un engine que sigue siendo navegación pura de Preview (ADR-037).
 
 ### Límite entre features
 
