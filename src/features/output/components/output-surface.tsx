@@ -34,7 +34,9 @@ export function OutputSurface({ snapshot }: OutputSurfaceProps) {
         slide ? "" : pureBlack ? "bg-output-safe" : "bg-output-base",
       )}
     >
-      {slide ? <SlideRenderer lines={slide.lines} style={slide.style} /> : null}
+      {slide ? (
+        <SlideRenderer lines={slide.lines} style={slide.style} secondaryText={slide.secondaryText} />
+      ) : null}
     </main>
   );
 }

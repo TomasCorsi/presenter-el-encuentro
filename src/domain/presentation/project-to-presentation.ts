@@ -1,7 +1,9 @@
+import { isBiblePassage } from "@/domain/bible/bible";
 import type { Project } from "@/domain/projects/project";
 import type { RundownItem } from "@/domain/projects/rundown";
 import type { Song } from "@/domain/songs/song";
 
+import { passageToPresentationItem } from "./passage-to-presentation";
 import type { PresentationItem } from "./presentation";
 import { songToPresentationItem } from "./song-to-presentation";
 
@@ -38,6 +40,19 @@ export function projectToPresentation(
   return [...project.rundown]
     .sort((a, b) => a.order - b.order)
     .map((item, order) => {
+      if (item.type === "bible") {
+        // El pasaje viaja dentro del item: NO se consulta BibleRepository, así
+        // que desinstalar la traducción no rompe el show (ADR-042). Solo un
+        // payload ausente o corrupto cuenta como contenido faltante.
+        const passage = item.payload?.kind === "bible" ? item.payload.passage : null;
+        if (!passage || !isBiblePassage(passage)) return toPlaceholderItem(item, order);
+
+        return {
+          ...passageToPresentationItem(passage, { itemId: item.id, order }),
+          presetId: item.presetId,
+        };
+      }
+
       if (item.type !== "song") return toPlaceholderItem(item, order);
 
       const song = songsById.get(item.sourceId);

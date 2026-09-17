@@ -1,7 +1,8 @@
 import type { CreateProjectInput, Project, ProjectFactoryDependencies } from "@/domain/projects/project";
 import { createProject, duplicateProject, renameProject, sortProjectsByUpdatedAt } from "@/domain/projects/project-rules";
 import type { RundownItem } from "@/domain/projects/rundown";
-import { addSongToRundown, moveRundownItem, removeRundownItem, setRundownItemPreset } from "@/domain/projects/rundown-rules";
+import type { BiblePassage } from "@/domain/bible/bible";
+import { addPassageToRundown, addSongToRundown, moveRundownItem, removeRundownItem, setRundownItemPreset } from "@/domain/projects/rundown-rules";
 import type { ProjectRepository } from "@/services/projects/project-repository";
 
 export interface ProjectsSnapshot {
@@ -48,6 +49,13 @@ export class ProjectService {
   async addSong(projectId: string, song: { id: string; title: string }): Promise<Project> {
     return this.saveRundown(projectId, (rundown) =>
       addSongToRundown(rundown, { songId: song.id, title: song.title }, this.dependencies),
+    );
+  }
+
+  /** Agrega un pasaje bíblico congelado al rundown (ADR-042). */
+  async addPassage(projectId: string, passage: BiblePassage): Promise<Project> {
+    return this.saveRundown(projectId, (rundown) =>
+      addPassageToRundown(rundown, passage, this.dependencies),
     );
   }
 

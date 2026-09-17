@@ -42,7 +42,7 @@ export function SlideSurface({
       {...props}
     >
       {lines.length > 0 ? (
-        <SlideRenderer lines={lines} style={slide?.style} />
+        <SlideRenderer lines={lines} style={slide?.style} secondaryText={slide?.secondaryText} />
       ) : (
         <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
           {emptyLabel}

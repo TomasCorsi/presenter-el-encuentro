@@ -1,3 +1,5 @@
+import { clonePassage, passageCaption, type BiblePassage } from "@/domain/bible/bible";
+
 import type { Project } from "./project";
 import type { RundownItem, RundownItemFactoryDependencies } from "./rundown";
 
@@ -32,6 +34,31 @@ export function addSongToRundown(
       sourceId: input.songId,
       title: input.title,
       order: normalized.length,
+    },
+  ];
+}
+
+/**
+ * Agrega un pasaje bíblico al final del rundown. El pasaje se guarda COMPLETO
+ * dentro del item: desinstalar la traducción no afecta al project (ADR-042).
+ */
+export function addPassageToRundown(
+  items: readonly RundownItem[],
+  passage: BiblePassage,
+  dependencies: RundownItemFactoryDependencies,
+): RundownItem[] {
+  const normalized = normalizeRundown(items);
+  const frozen = clonePassage(passage);
+
+  return [
+    ...normalized,
+    {
+      id: dependencies.createId(),
+      type: "bible",
+      sourceId: `${frozen.versionId}:${frozen.bookUsfm}.${frozen.chapter}`,
+      title: passageCaption(frozen),
+      order: normalized.length,
+      payload: { kind: "bible", passage: frozen },
     },
   ];
 }

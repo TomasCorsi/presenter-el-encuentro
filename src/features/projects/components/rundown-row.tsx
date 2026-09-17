@@ -1,4 +1,4 @@
-import { AlertTriangle, ChevronDown, ChevronUp, Music, Trash2 } from "lucide-react";
+import { AlertTriangle, BookOpen, ChevronDown, ChevronUp, Music, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -30,6 +30,11 @@ export function RundownRow({ item, position, sourceTitle, sourceAuthor, isFirst,
   const [removeOpen, setRemoveOpen] = useState(false);
   const missing = sourceTitle === undefined;
   const title = sourceTitle ?? item.title;
+  const isBible = item.type === "bible";
+  const TypeIcon = isBible ? BookOpen : Music;
+  const missingLabel = isBible
+    ? "Contenido faltante — el pasaje guardado está incompleto"
+    : "Contenido faltante — la canción ya no está en la biblioteca";
   const run = (action: () => Promise<void>) => { void action().catch(() => undefined); };
 
   return (
@@ -39,13 +44,13 @@ export function RundownRow({ item, position, sourceTitle, sourceAuthor, isFirst,
         className={`grid size-8 shrink-0 place-items-center rounded-sm border border-border ${missing ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}
         aria-hidden="true"
       >
-        {missing ? <AlertTriangle className="size-4" /> : <Music className="size-4" />}
+        {missing ? <AlertTriangle className="size-4" /> : <TypeIcon className="size-4" />}
       </span>
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{title}</p>
         <p className="truncate text-xs text-muted-foreground">
-          {missing ? "Contenido faltante — la canción ya no está en la biblioteca" : (sourceAuthor ?? "Canción")}
+          {missing ? missingLabel : (sourceAuthor ?? (isBible ? "Pasaje bíblico" : "Canción"))}
         </p>
       </div>
 
@@ -56,7 +61,9 @@ export function RundownRow({ item, position, sourceTitle, sourceAuthor, isFirst,
         onChange={(presetId) => run(() => onSetPreset(presetId))}
       />
 
-      <StatusBadge tone={missing ? "sync" : "neutral"} showDot={missing}>{missing ? "Faltante" : "Song"}</StatusBadge>
+      <StatusBadge tone={missing ? "sync" : "neutral"} showDot={missing}>
+        {missing ? "Faltante" : isBible ? "Bible" : "Song"}
+      </StatusBadge>
 
       <div className="flex shrink-0 items-center gap-1">
         <Button variant="ghost" size="icon" className="size-8" disabled={isFirst}

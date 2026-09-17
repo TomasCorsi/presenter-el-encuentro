@@ -18,6 +18,8 @@ import type { ProgramOutput } from "@/domain/presentation/presentation-selectors
 export interface OutputSlide {
   id: string;
   lines: string[];
+  /** Línea secundaria proyectable (referencia bíblica, atribución…). */
+  secondaryText?: string | undefined;
   style: PresetStyle;
 }
 
@@ -55,6 +57,7 @@ export function toOutputSnapshot(
       ? {
           id: output.slide.id,
           lines: [...output.slide.content.lines],
+          secondaryText: output.slide.secondaryText,
           // El publisher NO resuelve Presets: solo copia el estilo ya
           // congelado en el runtime, con el Default como red de seguridad.
           style: output.slide.style ?? DEFAULT_PRESET_STYLE,
@@ -79,6 +82,7 @@ export function snapshotsEqual(a: OutputSnapshot, b: OutputSnapshot): boolean {
   return (
     a.slide.id === b.slide.id &&
     linesEqual(a.slide.lines, b.slide.lines) &&
+    (a.slide.secondaryText ?? null) === (b.slide.secondaryText ?? null) &&
     presetStylesEqual(a.slide.style, b.slide.style)
   );
 }
@@ -114,6 +118,11 @@ function parseSnapshot(value: unknown): OutputSnapshot | null {
         : {
             id: (slide as { id: string }).id,
             lines: (slide as { lines: string[] }).lines,
+            // Texto secundario opcional: cualquier otra forma se ignora.
+            secondaryText:
+              typeof (slide as { secondaryText?: unknown }).secondaryText === "string"
+                ? ((slide as { secondaryText: string }).secondaryText)
+                : undefined,
             // Un estilo ausente o inválido cae al Default campo a campo: la
             // salida nunca queda indefinida.
             style: normalizePresetStyle((slide as { style?: unknown }).style),

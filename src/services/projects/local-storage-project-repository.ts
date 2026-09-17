@@ -1,3 +1,4 @@
+import { clonePassage, isBiblePassage } from "@/domain/bible/bible";
 import type { Project } from "@/domain/projects/project";
 import type { RundownItem, RundownItemType } from "@/domain/projects/rundown";
 import { normalizeRundown } from "@/domain/projects/rundown-rules";
@@ -29,6 +30,17 @@ const RUNDOWN_ITEM_TYPES: readonly RundownItemType[] = [
   "message",
 ];
 
+/**
+ * Un payload inválido NO invalida el item: se descarta el payload y el item
+ * queda como contenido faltante, que es exactamente lo que representa.
+ */
+function isValidPayload(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!value || typeof value !== "object") return false;
+  const payload = value as Record<string, unknown>;
+  return payload["kind"] === "bible" && isBiblePassage(payload["passage"]);
+}
+
 function isRundownItem(value: unknown): value is RundownItem {
   if (!value || typeof value !== "object") return false;
   const item = value as Record<string, unknown>;
@@ -38,6 +50,7 @@ function isRundownItem(value: unknown): value is RundownItem {
     typeof item["title"] === "string" &&
     typeof item["order"] === "number" &&
     (item["presetId"] === undefined || typeof item["presetId"] === "string") &&
+    isValidPayload(item["payload"]) &&
     RUNDOWN_ITEM_TYPES.includes(item["type"] as RundownItemType)
   );
 }
@@ -106,7 +119,14 @@ function parsePayload(raw: string | null, expectedVersion: 1 | 2): StoredProject
 }
 
 function cloneProject(project: Project): Project {
-  return { ...project, rundown: project.rundown.map((item) => ({ ...item })) };
+  return {
+    ...project,
+    rundown: project.rundown.map((item) =>
+      item.payload?.kind === "bible"
+        ? { ...item, payload: { kind: "bible" as const, passage: clonePassage(item.payload.passage) } }
+        : { ...item },
+    ),
+  };
 }
 
 export function createLocalStorageProjectRepository(storage: KeyValueStorage): ProjectRepository {

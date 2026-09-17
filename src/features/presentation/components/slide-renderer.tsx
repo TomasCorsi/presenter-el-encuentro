@@ -17,10 +17,16 @@ export interface SlideRendererProps {
   lines: readonly string[];
   /** Estilo congelado; ausente o inválido cae al Default. */
   style: PresetStyle | undefined;
+  /**
+   * Línea secundaria genérica bajo el texto principal (referencia bíblica,
+   * atribución…). Hereda tipografía, color y alineación del Preset, a menor
+   * tamaño y con menos énfasis.
+   */
+  secondaryText?: string | undefined;
   className?: string | undefined;
 }
 
-export function SlideRenderer({ lines, style, className }: SlideRendererProps) {
+export function SlideRenderer({ lines, style, secondaryText, className }: SlideRendererProps) {
   const resolved = resolveSlideRenderStyle(style);
 
   const surfaceStyle: CSSProperties = {
@@ -55,6 +61,15 @@ export function SlideRenderer({ lines, style, className }: SlideRendererProps) {
             {line}
           </span>
         ))}
+        {secondaryText ? (
+          <span
+            data-testid="slide-secondary-text"
+            className="block w-full"
+            style={{ fontSize: "0.5em", fontWeight: 400, opacity: 0.75, marginTop: "0.9em" }}
+          >
+            {secondaryText}
+          </span>
+        ) : null}
       </div>
     </div>
   );
