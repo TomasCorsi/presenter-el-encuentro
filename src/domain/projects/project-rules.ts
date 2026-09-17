@@ -49,11 +49,13 @@ export function duplicateProject(
   dependencies: ProjectFactoryDependencies,
 ): Project {
   const timestamp = dependencies.now();
+  const suffix = " — copia";
+  const copiedName = `${project.name.slice(0, PROJECT_NAME_MAX_LENGTH - suffix.length).trimEnd()}${suffix}`;
 
   return {
     ...project,
     id: dependencies.createId(),
-    name: normalizeProjectName(`${project.name} — copia`),
+    name: normalizeProjectName(copiedName),
     itemIds: [...project.itemIds],
     createdAt: timestamp,
     updatedAt: timestamp,

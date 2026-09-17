@@ -26,6 +26,13 @@ interface Project {
 }
 ```
 
+### Proyecto activo
+
+`activeProjectId: string | null` no es un campo de `Project`. En la Fase 2 es
+estado local del workspace/dispositivo, persistido temporalmente en el navegador.
+No forma parte del modelo sincronizado. Una fase futura decidirá si permanece por
+dispositivo o si debe sincronizarse.
+
 ## Presentation Item
 
 ```ts

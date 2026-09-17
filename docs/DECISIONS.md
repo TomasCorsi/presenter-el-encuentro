@@ -215,3 +215,29 @@ dependencias ni red.
 - El transporte debe quedar aislado tras una interfaz, para poder sustituirlo
   sin tocar el Presentation Engine ni los outputs.
 - Solo puede instanciarse en cliente (ver regla SSR en ARCHITECTURE.md).
+
+---
+
+## ADR-011 — Persistencia temporal de Projects y estado compartido
+
+### Contexto
+
+Fase 2 necesita CRUD real y conservar el proyecto activo tras recargas, pero
+IndexedDB y sincronización todavía están fuera de alcance.
+
+### Decisión
+
+Usar temporalmente `localStorage` detrás de un `ProjectRepository` asíncrono.
+Compartir su snapshot mediante un Context de React limitado a Projects, sin
+añadir una librería de estado ni utilizar el store del Presentation Engine.
+
+El repository contiene únicamente persistencia. La duplicación y las demás
+reglas de negocio permanecen en dominio/servicio.
+
+### Consecuencias
+
+- La UI no accede directamente al almacenamiento.
+- El adaptador solo se crea y lee en cliente para mantener compatibilidad SSR.
+- `activeProjectId` es local al workspace/dispositivo y no está sincronizado.
+- La decisión sobre sincronizarlo o mantenerlo por dispositivo queda pendiente.
+- Los datos temporales no garantizan migración automática a IndexedDB.

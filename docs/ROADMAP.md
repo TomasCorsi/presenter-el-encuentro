@@ -11,8 +11,8 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Fase actual completada: **Fase 1.1 — Refinamiento visual del App Shell**.
-- Próxima fase: **Fase 2 — Projects** (pendiente de aprobación).
+- Fase actual completada: **Fase 2 — Projects**.
+- Próxima fase: **Fase 3 — Songs** (pendiente de aprobación).
 - Backend: no conectado. Se decide en la Fase 12.
 - Dependencias añadidas en Fases 0 y 1: ninguna.
 - Implementado hasta ahora: documentación en `/docs`, tema oscuro con tokens
@@ -129,13 +129,20 @@ No se añadieron funcionalidades, rutas, dependencias ni datos técnicos fictici
 
 ## Fase 2 — Projects
 
-- [ ] Crear proyecto.
-- [ ] Editar.
-- [ ] Duplicar.
-- [ ] Eliminar.
-- [ ] Rundown.
-- [ ] Drag & drop.
-- [ ] Persistencia local inicial.
+- [x] Crear, listar, abrir y buscar proyectos.
+- [x] Renombrar, duplicar y eliminar con confirmación.
+- [x] Seleccionar y mostrar el proyecto activo en Projects, Home y Topbar.
+- [x] Mostrar fechas de creación y última modificación.
+- [x] Añadir `/projects/$projectId` con detalle y placeholder de Rundown.
+- [x] Persistencia temporal en `localStorage` detrás de un repository async.
+- [x] Tests de reglas de negocio y persistencia con el runner de Bun.
+
+### Estado
+
+- [x] Completada
+
+El rundown funcional y drag & drop no pertenecen a esta fase; permanecen en la
+Fase 5. IndexedDB continúa diferido a la Fase 11.
 
 ---
 
