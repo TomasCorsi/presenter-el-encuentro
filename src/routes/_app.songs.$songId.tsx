@@ -13,7 +13,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { SONG_TITLE_MAX_LENGTH, type Song, type SongFactoryDependencies } from "@/domain/songs/song";
-import { addSection, moveSection, removeSection } from "@/domain/songs/song-rules";
+import { addSection, moveSection, removeSection, updateSection } from "@/domain/songs/song-rules";
 import { SongSectionEditor } from "@/features/songs/components/song-section-editor";
 import { useSongs } from "@/features/songs/songs-context";
 
@@ -236,10 +236,7 @@ function SongEditorPage() {
                 section={section}
                 isFirst={index === 0}
                 isLast={index === song.sections.length - 1}
-                onChange={(input) => markDirty({
-                  ...song,
-                  sections: song.sections.map((item) => (item.id === section.id ? { ...item, ...input } : item)),
-                })}
+                onChange={(input) => markDirty(updateSection(song, section.id, input, draftDependencies.now))}
                 onBlurFlush={flushIfPending}
                 onMove={(direction) => markDirty(moveSection(song, section.id, direction, draftDependencies.now))}
                 onRemove={() => markDirty(removeSection(song, section.id, draftDependencies.now))}
