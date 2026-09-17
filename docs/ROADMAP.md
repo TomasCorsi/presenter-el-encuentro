@@ -11,8 +11,8 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Fase actual completada: **Fase 6 — Live Mode**.
-- Próxima fase: **Fase 7 — Output Main** (pendiente de aprobación).
+- Fase actual completada: **Fase 7 — Output Main**.
+- Próxima fase: **Fase 8 — Presets** (pendiente de aprobación).
 - Backend: no conectado. Se decide en la Fase 13.
 - Dependencias añadidas hasta la Fase 6: ninguna.
 - Renumeración: Rundown pasa a ser la Fase 5 y las fases posteriores se
@@ -236,11 +236,14 @@ Project activo no altera el show en curso sin acción del operador.
 
 ## Fase 7 — Output Main
 
-- [ ] `/output/main`.
-- [ ] Sin controles.
-- [ ] Sincronizado con Presentation Engine.
-- [ ] Fullscreen.
-- [ ] Performance.
+- [x] `/output/main` fuera del App Shell, viewport completo, sin scroll.
+- [x] Sin controles ni chrome: solo representa Program (overlay efímero de fullscreen).
+- [x] Sincronización Live → Output mediante Output Sync (BroadcastChannel detrás de `OutputTransport`, ADR-027/028).
+- [x] `OutputSnapshot` resuelto (`mode` + `slide.id` + `slide.lines`); Preview nunca se transmite.
+- [x] `sessionId` efímero con vinculación de sesión y `sequence` por sesión (ADR-029).
+- [x] Heartbeat 2 s / timeout 5 s; `bye` como optimización; salida segura en negro puro.
+- [x] Fullscreen manual (botón overlay, doble clic); cursor oculto tras inactividad.
+- [x] Múltiples Outputs simultáneos; "Abrir Output" desde Live.
 
 ---
 
