@@ -241,3 +241,20 @@ dependencias antes de que su fase las requiera.
   `content`; los límites globales devuelven la misma referencia de estado.
 - **Store** (`tests/stores/presentation-store.test.ts`): `next()` auto-avanza
   dentro del item y se detiene al cruzar al siguiente.
+
+## Fase 8.2 — Rediseño del espacio de trabajo Live
+
+Verificación manual en navegador (la lógica no cambió, así que las pruebas
+automatizadas de dominio y store siguen siendo la red de seguridad):
+
+- Tres zonas visibles a la vez (rundown, rejilla de slides, Program + Preview)
+  y barra de controles fija, sin scroll global en 1920×1080 y 1366×768.
+- Selección de elemento en el rundown y rejilla del elemento seleccionado.
+- Slide en Preview y slide en Program marcadas con color **y** etiqueta; una
+  misma slide muestra `PROGRAM` y `PREVIEW` simultáneamente.
+- Click en slide selecciona Preview sin alterar Program; TAKE envía al aire.
+- Auto-advance dentro del item y parada al cruzar de item (TAKE requerido).
+- Clear y Black conservan la slide y la recuperan al volver a Content.
+- Elemento sin contenido: mensaje compacto, TAKE deshabilitado.
+- Teclado (← → Enter) y foco visible; consola sin errores.
+- `/output/main` sin regresiones: sigue reflejando Program.

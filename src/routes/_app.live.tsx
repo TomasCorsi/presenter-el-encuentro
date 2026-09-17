@@ -136,7 +136,7 @@ function LiveConsole() {
   const programItem = getProgramItem(state);
 
   return (
-    <Page className="flex h-full min-h-0 flex-col">
+    <Page className="flex h-full min-h-0 flex-col gap-2 py-4 lg:py-4">
       <LiveShowBar
         showName={showProject?.name ?? snapshot.projectName}
         itemCount={state.runtime.items.length}
@@ -146,24 +146,62 @@ function LiveConsole() {
         onLoadActiveProject={loadActiveProject}
       />
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <section aria-labelledby="live-rundown-title" className="min-w-0 overflow-y-auto rounded-md border border-border">
-          <h2 id="live-rundown-title" className="border-b border-border bg-card px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      {/*
+        Anchos como objetivo, no como restricción: `clamp` deja que Rundown y la
+        columna de monitores se compriman en 1366×768 sin sacrificar la rejilla
+        de slides, que es la zona con prioridad visual.
+      */}
+      <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[clamp(170px,15vw,260px)_minmax(0,1fr)_clamp(230px,22vw,340px)]">
+        <section
+          aria-labelledby="live-rundown-title"
+          className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-border"
+        >
+          <h2
+            id="live-rundown-title"
+            className="shrink-0 border-b border-border bg-card px-2 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+          >
             Rundown
           </h2>
-          {state.runtime.items.length === 0 ? (
-            <p className="p-3 text-sm text-muted-foreground">El proyecto no tiene elementos en el rundown.</p>
-          ) : (
-            <LiveRundown
-              items={state.runtime.items}
-              previewItemId={state.previewItemId}
-              programItemId={programItem?.id ?? null}
-              onSelect={(itemId) => store.selectItem(itemId)}
-            />
-          )}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {state.runtime.items.length === 0 ? (
+              <p className="p-3 text-sm text-muted-foreground">
+                El proyecto no tiene elementos en el rundown.
+              </p>
+            ) : (
+              <LiveRundown
+                items={state.runtime.items}
+                previewItemId={state.previewItemId}
+                programItemId={programItem?.id ?? null}
+                onSelect={(itemId) => store.selectItem(itemId)}
+              />
+            )}
+          </div>
         </section>
 
-        <div className="flex min-w-0 flex-col gap-4">
+        <section
+          aria-labelledby="live-slides-title"
+          className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-border"
+        >
+          <h2
+            id="live-slides-title"
+            className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-2 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+          >
+            Slides
+            <span className="truncate normal-case tracking-normal text-foreground">
+              {previewItem?.title ?? ""}
+            </span>
+          </h2>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <LiveSlideGrid
+              item={previewItem}
+              previewSlideId={state.previewSlideId}
+              programSlideId={state.programSlideId}
+              onSelect={(slideId) => store.selectSlide(slideId)}
+            />
+          </div>
+        </section>
+
+        <div className="min-h-0 min-w-0 overflow-y-auto">
           <LiveMonitors
             previewSlide={getPreviewSlide(state)}
             previewItem={previewItem}
@@ -171,34 +209,22 @@ function LiveConsole() {
             programItem={programItem}
             programMode={state.programMode}
           />
-
-          <section aria-labelledby="live-slides-title" className="min-w-0">
-            <h2 id="live-slides-title" className="mb-2 font-mono text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Slides
-            </h2>
-            <LiveSlideGrid
-              item={previewItem}
-              previewSlideId={state.previewSlideId}
-              programSlideId={state.programSlideId}
-              onSelect={(slideId) => store.selectSlide(slideId)}
-            />
-          </section>
-
-          <div className="rounded-md border border-border bg-card p-2.5">
-            <LiveControls
-              canPrevious={getPreviousSlide(state) !== null
-                || (state.previewSlideId === null && state.runtime.navigableSlideIds.length > 0)}
-              canNext={getNextSlide(state) !== null
-                || (state.previewSlideId === null && state.runtime.navigableSlideIds.length > 0)}
-              canTake={canTake}
-              programMode={state.programMode}
-              onPrevious={onPrevious}
-              onNext={onNext}
-              onTake={onTake}
-              onToggleMode={(mode) => store.toggleProgramMode(mode)}
-            />
-          </div>
         </div>
+      </div>
+
+      <div className="shrink-0 rounded-md border border-border bg-card px-2 py-1.5">
+        <LiveControls
+          canPrevious={getPreviousSlide(state) !== null
+            || (state.previewSlideId === null && state.runtime.navigableSlideIds.length > 0)}
+          canNext={getNextSlide(state) !== null
+            || (state.previewSlideId === null && state.runtime.navigableSlideIds.length > 0)}
+          canTake={canTake}
+          programMode={state.programMode}
+          onPrevious={onPrevious}
+          onNext={onNext}
+          onTake={onTake}
+          onToggleMode={(mode) => store.toggleProgramMode(mode)}
+        />
       </div>
     </Page>
   );

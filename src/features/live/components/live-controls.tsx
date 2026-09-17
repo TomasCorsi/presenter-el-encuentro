@@ -14,7 +14,7 @@ export interface LiveControlsProps {
   onToggleMode(mode: Exclude<ProgramMode, "content">): void;
 }
 
-/** Controles de operación. Solo TAKE envía contenido al aire. */
+/** Controles de operación. Solo TAKE envía contenido nuevo al aire. */
 export function LiveControls({
   canPrevious,
   canNext,
@@ -26,7 +26,11 @@ export function LiveControls({
   onToggleMode,
 }: LiveControlsProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Controles de presentación">
+    <div
+      className="flex flex-wrap items-center gap-1.5"
+      role="group"
+      aria-label="Controles de presentación"
+    >
       <Button
         variant="outline"
         size="sm"
@@ -34,7 +38,9 @@ export function LiveControls({
         onClick={onPrevious}
         title="Anterior (←) · avanza al aire dentro del item actual"
       >
-        <ChevronLeft />Previous
+        <ChevronLeft />
+        Previous
+        <span className="ml-1 font-mono text-[10px] text-muted-foreground" aria-hidden="true">←</span>
       </Button>
       <Button
         variant="outline"
@@ -43,10 +49,19 @@ export function LiveControls({
         onClick={onNext}
         title="Siguiente (→) · avanza al aire dentro del item actual"
       >
-        Next<ChevronRight />
+        Next
+        <ChevronRight />
+        <span className="ml-1 font-mono text-[10px] text-muted-foreground" aria-hidden="true">→</span>
       </Button>
-      <Button size="sm" disabled={!canTake} onClick={onTake} title="Envía la slide seleccionada a Program (Enter / Espacio)">
-        <Play />TAKE
+      <Button
+        size="sm"
+        disabled={!canTake}
+        onClick={onTake}
+        title="Envía la slide seleccionada a Program (Enter / Espacio)"
+      >
+        <Play />
+        TAKE
+        <span className="ml-1 font-mono text-[10px] opacity-70" aria-hidden="true">⏎</span>
       </Button>
       <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
       <Button
