@@ -27,7 +27,7 @@ export function LiveShowBar({
   onLoadActiveProject,
 }: LiveShowBarProps) {
   return (
-    <div className="mb-4 flex flex-col gap-2">
+    <div className="flex shrink-0 flex-col gap-2">
       <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card px-3 py-2">
         <span className="truncate text-sm font-semibold text-foreground">{showName}</span>
         <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
