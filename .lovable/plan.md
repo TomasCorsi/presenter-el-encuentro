@@ -53,7 +53,7 @@ El motor no gana flags de UI: solo cinco campos y comandos explícitos.
 
 Entran `clear` y `black`. **Logo se pospone**: sin Presets ni Media no hay asset real ni configuración, y un botón muerto no aporta. El tipo `ProgramMode` se amplía en la fase de Presets sin romper nada.
 
-Semántica: `content` muestra la slide de Program; `clear` = salida vacía (sin texto); `black` = salida negra. Clear/Black son conmutables: volver a pulsar regresa a `content`.
+Semántica: `content` muestra la slide de Program; `clear` = salida vacía (sin texto); `black` = salida negra. Son **modos temporales de salida**: `programSlideId` se conserva intacto, así que volver a `content` devuelve al aire exactamente la misma slide. Clear/Black son conmutables: pulsar de nuevo regresa a `content`.
 
 ## 5. Carga del Project activo: snapshot explícito
 
@@ -98,14 +98,15 @@ Un hook `useLiveKeyboard` en la ruta Live, con `keydown` en `window`:
 
 - `ArrowLeft` → Previous, `ArrowRight` → Next, `Enter` o `Space` → TAKE.
 - Se ignora el evento si `event.defaultPrevented`, si hay modificadores (Ctrl/Meta/Alt), o si el foco está en `input`, `textarea`, `select`, `[contenteditable]` o dentro de un diálogo abierto.
-- Solo activo mientras `/live` está montado y hay presentación cargada.
+- Cuando el atajo se reconoce y se ejecuta realmente, se llama a `event.preventDefault()`: obligatorio en Space (scroll), flechas (scroll/desplazamiento) y Enter.
+- Solo activo mientras `/live` está montado y hay presentación cargada; nunca se interceptan teclas fuera de `/live`.
 
 Sin sistema configurable de atajos.
 
 ## 8. Archivos
 
 Crear:
-- `src/domain/presentation/presentation-program.ts` — `ProgramMode`, `take`, `setProgramMode`, `clearProgram`.
+- `src/domain/presentation/presentation-program.ts` — `ProgramMode`, `take`, `setProgramMode`.
 - `src/features/live/live-presentation.ts` — construcción del snapshot y firma de origen (puro, testeable).
 - `src/features/live/use-live-keyboard.ts`
 - `src/features/live/components/live-rundown.tsx`
@@ -131,7 +132,7 @@ Sin dependencias nuevas; sin tocar `package.json` ni el lockfile.
 
 ## 9. Tests (`bun test`)
 
-Preview independiente de Program; selección de item y de slide; TAKE con y sin slide; cambiar Preview sin alterar Program; Next/Previous y límites sin wrap; items sin slides y referencias rotas (TAKE no-op); presentación vacía; Clear/Black y vuelta a Content; `load` descartando Program; recarga conservando Program cuando la slide persiste; snapshot y firma de origen (cambio de rundown y de canción detectado); cambio de Project activo sin recarga automática; store: notifica solo al cambiar, no-op mantiene referencia.
+Preview independiente de Program; selección de item y de slide; TAKE con y sin slide (siempre fija `content`); cambiar Preview sin alterar Program; Next/Previous y límites sin wrap; items sin slides y referencias rotas (TAKE no-op); presentación vacía; Clear/Black conservando `programSlideId` y vuelta a Content recuperando la misma slide; `loadPresentation` descartando Program; `reloadPresentation` conservando Preview y Program cuando los ids persisten y anulando Program cuando desaparece; snapshot y firma de origen (cambio de rundown y de canción detectado); cambio de Project activo sin recarga automática; teclado: atajo reconocido llama a `preventDefault`, foco en input no dispara nada; store: notifica solo al cambiar, no-op mantiene referencia.
 
 ## 10. ADR propuestas
 
