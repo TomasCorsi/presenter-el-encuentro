@@ -8,8 +8,6 @@ import {
   goToFirst,
   goToLast,
   loadPresentation,
-  next,
-  previous,
   reloadPresentation,
   reset,
   selectItem,

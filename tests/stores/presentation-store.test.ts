@@ -107,4 +107,18 @@ describe("createPresentationStore", () => {
     store.loadPresentation([item("a", 2)]);
     expect(store.getState().programSlideId).toBeNull();
   });
+
+  it("auto-avanza Program dentro del item al aire y se detiene al cruzar de item", () => {
+    const store = createPresentationStore();
+    store.loadPresentation([item("a", 2), item("b", 1)]);
+
+    store.take();
+    store.next();
+    expect(store.getState().previewSlideId).toBe("a:s1");
+    expect(store.getState().programSlideId).toBe("a:s1");
+
+    store.next();
+    expect(store.getState().previewSlideId).toBe("b:s0");
+    expect(store.getState().programSlideId).toBe("a:s1");
+  });
 });
