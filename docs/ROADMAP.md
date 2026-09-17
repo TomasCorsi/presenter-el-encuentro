@@ -264,6 +264,16 @@ Project activo no altera el show en curso sin acción del operador.
 
 ---
 
+## Fase 8.1 — Auto-advance de Program dentro del item al aire
+
+- [x] Comandos operativos `nextLive` / `previousLive` en dominio (ADR-037).
+- [x] Next/Previous arrastran Program dentro del item al aire, sin TAKE.
+- [x] Cruzar de item mueve solo Preview: cambiar de item exige TAKE.
+- [x] `clear` / `black` conservan el modo mientras avanza `programSlideId`.
+- [x] Teclado (← / →) con la misma semántica; sin toggle ni configuración.
+
+---
+
 ## Fase 9 — Bible
 
 - [ ] Versiones.
