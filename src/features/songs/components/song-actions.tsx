@@ -12,10 +12,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+/**
+ * Datos planos de uso, calculados en la capa de composición (route).
+ * Songs no importa nada de Projects.
+ */
+export interface SongUsageInfo {
+  occurrences: number;
+  projectNames: string[];
+}
+
 export interface SongActionsProps {
   song: Song;
+  usage?: SongUsageInfo | undefined;
   onDuplicate(): Promise<void>;
   onDelete(): Promise<void>;
+}
+
+function usageMessage(usage: SongUsageInfo): string {
+  const names = usage.projectNames.slice(0, 3).join(", ");
+  const rest = usage.projectNames.length - 3;
+  const projects = rest > 0 ? `${names} y ${rest} más` : names;
+  const times = usage.occurrences === 1 ? "1 vez" : `${usage.occurrences} veces`;
+  return `Está en uso ${times} en: ${projects}. Esas apariciones quedarán como contenido faltante.`;
 }
 
 export function SongActions(props: SongActionsProps) {
@@ -47,6 +65,7 @@ export function SongActions(props: SongActionsProps) {
             <AlertDialogTitle>Eliminar canción</AlertDialogTitle>
             <AlertDialogDescription>
               “{props.song.title}” se eliminará de este dispositivo. Esta acción no se puede deshacer.
+              {props.usage && props.usage.occurrences > 0 ? ` ${usageMessage(props.usage)}` : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

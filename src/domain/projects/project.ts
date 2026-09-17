@@ -1,3 +1,5 @@
+import type { RundownItem } from "./rundown";
+
 export const LOCAL_WORKSPACE_ID = "local-workspace";
 export const PROJECT_NAME_MAX_LENGTH = 100;
 
@@ -6,7 +8,8 @@ export interface Project {
   workspaceId: string;
   name: string;
   eventDate?: string;
-  itemIds: string[];
+  /** Secuencia preparada del evento. Embebida en el Project (ADR-018). */
+  rundown: RundownItem[];
   createdAt: string;
   updatedAt: string;
 }

@@ -8,11 +8,11 @@ class MemoryStorage implements KeyValueStorage {
   private values = new Map<string, string>();
   getItem(key: string) { return this.values.get(key) ?? null; }
   setItem(key: string, value: string) { this.values.set(key, value); }
-  setRaw(value: string) { this.values.set("broadcast-control.projects.v1", value); }
+  setRaw(value: string) { this.values.set("broadcast-control.projects.v2", value); }
 }
 
 const project: Project = {
-  id: "project-1", workspaceId: "local-workspace", name: "Domingo", itemIds: [],
+  id: "project-1", workspaceId: "local-workspace", name: "Domingo", rundown: [],
   createdAt: "2026-09-17T00:00:00.000Z", updatedAt: "2026-09-17T00:00:00.000Z",
 };
 

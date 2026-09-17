@@ -410,10 +410,97 @@ Una sola posición (`currentSlideId`) y selectores con nombres neutrales:
 ### Motivo
 
 El estado actual no representa Program; nombrarlo así hoy introduciría
-semántica falsa. Un rename controlado en la Fase 5 es preferible.
+semántica falsa. Un rename controlado en la Fase 6 es preferible.
 
 ### Consecuencias
 
-En la Fase 5, al aparecer `previewSlideId` y `programSlideId`, se añadirán
+En la Fase 6, al aparecer `previewSlideId` y `programSlideId`, se añadirán
 `getPreviewSlide()` y `getProgramSlide()` con un rename controlado.
 `clear`, `black` y `logo` quedan fuera del motor: son estado de salida.
+
+---
+
+## ADR-018 — Rundown embebido en Project
+
+### Contexto
+
+El Project necesita una secuencia real y ordenada de contenido. El modelo
+tenía `itemIds: string[]`, un placeholder nunca utilizado.
+
+### Decisión
+
+`rundown: RundownItem[]` vive embebido dentro de `Project`. `itemIds` se
+elimina del modelo.
+
+### Motivo
+
+Coherencia con las secciones embebidas de Song (ADR-012); el rundown no tiene
+vida fuera de su project; duplicar un Project duplica su rundown sin joins;
+reordenar es una única escritura atómica. Mantener dos listas de orden
+(`itemIds` y `rundown`) garantizaría desincronización.
+
+### Consecuencias
+
+- `RundownItem.id` es identidad de instancia y `sourceId` identidad de origen:
+  la misma canción puede repetirse sin colisiones.
+- Duplicar un Project genera nuevas identidades de instancia conservando
+  `sourceId`.
+- `order` se normaliza siempre a 0..n-1, también al leer de disco.
+
+---
+
+## ADR-019 — Migración versionada de la clave de Projects
+
+### Decisión
+
+La clave sube a `broadcast-control.projects.v2`. Si solo existe `v1`, se migra
+en memoria (cada Project recibe `rundown: []`, se descarta `itemIds`) y el
+resultado se escribe en `v2`. La clave `v1` **no se borra**: queda como
+respaldo hasta que una fase posterior la limpie.
+
+### Consecuencias
+
+- Ningún proyecto existente se pierde ni se borra silenciosamente.
+- La validación es defensiva y no destructiva a nivel de lista: un `rundown`
+  ausente o inválido pasa a `[]`, y los items inválidos individuales se
+  descartan conservando los válidos.
+- Datos corruptos o versión desconocida → estado vacío, nunca excepción.
+- Coste temporal: los datos quedan duplicados en localStorage.
+
+---
+
+## ADR-020 — Referencias rotas conservadas
+
+### Decisión
+
+Un `RundownItem` cuya fuente ya no existe se conserva: se muestra como
+"Contenido faltante" con el título snapshot y solo el usuario puede
+eliminarlo. Nunca se borra en cascada ni se inventa contenido.
+
+### Consecuencias
+
+En `projectToPresentation` la referencia rota produce un `PresentationItem`
+sin slides, que el motor ya sabe saltar (Fase 4). El rundown y la presentación
+conservan la misma numeración de posiciones.
+
+---
+
+## ADR-021 — Eliminar una Song en uso: advertir, no bloquear
+
+### Decisión
+
+Al eliminar una canción usada en projects, el diálogo indica cuántas veces y
+en qué projects se usa. Si el usuario confirma, la canción se elimina y esas
+apariciones quedan como contenido faltante.
+
+### Motivo
+
+Bloquear obligaría a editar proyectos antiguos solo para limpiar la
+biblioteca; borrar en cascada destruiría trabajo del usuario en silencio.
+
+### Consecuencias
+
+El cálculo de uso es una función pura (`findSongUsage`) y se compone en la
+ruta: `features/songs` no importa lógica, contextos ni servicios de
+`features/projects`. La UI de Songs recibe los datos de uso por props, así que
+no hay dependencia ni ciclo entre features.

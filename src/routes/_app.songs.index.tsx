@@ -6,7 +6,10 @@ import { Page, PageHeader } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { findSongUsage } from "@/domain/projects/rundown-rules";
 import { filterSongs } from "@/domain/songs/song-rules";
+import { useProjects } from "@/features/projects/projects-context";
+import type { SongUsageInfo } from "@/features/songs/components/song-actions";
 import { SongDialog } from "@/features/songs/components/song-dialog";
 import { SongList } from "@/features/songs/components/song-list";
 import { useSongs } from "@/features/songs/songs-context";
@@ -29,6 +32,14 @@ function SongsPage() {
   const [query, setQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const visibleSongs = useMemo(() => filterSongs(songs, query), [songs, query]);
+
+  // Capa de composición: combina Songs y Projects mediante una regla pura.
+  const { projects } = useProjects();
+  const usageBySongId = useMemo(() => {
+    const usage = new Map<string, SongUsageInfo>();
+    for (const song of songs) usage.set(song.id, findSongUsage(projects, song.id));
+    return usage;
+  }, [projects, songs]);
 
   async function handleCreate(title: string, author?: string) {
     const song = await createSong(title, author);
@@ -56,7 +67,7 @@ function SongsPage() {
             </div>
             <p className="text-xs text-muted-foreground" aria-live="polite">{visibleSongs.length} de {songs.length} canciones</p>
           </div>
-          <SongList songs={visibleSongs} hasQuery={Boolean(query.trim())}
+          <SongList songs={visibleSongs} hasQuery={Boolean(query.trim())} usageBySongId={usageBySongId}
             onDuplicate={async (id) => { await duplicateSong(id); }} onDelete={deleteSong} />
         </>
       )}

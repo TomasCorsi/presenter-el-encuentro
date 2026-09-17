@@ -17,7 +17,7 @@ describe("project rules", () => {
 
   test("creates a minimal project with stable identity and dates", () => {
     expect(createProject({ name: "  Domingo  " }, dependencies)).toEqual({
-      id: "project-1", workspaceId: "local-workspace", name: "Domingo", itemIds: [],
+      id: "project-1", workspaceId: "local-workspace", name: "Domingo", rundown: [],
       createdAt: dependencies.now(), updatedAt: dependencies.now(),
     });
   });
@@ -31,16 +31,22 @@ describe("project rules", () => {
     expect(renamed.updatedAt).toBe("2026-09-18T00:00:00.000Z");
   });
 
-  test("duplicates independently and respects the name limit", () => {
-    const original = { ...createProject({ name: "x".repeat(100) }, dependencies), itemIds: ["item-1"] };
-    const copy = duplicateProject(original, { createId: () => "project-2", now: () => "2026-09-19T00:00:00.000Z" });
+  test("duplicates the rundown with new instance ids and respects the name limit", () => {
+    const original = {
+      ...createProject({ name: "x".repeat(100) }, dependencies),
+      rundown: [{ id: "item-1", type: "song" as const, sourceId: "song-a", title: "A", order: 0 }],
+    };
+    let sequence = 0;
+    const copy = duplicateProject(original, {
+      createId: () => (++sequence === 1 ? "project-2" : `item-copy-${sequence}`),
+      now: () => "2026-09-19T00:00:00.000Z",
+    });
     expect(copy.id).toBe("project-2");
     expect(copy.name.endsWith(" — copia")).toBe(true);
     expect(copy.name.length).toBeLessThanOrEqual(100);
-    expect(copy.itemIds).toEqual(["item-1"]);
-    expect(copy.itemIds).not.toBe(original.itemIds);
-    copy.itemIds.push("item-2");
-    expect(original.itemIds).toEqual(["item-1"]);
+    expect(copy.rundown[0]?.sourceId).toBe("song-a");
+    expect(copy.rundown[0]?.id).not.toBe("item-1");
+    expect(copy.rundown).not.toBe(original.rundown);
   });
 
   test("filters case-insensitively and sorts by latest update", () => {
