@@ -64,7 +64,7 @@ function ProjectDetailPage() {
         title={project.name}
         description="Contexto de la producción actual."
         actions={isActive ? <StatusBadge tone="online">Activo</StatusBadge> : (
-          <Button size="sm" onClick={() => void setActiveProject(project.id)}><Radio />Marcar como activo</Button>
+          <Button size="sm" onClick={() => void setActiveProject(project.id).catch(() => undefined)}><Radio />Marcar como activo</Button>
         )}
       />
 

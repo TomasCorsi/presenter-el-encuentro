@@ -25,6 +25,9 @@ export interface ProjectActionsProps {
 export function ProjectActions(props: ProjectActionsProps) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const runMenuAction = (action: () => Promise<void>) => {
+    void action().catch(() => undefined);
+  };
 
   return (
     <>
@@ -36,10 +39,10 @@ export function ProjectActions(props: ProjectActionsProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           {!props.isActive ? (
-            <DropdownMenuItem onSelect={() => void props.onActivate()}><Radio />Marcar como activo</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => runMenuAction(props.onActivate)}><Radio />Marcar como activo</DropdownMenuItem>
           ) : null}
           <DropdownMenuItem onSelect={() => setRenameOpen(true)}><Pencil />Renombrar</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => void props.onDuplicate()}><Copy />Duplicar</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => runMenuAction(props.onDuplicate)}><Copy />Duplicar</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => setDeleteOpen(true)}>
             <Trash2 />Eliminar
@@ -64,7 +67,7 @@ export function ProjectActions(props: ProjectActionsProps) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => void props.onDelete()}>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => runMenuAction(props.onDelete)}>
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
