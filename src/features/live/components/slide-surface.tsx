@@ -32,7 +32,10 @@ export function SlideSurface({
     <div
       className={cn(
         "aspect-video w-full overflow-hidden rounded-md border",
-        tone === "program" && live ? "border-live/60" : "border-border",
+        tone === "program" ?
+          live ? "border-live"
+          : "border-live/40"
+        : "border-primary/40",
         lines.length > 0 ? "bg-transparent" : "grid place-items-center bg-stage",
         className,
       )}
