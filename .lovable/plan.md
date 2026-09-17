@@ -30,12 +30,15 @@ Rename de `getCurrentItem` / `getCurrentSlide` → `getPreviewItem` / `getPrevie
 
 Puros, misma firma `(state, ...) => state`, misma referencia cuando no cambian nada:
 
-- `load(items)` — igual que hoy para Preview; además **descarta Program** (`programSlideId = null`, `programMode = "content"`) porque una presentación nueva no puede seguir al aire con una slide que quizá ya no existe. Excepción: si la slide de Program sigue existiendo por id tras un `reload` explícito, se conserva (caso "recargar presentación" con el mismo rundown).
+- `loadPresentation(state, items)` — inicio o cambio de show: reconstruye runtime, posiciona Preview según la estrategia de Fase 4, y siempre `programSlideId = null` y `programMode = "content"`.
+- `reloadPresentation(state, items)` — solo tras la acción explícita **Recargar presentación**: reconstruye runtime, conserva Preview si su slide (o su item) sigue existiendo, conserva `programSlideId` únicamente si ese id sigue existiendo y, si no, lo pone a `null`. `programMode` se conserva solo mientras siga habiendo Program; sin Program vuelve a `"content"`.
+- Son dos comandos explícitos y testeables por separado: la diferencia nunca se infiere de un flag de UI.
 - `selectItem`, `selectSlide`, `next`, `previous`, `goToFirst`, `goToLast` — sin cambios semánticos, actúan sobre Preview.
-- `take(state)` — copia `previewSlideId` a `programSlideId` y fuerza `programMode = "content"`. No-op si no hay slide de Preview (item vacío o referencia rota). Nunca mueve Preview.
-- `setProgramMode(state, mode)` — `content | clear | black`.
-- `clearProgram(state)` — Program vacío y modo `content`.
+- `take(state)` — siempre establece `programSlideId = previewSlideId` y `programMode = "content"`. No-op si no hay slide de Preview (item vacío o referencia rota). Nunca mueve Preview.
+- `setProgramMode(state, mode)` — `content | clear | black`. Nunca toca `programSlideId`.
+- No se añade ningún comando que vacíe Program: en Fase 6 no hay caso de uso (Clear y Black cubren "sacar del aire" de forma reversible). Si apareciera, se llamaría `resetProgram()`, nunca `clearProgram()`.
 - `reset()` — estado inicial vacío.
+
 
 El motor no gana flags de UI: solo cinco campos y comandos explícitos.
 
