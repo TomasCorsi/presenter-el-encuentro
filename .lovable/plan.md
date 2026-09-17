@@ -1,4 +1,6 @@
-# Fase 4.5 — Project Rundown / Composition
+# Fase 5 — Project Rundown / Composition
+
+Renumeración documental: esta fase pasa a ser **Fase 5**, y las posteriores se desplazan (Fase 6 — Live Mode, Fase 7 — Main Output, Fase 8 — Presets, Fase 9 — Bible, Fase 10 — Media, Fase 11 — Stage + Stream, Fase 12 — PWA + Offline, Fase 13 — Supabase, Fase 14 — Sync Engine, Fase 15 — Backups, Fase 16 — Mobile Remote, Fase 17 — Optimización). No cambia el alcance funcional.
 
 Conectar Projects + Songs + Presentation Engine. El Project pasa a tener un rundown real, ordenado y repetible. Sin Live, sin outputs, sin nuevas dependencias.
 
