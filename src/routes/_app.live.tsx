@@ -31,7 +31,7 @@ import {
   usePresentationStore,
 } from "@/features/presentation/presentation-context";
 import { useProjects } from "@/features/projects/projects-context";
-import { SongsProvider, useSongs } from "@/features/songs/songs-context";
+import { useSongs } from "@/features/songs/songs-context";
 
 const TITLE = "Live — Plataforma de presentación en vivo";
 const DESCRIPTION =
@@ -53,17 +53,15 @@ export const Route = createFileRoute("/_app/live")({
 
 function LivePage() {
   return (
-    <SongsProvider>
-      <PresentationProvider>
-        <LiveConsole />
-      </PresentationProvider>
-    </SongsProvider>
+    <PresentationProvider>
+      <LiveConsole />
+    </PresentationProvider>
   );
 }
 
 function LiveConsole() {
-  const { projects, activeProject, loading } = useProjects();
-  const { songs, loading: songsLoading } = useSongs();
+  const { projects, activeProject, hasLoaded } = useProjects();
+  const { songs, hasLoaded: songsLoaded } = useSongs();
   const store = usePresentationStore();
   const state = usePresentationState();
   const [snapshot, setSnapshot] = useState<LiveSnapshot | null>(null);
@@ -74,11 +72,11 @@ function LiveConsole() {
 
   // Carga inicial del show: un único snapshot explícito por sesión.
   useEffect(() => {
-    if (snapshot || loading || songsLoading || !activeProject) return;
+    if (snapshot || !hasLoaded || !songsLoaded || !activeProject) return;
     const next = buildLiveSnapshot(activeProject, songs);
     setSnapshot(next);
     store.loadPresentation(next.items);
-  }, [activeProject, loading, songs, songsLoading, snapshot, store]);
+  }, [activeProject, hasLoaded, songs, songsLoaded, snapshot, store]);
 
   const showProject = projects.find((project) => project.id === snapshot?.projectId) ?? null;
   const outdated = Boolean(
@@ -113,7 +111,7 @@ function LiveConsole() {
     enabled: Boolean(snapshot) && state.runtime.items.length > 0,
   });
 
-  if (loading || songsLoading) {
+  if (!hasLoaded || !songsLoaded) {
     return <Page><p className="text-sm text-muted-foreground" role="status">Cargando show…</p></Page>;
   }
 

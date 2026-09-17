@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_app/")({
 });
 
 function HomePage() {
-  const { activeProject, loading } = useProjects();
+  const { activeProject, hasLoaded } = useProjects();
   const items = NAV_GROUPS.flatMap((group) => group.items);
   const projects = items.find((item) => item.to === "/projects");
   const live = items.find((item) => item.to === "/live");
@@ -101,7 +101,7 @@ function HomePage() {
               <div className="min-w-0">
                 <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Proyecto activo</p>
                 <p className="mt-0.5 truncate text-sm font-medium text-foreground">
-                  {loading ? "Cargando…" : activeProject?.name ?? "Sin proyecto activo"}
+                  {!hasLoaded ? "Cargando…" : activeProject?.name ?? "Sin proyecto activo"}
                 </p>
               </div>
             </div>

@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_app/projects/")({
 });
 
 function ProjectsPage() {
-  const { projects, activeProjectId, loading, error, clearError, createProject, renameProject, duplicateProject, deleteProject, setActiveProject } = useProjects();
+  const { projects, activeProjectId, hasLoaded, error, clearError, createProject, renameProject, duplicateProject, deleteProject, setActiveProject } = useProjects();
   const navigate = useNavigate({ from: "/projects/" });
   const [query, setQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -44,7 +44,7 @@ function ProjectsPage() {
           <span>{error}</span><Button variant="ghost" size="sm" onClick={clearError}>Cerrar</Button>
         </div>
       ) : null}
-      {loading ? <p className="text-sm text-muted-foreground" role="status">Cargando proyectos…</p> : projects.length === 0 ? (
+      {!hasLoaded ? <p className="text-sm text-muted-foreground" role="status">Cargando proyectos…</p> : projects.length === 0 ? (
         <EmptyState icon={LayoutList} title="Sin proyectos todavía" description="Crea un proyecto para comenzar a preparar una producción."
           actions={<Button size="sm" onClick={() => setCreateOpen(true)}><Plus />Crear proyecto</Button>} />
       ) : (

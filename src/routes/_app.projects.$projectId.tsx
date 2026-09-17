@@ -35,10 +35,10 @@ function formatDate(value: string): string {
 function ProjectDetailPage() {
   const { projectId } = Route.useParams();
   const {
-    projects, activeProjectId, loading, error, clearError,
+    projects, activeProjectId, hasLoaded, error, clearError,
     setActiveProject, addSongToProject, removeRundownItem, moveRundownItem,
   } = useProjects();
-  const { songs, loading: songsLoading } = useSongs();
+  const { songs, hasLoaded: songsLoaded } = useSongs();
   const project = projects.find((item) => item.id === projectId);
 
   const usageBySongId = useMemo(() => {
@@ -50,7 +50,7 @@ function ProjectDetailPage() {
     return usage;
   }, [project?.rundown]);
 
-  if (loading) {
+  if (!hasLoaded) {
     return <Page><p className="text-sm text-muted-foreground" role="status">Cargando proyecto…</p></Page>;
   }
 
@@ -106,7 +106,7 @@ function ProjectDetailPage() {
       <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
         <SongPickerPanel
           songs={songs}
-          loading={songsLoading}
+          loading={!songsLoaded}
           usageBySongId={usageBySongId}
           onAdd={(song) => addSongToProject(project.id, { id: song.id, title: song.title })}
         />
