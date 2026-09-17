@@ -11,7 +11,8 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Fase actual completada: **Fase 8 — Presets**.
+- Fase actual completada: **Fase 8.1 — Auto-advance de Program dentro del
+  item al aire** (sobre la Fase 8 — Presets).
 - Próxima fase: **Fase 9 — Bible** (pendiente de aprobación).
 - Backend: no conectado. Se decide en la Fase 13.
 - Dependencias añadidas hasta la Fase 6: ninguna.
@@ -260,6 +261,16 @@ Project activo no altera el show en curso sin acción del operador.
 - [ ] Background de imagen/vídeo (llega con Media).
 - [ ] Logo.
 - [ ] Transition.
+
+---
+
+## Fase 8.1 — Auto-advance de Program dentro del item al aire
+
+- [x] Comandos operativos `nextLive` / `previousLive` en dominio (ADR-037).
+- [x] Next/Previous arrastran Program dentro del item al aire, sin TAKE.
+- [x] Cruzar de item mueve solo Preview: cambiar de item exige TAKE.
+- [x] `clear` / `black` conservan el modo mientras avanza `programSlideId`.
+- [x] Teclado (← / →) con la misma semántica; sin toggle ni configuración.
 
 ---
 

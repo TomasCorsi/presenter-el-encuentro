@@ -714,3 +714,25 @@ con su `style` resuelto para que Output no lea repositories. La comparación de
 snapshots incluye el estilo: misma slide y mismo texto con estilo distinto
 publican update. Editar un Preset con Live abierto no altera Program; genera
 el aviso de contenido desactualizado hasta que el operador recarga.
+
+## ADR-037 — Auto-advance de Program dentro del item al aire
+
+**Estado:** aceptada (Fase 8.1). Extiende ADR-025.
+
+Next/Previous auto-avanzan Program únicamente dentro del mismo item que ya
+está al aire; cruzar de item requiere TAKE.
+
+La regla vive en comandos operativos de Live (`nextLive` / `previousLive` en
+`src/domain/presentation/presentation-live.ts`), no en componentes React.
+`next` / `previous` del Presentation Engine siguen siendo navegación pura de
+Preview. El store de Live enruta sus comandos de navegación a los operativos,
+así que botones y teclado comparten semántica.
+
+Condiciones para arrastrar Program: hay Program, el item de Program (derivado
+de `programSlideId`) coincide con el item de Preview antes del salto, y la
+slide destino pertenece a ese mismo item. En cualquier otro caso —cruce de
+item, item vacío, referencia rota, sin Program— solo se mueve Preview.
+
+`programMode` nunca cambia en el auto-advance: en `clear` o `black` el
+contenido avanza internamente y la salida sigue vacía o negra (ADR-024). Solo
+TAKE fuerza `content`.

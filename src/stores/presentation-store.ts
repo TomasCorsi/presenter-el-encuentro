@@ -8,13 +8,12 @@ import {
   goToFirst,
   goToLast,
   loadPresentation,
-  next,
-  previous,
   reloadPresentation,
   reset,
   selectItem,
   selectSlide,
 } from "@/domain/presentation/presentation-engine";
+import { nextLive, previousLive } from "@/domain/presentation/presentation-live";
 import {
   setProgramMode,
   take,
@@ -33,7 +32,9 @@ export interface PresentationStore {
   reset(): void;
   selectItem(itemId: string): void;
   selectSlide(slideId: string): void;
+  /** Avanza Preview y arrastra Program dentro del item al aire (ADR-037). */
   next(): void;
+  /** Retrocede Preview y arrastra Program dentro del item al aire (ADR-037). */
   previous(): void;
   goToFirst(): void;
   goToLast(): void;
@@ -75,8 +76,8 @@ export function createPresentationStore(
     reset: () => apply(reset()),
     selectItem: (itemId) => apply(selectItem(state, itemId)),
     selectSlide: (slideId) => apply(selectSlide(state, slideId)),
-    next: () => apply(next(state)),
-    previous: () => apply(previous(state)),
+    next: () => apply(nextLive(state)),
+    previous: () => apply(previousLive(state)),
     goToFirst: () => apply(goToFirst(state)),
     goToLast: () => apply(goToLast(state)),
     take: () => apply(take(state)),
