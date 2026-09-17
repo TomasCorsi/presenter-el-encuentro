@@ -26,7 +26,11 @@ function AppShell() {
       <SongsProvider>
         <PresetsProvider>
           <BibleProvider>
-            <SidebarProvider>
+            {/* El motor de presentación también vive en el shell: montarlo en
+                la ruta /live lo remontaría y lo expondría a duplicados de
+                módulo al dividirse el bundle de la ruta. */}
+            <PresentationProvider>
+              <SidebarProvider>
               {/* Altura fija de viewport: el scroll vive dentro de <main>,
                   nunca en la ventana (la consola de Live no debe desplazarse). */}
               <div className="flex h-screen w-full overflow-hidden bg-background">
