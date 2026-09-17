@@ -26,7 +26,9 @@ function AppShell() {
         <PresetsProvider>
           <BibleProvider>
             <SidebarProvider>
-              <div className="flex min-h-screen w-full bg-background">
+              {/* Altura fija de viewport: el scroll vive dentro de <main>,
+                  nunca en la ventana (la consola de Live no debe desplazarse). */}
+              <div className="flex h-screen w-full overflow-hidden bg-background">
                 <AppSidebar />
                 <SidebarInset className="flex min-w-0 flex-1 flex-col bg-background">
                   <AppTopbar />
