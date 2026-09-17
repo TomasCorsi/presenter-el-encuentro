@@ -304,6 +304,25 @@ Completada.
 
 ---
 
+## Fase 9.1 — Live Operator Workspace
+
+Completada.
+
+- [x] Un clic en una slide la envía al aire (`goLive`), saliendo de Clear/Black.
+- [x] Clic en un RundownItem sigue moviendo solo Preview.
+- [x] Barra de operación fija arriba: Previous, Next, TAKE, Clear, Black, Buscar.
+- [x] Library Dock operativo abajo, colapsable y con scroll propio.
+- [x] Pestañas Songs y Bible reutilizando las fuentes existentes.
+- [x] Dos acciones explícitas por resultado: "Rundown" y "Al aire".
+- [x] Alta incremental (`appendPresentationItem`) sin recargar la presentación.
+- [x] Sin items temporales: todo lo agregado queda en el Project activo.
+- [x] Sin Project activo se puede buscar, pero no agregar.
+- [x] El aviso de desfase externo se conserva al agregar contenido.
+- [x] Atajos: ←, →, Enter/Space, B, C, `/`, Esc; ignorados al escribir.
+- [x] Preferencia local del dock (abierto, pestaña, versión) fuera del Project.
+
+---
+
 ## Fase 10 — Media
 
 - [ ] Images.
