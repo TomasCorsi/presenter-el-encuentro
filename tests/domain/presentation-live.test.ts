@@ -7,7 +7,7 @@ import {
   selectItem,
   selectSlide,
 } from "@/domain/presentation/presentation-engine";
-import { nextLive, previousLive } from "@/domain/presentation/presentation-live";
+import { goLive, nextLive, previousLive } from "@/domain/presentation/presentation-live";
 import { setProgramMode, take } from "@/domain/presentation/presentation-program";
 
 function item(id: string, slideCount: number): PresentationItem {
@@ -123,5 +123,43 @@ describe("nextLive / previousLive", () => {
 
     expect(previousLive(first)).toBe(first);
     expect(nextLive(last)).toBe(last);
+  });
+});
+
+describe("goLive", () => {
+  it("desde content manda la slide al aire y mueve Preview", () => {
+    const state = goLive(onAir(show(), "a:s0"), "b:s1");
+
+    expect(state.previewSlideId).toBe("b:s1");
+    expect(state.previewItemId).toBe("b");
+    expect(state.programSlideId).toBe("b:s1");
+    expect(state.programMode).toBe("content");
+  });
+
+  it("desde clear vuelve a content y muestra la slide", () => {
+    const state = goLive(setProgramMode(onAir(show(), "a:s0"), "clear"), "a:s2");
+
+    expect(state.programSlideId).toBe("a:s2");
+    expect(state.programMode).toBe("content");
+  });
+
+  it("desde black vuelve a content y muestra la slide", () => {
+    const state = goLive(setProgramMode(onAir(show(), "a:s0"), "black"), "a:s2");
+
+    expect(state.programSlideId).toBe("a:s2");
+    expect(state.programMode).toBe("content");
+  });
+
+  it("vuelve a content aunque se haga clic en la slide que ya estaba al aire", () => {
+    const state = goLive(setProgramMode(onAir(show(), "a:s0"), "black"), "a:s0");
+
+    expect(state.programSlideId).toBe("a:s0");
+    expect(state.programMode).toBe("content");
+  });
+
+  it("es no-op con un id desconocido", () => {
+    const base = onAir(show(), "a:s0");
+
+    expect(goLive(base, "fantasma")).toBe(base);
   });
 });
