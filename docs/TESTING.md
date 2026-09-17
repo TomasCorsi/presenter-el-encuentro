@@ -128,3 +128,23 @@ desarrollo.
 Aún no hay runner de tests instalado. Vitest y Playwright se añaden en la
 Fase 4, junto con los primeros tests del Presentation Engine. No se instalan
 dependencias antes de que su fase las requiera.
+
+## Fase 4 — Presentation Engine
+
+`bun test` cubre el motor sin DOM ni navegador:
+
+- **Runtime**: índices por item y slide, orden global navegable, items vacíos
+  presentes en el índice pero fuera del recorrido, normalización de orden e
+  ids duplicados descartados.
+- **Presentación vacía**: load vacío, comandos no-op, selección inexistente.
+- **Navegación**: dentro del item, entre items en ambos sentidos, extremos sin
+  wrap, items sin slides saltados, selectores next/previous en bordes.
+- **Items sin slides**: selección con slide `null`, `next`/`previous` buscando
+  la slide más cercana en esa dirección y no-op cuando no existe.
+- **Reemplazo y reset**: preservación de posición, caídas a item o primera
+  slide, estado vacío, IDs inválidos.
+- **Song → PresentationItem**: determinismo con el mismo `itemId`, ausencia de
+  colisiones con `itemId` distinto, orden de secciones, secciones vacías
+  omitidas y canción sin secciones.
+- **Store**: notificación, `unsubscribe` e identidad de estado estable sin
+  notificar cuando un comando no cambia nada.
