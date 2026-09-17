@@ -22,6 +22,7 @@ import { Route as AppSongsRouteImport } from './routes/_app.songs'
 import { Route as AppProjectsIndexRouteImport } from './routes/_app.projects.index'
 import { Route as AppProjectsProjectIdRouteImport } from './routes/_app.projects.$projectId'
 import { Route as AppSongsIndexRouteImport } from './routes/_app.songs.index'
+import { Route as AppSongsSongIdRouteImport } from './routes/_app.songs.$songId'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -87,6 +88,11 @@ const AppSongsIndexRoute = AppSongsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSongsRoute,
 } as any)
+const AppSongsSongIdRoute = AppSongsSongIdRouteImport.update({
+  id: '/$songId',
+  path: '/$songId',
+  getParentRoute: () => AppSongsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AppSettingsRoute
   '/songs': typeof AppSongsRouteWithChildren
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/songs/$songId': typeof AppSongsSongIdRoute
   '/projects/': typeof AppProjectsIndexRoute
   '/songs/': typeof AppSongsIndexRoute
 }
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AppSettingsRoute
   '/': typeof AppIndexRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/songs/$songId': typeof AppSongsSongIdRoute
   '/projects': typeof AppProjectsIndexRoute
   '/songs': typeof AppSongsIndexRoute
 }
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/_app/songs': typeof AppSongsRouteWithChildren
   '/_app/': typeof AppIndexRoute
   '/_app/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/_app/songs/$songId': typeof AppSongsSongIdRoute
   '/_app/projects/': typeof AppProjectsIndexRoute
   '/_app/songs/': typeof AppSongsIndexRoute
 }
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/songs'
     | '/projects/$projectId'
+    | '/songs/$songId'
     | '/projects/'
     | '/songs/'
   fileRoutesByTo: FileRoutesByTo
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/'
     | '/projects/$projectId'
+    | '/songs/$songId'
     | '/projects'
     | '/songs'
   id:
@@ -170,6 +181,7 @@ export interface FileRouteTypes {
     | '/_app/songs'
     | '/_app/'
     | '/_app/projects/$projectId'
+    | '/_app/songs/$songId'
     | '/_app/projects/'
     | '/_app/songs/'
   fileRoutesById: FileRoutesById
@@ -271,6 +283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSongsIndexRouteImport
       parentRoute: typeof AppSongsRoute
     }
+    '/_app/songs/$songId': {
+      id: '/_app/songs/$songId'
+      path: '/$songId'
+      fullPath: '/songs/$songId'
+      preLoaderRoute: typeof AppSongsSongIdRouteImport
+      parentRoute: typeof AppSongsRoute
+    }
   }
 }
 
@@ -289,10 +308,12 @@ const AppProjectsRouteWithChildren = AppProjectsRoute._addFileChildren(
 )
 
 interface AppSongsRouteChildren {
+  AppSongsSongIdRoute: typeof AppSongsSongIdRoute
   AppSongsIndexRoute: typeof AppSongsIndexRoute
 }
 
 const AppSongsRouteChildren: AppSongsRouteChildren = {
+  AppSongsSongIdRoute: AppSongsSongIdRoute,
   AppSongsIndexRoute: AppSongsIndexRoute,
 }
 

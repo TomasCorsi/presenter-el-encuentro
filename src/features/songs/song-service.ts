@@ -4,6 +4,7 @@ import {
   createSong,
   duplicateSong,
   moveSection,
+  normalizeSongTitle,
   removeSection,
   renameSong,
   sortSongsByUpdatedAt,
@@ -44,6 +45,23 @@ export class SongService {
 
   async delete(id: string): Promise<void> {
     await this.repository.delete(id);
+  }
+
+  /**
+   * Persiste un borrador completo (título, autor y secciones). Valida el
+   * título y confirma solo cuando el repository confirma la escritura.
+   */
+  async save(draft: Song): Promise<Song> {
+    const existing = await this.requireSong(draft.id);
+    const validated: Song = {
+      ...draft,
+      title: normalizeSongTitle(draft.title),
+      workspaceId: existing.workspaceId,
+      createdAt: existing.createdAt,
+      updatedAt: this.dependencies.now(),
+      sections: draft.sections.map((section) => ({ ...section })),
+    };
+    return this.repository.update(validated);
   }
 
   async addSection(id: string, type: SongSectionType): Promise<Song> {
