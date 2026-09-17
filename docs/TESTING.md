@@ -91,6 +91,18 @@ Una fase no está completa si:
 
 ---
 
+## Tooling Recomendado (Fase 4+)
+
+- **Unit/Logic**: `Vitest` (Fast, Vite-native).
+- **Components**: `Vitest` + `@testing-library/react`.
+- **E2E**: `Playwright`.
+
+## Estrategia de Minimización
+
+1. **Lógica Pura**: Extraer reglas de negocio a funciones puras testeables sin DOM.
+2. **Lazy Tooling**: No añadir runners hasta la Fase 4.
+3. **Mocking**: Usar `msw` solo cuando la complejidad de red lo requiera.
+
 ## Nota de Fase 0
 
 Aún no hay runner de tests instalado. Vitest y Playwright se añaden en la

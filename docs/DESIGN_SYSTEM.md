@@ -140,6 +140,25 @@ large
 
 - Debe mostrar claramente si está activo.
 
+## Densidad y Composición
+
+### Listas
+
+- Utilizar `Table` con celdas compactas (padding reducido).
+- Información técnica en fuente `mono`.
+- Acciones secundarias visibles al hover.
+
+### Diálogos
+
+- Ancho contenido (`max-w-md` o `max-w-lg`).
+- Agrupación densa de campos.
+- Evitar decoraciones innecesarias.
+
+### Detalle
+
+- Uso de paneles laterales (`Sheet`) o vistas divididas (`ResizablePanel`).
+- Jerarquía clara: el contenido principal domina la vista.
+
 ## Accessibility
 
 - Focus visible.
