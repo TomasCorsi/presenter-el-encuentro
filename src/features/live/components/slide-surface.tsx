@@ -29,14 +29,14 @@ export function SlideSurface({
   return (
     <div
       className={cn(
-        "flex aspect-video w-full items-center justify-center overflow-hidden rounded-md border bg-black/90 p-6 text-center",
+        "flex aspect-video w-full items-center justify-center overflow-hidden rounded-md border bg-stage p-6 text-center",
         tone === "program" && live ? "border-live/60" : "border-border",
         className,
       )}
       {...props}
     >
       {lines.length > 0 ? (
-        <p className="max-h-full overflow-hidden text-balance text-lg font-semibold leading-snug text-slate-50 lg:text-2xl">
+        <p className="max-h-full overflow-hidden text-balance text-lg font-semibold leading-snug text-stage-foreground lg:text-2xl">
           {lines.map((line, index) => (
             <span key={`${slide?.id}-${index}`} className="block">
               {line}
