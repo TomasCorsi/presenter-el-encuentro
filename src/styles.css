@@ -52,6 +52,8 @@
   /* Tokens de estado del producto (Fase 1) */
   --color-live: var(--live);
   --color-live-foreground: var(--live-foreground);
+  --color-stage: var(--stage);
+  --color-stage-foreground: var(--stage-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
