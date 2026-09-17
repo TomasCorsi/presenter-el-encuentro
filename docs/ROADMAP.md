@@ -11,16 +11,17 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Fase actual completada: **Fase 5 — Project Rundown / Composition**.
-- Próxima fase: **Fase 6 — Live Mode** (pendiente de aprobación).
+- Fase actual completada: **Fase 6 — Live Mode**.
+- Próxima fase: **Fase 7 — Output Main** (pendiente de aprobación).
 - Backend: no conectado. Se decide en la Fase 13.
-- Dependencias añadidas hasta la Fase 5: ninguna.
+- Dependencias añadidas hasta la Fase 6: ninguna.
 - Renumeración: Rundown pasa a ser la Fase 5 y las fases posteriores se
   desplazan una posición (Live Mode → Fase 6, …, Supabase → Fase 13).
 - Implementado hasta ahora: documentación en `/docs`, tema oscuro con tokens
   semánticos, App Shell, gestión local completa de Projects, biblioteca de
-  Songs con editor de secciones y autoguardado, y el Presentation Engine como
-  dominio puro con store vanilla, sin UI todavía.
+  Songs con editor de secciones y autoguardado, Presentation Engine como
+  dominio puro con store vanilla, y la consola Live con Preview, Program,
+  TAKE, Clear/Black y atajos de teclado.
 - Ancho de página: lo decide cada pantalla (`contained` o `full`), no el shell.
 - Tipografía: stack del sistema, sin fuentes externas (offline-first).
 - Dirección visual: superficie de control broadcast, con jerarquía operativa,
@@ -211,15 +212,27 @@ agregarla genera otro `itemId` y no restaura la posición anterior.
 
 ## Fase 6 — Live Mode
 
-- [ ] Rundown.
-- [ ] Preview.
-- [ ] Program.
-- [ ] Slide grid.
-- [ ] Controles.
-- [ ] Keyboard shortcuts.
-- [ ] Estado Live.
+- [x] Rundown de solo lectura sobre el show cargado.
+- [x] Preview y Program separados (`previewSlideId` / `programSlideId`).
+- [x] Slide grid del item seleccionado, con marca de Preview y de Program.
+- [x] Controles Previous / Next / TAKE / Clear / Black.
+- [x] Atajos: ← anterior, → siguiente, Enter o Espacio para TAKE.
+- [x] Snapshot explícito del Project activo, con aviso de contenido
+      actualizado y recarga manual.
+- [x] Tests de Program, load/reload y composición del snapshot.
+- [ ] Logo: diferido hasta Presets/Media.
+- [ ] Persistencia del estado live: fuera de alcance.
+
+### Estado
+
+- [x] Completada
+
+Sin `/output/main`, sin BroadcastChannel y sin persistencia: recargar la
+página reinicia la sesión en vivo. Live nunca edita el rundown, y el cambio de
+Project activo no altera el show en curso sin acción del operador.
 
 ---
+
 
 ## Fase 7 — Output Main
 

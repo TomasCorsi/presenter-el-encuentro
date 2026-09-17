@@ -22,7 +22,7 @@ describe("createPresentationStore", () => {
   it("arranca vacío", () => {
     const store = createPresentationStore();
 
-    expect(store.getState().currentSlideId).toBeNull();
+    expect(store.getState().previewSlideId).toBeNull();
   });
 
   it("notifica a los suscriptores cuando el estado cambia", () => {
@@ -32,16 +32,16 @@ describe("createPresentationStore", () => {
       notifications += 1;
     });
 
-    store.load([item("a", 2)]);
+    store.loadPresentation([item("a", 2)]);
     store.next();
 
     expect(notifications).toBe(2);
-    expect(store.getState().currentSlideId).toBe("a:s1");
+    expect(store.getState().previewSlideId).toBe("a:s1");
   });
 
   it("no notifica cuando un comando no cambia nada", () => {
     const store = createPresentationStore();
-    store.load([item("a", 1)]);
+    store.loadPresentation([item("a", 1)]);
 
     let notifications = 0;
     store.subscribe(() => {
@@ -63,7 +63,7 @@ describe("createPresentationStore", () => {
       notifications += 1;
     });
 
-    store.load([item("a", 2)]);
+    store.loadPresentation([item("a", 2)]);
     unsubscribe();
     store.next();
 
@@ -72,21 +72,39 @@ describe("createPresentationStore", () => {
 
   it("expone los comandos de navegación", () => {
     const store = createPresentationStore();
-    store.load([item("a", 2), item("b", 1)]);
+    store.loadPresentation([item("a", 2), item("b", 1)]);
 
     store.goToLast();
-    expect(store.getState().currentSlideId).toBe("b:s0");
+    expect(store.getState().previewSlideId).toBe("b:s0");
 
     store.previous();
-    expect(store.getState().currentSlideId).toBe("a:s1");
+    expect(store.getState().previewSlideId).toBe("a:s1");
 
     store.selectItem("b");
-    expect(store.getState().currentItemId).toBe("b");
+    expect(store.getState().previewItemId).toBe("b");
 
     store.goToFirst();
-    expect(store.getState().currentSlideId).toBe("a:s0");
+    expect(store.getState().previewSlideId).toBe("a:s0");
 
     store.reset();
-    expect(store.getState().currentItemId).toBeNull();
+    expect(store.getState().previewItemId).toBeNull();
+  });
+
+  it("expone TAKE y los modos de salida sin perder el contenido de Program", () => {
+    const store = createPresentationStore();
+    store.loadPresentation([item("a", 2)]);
+
+    store.take();
+    expect(store.getState().programSlideId).toBe("a:s0");
+
+    store.toggleProgramMode("black");
+    expect(store.getState().programMode).toBe("black");
+    expect(store.getState().programSlideId).toBe("a:s0");
+
+    store.toggleProgramMode("black");
+    expect(store.getState().programMode).toBe("content");
+
+    store.loadPresentation([item("a", 2)]);
+    expect(store.getState().programSlideId).toBeNull();
   });
 });

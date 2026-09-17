@@ -1,22 +1,35 @@
-import type { PresentationItem, PresentationState } from "@/domain/presentation/presentation";
+import type {
+  PresentationItem,
+  PresentationState,
+  ProgramMode,
+} from "@/domain/presentation/presentation";
 import {
   createInitialPresentationState,
   goToFirst,
   goToLast,
-  load,
+  loadPresentation,
   next,
   previous,
+  reloadPresentation,
   reset,
   selectItem,
   selectSlide,
 } from "@/domain/presentation/presentation-engine";
+import {
+  setProgramMode,
+  take,
+  toggleProgramMode,
+} from "@/domain/presentation/presentation-program";
 
 type Listener = () => void;
 
 export interface PresentationStore {
   getState(): PresentationState;
   subscribe(listener: Listener): () => void;
-  load(items: PresentationItem[]): void;
+  /** Inicio o cambio de show: descarta Program. */
+  loadPresentation(items: PresentationItem[]): void;
+  /** Recarga explícita: conserva Preview y Program cuando siguen existiendo. */
+  reloadPresentation(items: PresentationItem[]): void;
   reset(): void;
   selectItem(itemId: string): void;
   selectSlide(slideId: string): void;
@@ -24,6 +37,9 @@ export interface PresentationStore {
   previous(): void;
   goToFirst(): void;
   goToLast(): void;
+  take(): void;
+  setProgramMode(mode: ProgramMode): void;
+  toggleProgramMode(mode: Exclude<ProgramMode, "content">): void;
 }
 
 /**
@@ -54,7 +70,8 @@ export function createPresentationStore(
         listeners.delete(listener);
       };
     },
-    load: (items) => apply(load(state, items)),
+    loadPresentation: (items) => apply(loadPresentation(state, items)),
+    reloadPresentation: (items) => apply(reloadPresentation(state, items)),
     reset: () => apply(reset()),
     selectItem: (itemId) => apply(selectItem(state, itemId)),
     selectSlide: (slideId) => apply(selectSlide(state, slideId)),
@@ -62,5 +79,8 @@ export function createPresentationStore(
     previous: () => apply(previous(state)),
     goToFirst: () => apply(goToFirst(state)),
     goToLast: () => apply(goToLast(state)),
+    take: () => apply(take(state)),
+    setProgramMode: (mode) => apply(setProgramMode(state, mode)),
+    toggleProgramMode: (mode) => apply(toggleProgramMode(state, mode)),
   };
 }

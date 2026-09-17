@@ -414,9 +414,10 @@ semántica falsa. Un rename controlado en la Fase 6 es preferible.
 
 ### Consecuencias
 
-En la Fase 6, al aparecer `previewSlideId` y `programSlideId`, se añadirán
-`getPreviewSlide()` y `getProgramSlide()` con un rename controlado.
-`clear`, `black` y `logo` quedan fuera del motor: son estado de salida.
+Cerrada en la Fase 6: `getCurrentItem()` / `getCurrentSlide()` pasaron a
+`getPreviewItem()` / `getPreviewSlide()` y se añadieron los selectores de
+Program (ADR-022). `logo` sigue fuera hasta Presets/Media.
+
 
 ---
 
@@ -504,3 +505,102 @@ El cálculo de uso es una función pura (`findSongUsage`) y se compone en la
 ruta: `features/songs` no importa lógica, contextos ni servicios de
 `features/projects`. La UI de Songs recibe los datos de uso por props, así que
 no hay dependencia ni ciclo entre features.
+
+---
+
+## ADR-022 — Preview y Program separados
+
+### Decisión
+
+`PresentationState` guarda `previewItemId` + `previewSlideId` y, de forma
+independiente, `programSlideId`. El item de Program se deriva del runtime; no
+se almacena.
+
+### Motivo
+
+Guardar el par item/slide de Program permitiría estados contradictorios. Un
+único id es siempre resoluble mediante `slideLocationById`.
+
+### Consecuencias
+
+Cierra ADR-017: los selectores neutrales pasan a `getPreviewItem` /
+`getPreviewSlide`, y se añaden `getProgramItem`, `getProgramSlide` y
+`getProgramOutput`.
+
+---
+
+## ADR-023 — Live opera sobre un snapshot
+
+### Decisión
+
+Live compone el show una vez (`buildLiveSnapshot`) y no vuelve a leer la
+biblioteca por su cuenta. Si el origen cambia, avisa y ofrece **Recargar
+presentación**. Cambiar el Project activo tampoco recarga: ofrece **Cargar
+este proyecto**.
+
+### Motivo
+
+Durante la operación, un cambio silencioso de contenido es un fallo de
+producción. Además, recomponer cambia ids de slide y Program podría quedar
+apuntando a nada.
+
+### Consecuencias
+
+El desfase se detecta con una firma barata (`updatedAt` del Project y de las
+Songs referenciadas), así que un guardado sin cambios reales puede producir un
+falso positivo.
+
+---
+
+## ADR-024 — ProgramMode como estado de salida
+
+### Decisión
+
+`programMode: "content" | "clear" | "black"`, ortogonal al contenido.
+`clear` y `black` nunca borran `programSlideId`. No existe un comando que
+vacíe Program en la Fase 6; si hiciera falta se llamaría `resetProgram()`.
+
+### Consecuencias
+
+Volver a `content` devuelve al aire exactamente la misma slide. `logo` se
+añadirá al tipo cuando existan Presets y Media.
+
+---
+
+## ADR-025 — Selección + TAKE
+
+### Decisión
+
+El click selecciona en Preview; solo TAKE envía a Program. Next y Previous
+mueven Preview, tanto con botones como con teclado.
+
+### Motivo
+
+Mandar contenido al aire por un click accidental es el error más caro en
+producción. Una sola semántica de navegación evita ambigüedad.
+
+### Consecuencias
+
+Los items sin slides y las referencias rotas son seleccionables, pero TAKE
+queda deshabilitado y es no-op. Un modo rápido que avance Program se evaluará
+en una fase posterior.
+
+---
+
+## ADR-026 — loadPresentation frente a reloadPresentation
+
+### Decisión
+
+Dos comandos explícitos: `loadPresentation` (inicio o cambio de show, descarta
+Program) y `reloadPresentation` (recarga pedida por el operador, conserva
+Preview y Program cuando sus ids siguen existiendo).
+
+### Motivo
+
+Un único `load` con comportamiento distinto según un flag de la UI esconde
+semántica crítica en la capa equivocada y es difícil de probar.
+
+### Consecuencias
+
+Ambos comandos se prueban por separado, incluido el caso en que la slide de
+Program desaparece y el modo vuelve a `content`.

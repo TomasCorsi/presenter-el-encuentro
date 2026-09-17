@@ -63,15 +63,26 @@ export interface PresentationRuntime {
 }
 
 /**
+ * Modo de salida de Program. Es estado operativo, ortogonal al contenido:
+ * `clear` y `black` nunca borran `programSlideId` (ADR-024).
+ * `logo` llegará con Presets/Media.
+ */
+export type ProgramMode = "content" | "clear" | "black";
+
+/**
  * Fuente de verdad posicional del motor.
  *
  * Invariantes:
- * 1. `currentItemId` puede apuntar a un item válido aunque no tenga slides.
- * 2. `currentSlideId` es `null` cuando el item seleccionado no tiene slides.
- * 3. Si `currentSlideId !== null`, pertenece siempre a `currentItemId`.
+ * 1. `previewItemId` puede apuntar a un item válido aunque no tenga slides.
+ * 2. `previewSlideId` es `null` cuando el item seleccionado no tiene slides.
+ * 3. Si `previewSlideId !== null`, pertenece siempre a `previewItemId`.
+ * 4. Program guarda un único id; su item se deriva del runtime (ADR-022).
  */
 export interface PresentationState {
   runtime: PresentationRuntime;
-  currentItemId: string | null;
-  currentSlideId: string | null;
+  previewItemId: string | null;
+  previewSlideId: string | null;
+  programSlideId: string | null;
+  programMode: ProgramMode;
 }
+

@@ -164,3 +164,19 @@ dependencias antes de que su fase las requiera.
 - **Rundown → PresentationItems**: orden, `itemId` de instancia, `sourceId` de
   origen, canción repetida sin colisiones de ids de slide, referencia rota como
   item sin slides y rundown vacío.
+
+## Fase 6 — Live Mode
+
+`bun test` cubre la operación sin DOM:
+
+- **Program**: TAKE con y sin slide de Preview, TAKE fijando `content`, Preview
+  que se mueve sin arrastrar Program, y marcas de slide/item al aire.
+- **Modos de salida**: `clear` y `black` conservando `programSlideId`, vuelta a
+  `content` recuperando la misma slide, toggle y no-op al repetir modo.
+- **Load / Reload**: `loadPresentation` descartando Program siempre;
+  `reloadPresentation` conservando Preview y Program cuando los ids persisten y
+  anulándolos cuando desaparecen.
+- **Snapshot**: composición del show, referencias rotas como items sin slides y
+  firma de origen que detecta cambios de rundown y de canción.
+- **Store**: TAKE y modos de salida a través del store, sin notificar cuando un
+  comando no cambia nada.

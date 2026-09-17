@@ -5,7 +5,7 @@ import {
   createInitialPresentationState,
   goToFirst,
   goToLast,
-  load,
+  loadPresentation,
   next,
   previous,
   reset,
@@ -13,9 +13,9 @@ import {
   selectSlide,
 } from "@/domain/presentation/presentation-engine";
 import {
-  getCurrentItem,
-  getCurrentSlide,
-  getCurrentSlideIndex,
+  getPreviewItem,
+  getPreviewSlide,
+  getPreviewSlideIndex,
   getNextSlide,
   getPreviousSlide,
   isEmpty,
@@ -41,7 +41,7 @@ function item(id: string, slideCount: number): PresentationItem {
 }
 
 function loaded(items: PresentationItem[]) {
-  return load(createInitialPresentationState(), items);
+  return loadPresentation(createInitialPresentationState(), items);
 }
 
 describe("presentación vacía", () => {
@@ -49,8 +49,8 @@ describe("presentación vacía", () => {
     const state = loaded([]);
 
     expect(isEmpty(state)).toBe(true);
-    expect(state.currentItemId).toBeNull();
-    expect(state.currentSlideId).toBeNull();
+    expect(state.previewItemId).toBeNull();
+    expect(state.previewSlideId).toBeNull();
   });
 
   it("next, previous, goToFirst y goToLast son no-ops", () => {
@@ -76,27 +76,27 @@ describe("navegación", () => {
   it("posiciona en la primera slide al cargar", () => {
     const state = loaded(items);
 
-    expect(state.currentItemId).toBe("a");
-    expect(state.currentSlideId).toBe("a:s0");
+    expect(state.previewItemId).toBe("a");
+    expect(state.previewSlideId).toBe("a:s0");
   });
 
   it("avanza y retrocede dentro del item", () => {
     const state = next(loaded(items));
 
-    expect(state.currentSlideId).toBe("a:s1");
-    expect(getCurrentSlideIndex(state)).toBe(1);
-    expect(previous(state).currentSlideId).toBe("a:s0");
+    expect(state.previewSlideId).toBe("a:s1");
+    expect(getPreviewSlideIndex(state)).toBe(1);
+    expect(previous(state).previewSlideId).toBe("a:s0");
   });
 
   it("atraviesa el límite entre items en ambos sentidos", () => {
     const state = next(next(loaded(items)));
 
-    expect(state.currentItemId).toBe("b");
-    expect(state.currentSlideId).toBe("b:s0");
+    expect(state.previewItemId).toBe("b");
+    expect(state.previewSlideId).toBe("b:s0");
 
     const back = previous(state);
-    expect(back.currentItemId).toBe("a");
-    expect(back.currentSlideId).toBe("a:s1");
+    expect(back.previewItemId).toBe("a");
+    expect(back.previewSlideId).toBe("a:s1");
   });
 
   it("no hace wrap en los extremos", () => {
@@ -104,25 +104,25 @@ describe("navegación", () => {
     expect(previous(first)).toBe(first);
 
     const last = goToLast(loaded(items));
-    expect(last.currentSlideId).toBe("b:s1");
+    expect(last.previewSlideId).toBe("b:s1");
     expect(next(last)).toBe(last);
   });
 
   it("selecciona item y slide de forma explícita", () => {
     const state = selectItem(loaded(items), "b");
-    expect(state.currentSlideId).toBe("b:s0");
+    expect(state.previewSlideId).toBe("b:s0");
 
     const selected = selectSlide(state, "a:s1");
-    expect(selected.currentItemId).toBe("a");
-    expect(getCurrentItem(selected)?.id).toBe("a");
-    expect(getCurrentSlide(selected)?.id).toBe("a:s1");
+    expect(selected.previewItemId).toBe("a");
+    expect(getPreviewItem(selected)?.id).toBe("a");
+    expect(getPreviewSlide(selected)?.id).toBe("a:s1");
   });
 
   it("salta items sin slides durante la navegación", () => {
     const state = loaded([item("a", 1), item("vacio", 0), item("b", 1)]);
 
-    expect(next(state).currentItemId).toBe("b");
-    expect(previous(next(state)).currentItemId).toBe("a");
+    expect(next(state).previewItemId).toBe("b");
+    expect(previous(next(state)).previewItemId).toBe("a");
   });
 
   it("expone next y previous slide derivadas", () => {
@@ -140,22 +140,22 @@ describe("items sin slides", () => {
   it("permite seleccionar un item vacío con slide null", () => {
     const state = selectItem(loaded(items), "vacio");
 
-    expect(state.currentItemId).toBe("vacio");
-    expect(state.currentSlideId).toBeNull();
-    expect(getCurrentItem(state)?.id).toBe("vacio");
-    expect(getCurrentSlide(state)).toBeNull();
+    expect(state.previewItemId).toBe("vacio");
+    expect(state.previewSlideId).toBeNull();
+    expect(getPreviewItem(state)?.id).toBe("vacio");
+    expect(getPreviewSlide(state)).toBeNull();
   });
 
   it("next desde un item vacío busca la primera slide posterior", () => {
     const state = next(selectItem(loaded(items), "vacio"));
 
-    expect(state.currentSlideId).toBe("b:s0");
+    expect(state.previewSlideId).toBe("b:s0");
   });
 
   it("previous desde un item vacío busca la última slide anterior", () => {
     const state = previous(selectItem(loaded(items), "vacio"));
 
-    expect(state.currentSlideId).toBe("a:s0");
+    expect(state.previewSlideId).toBe("a:s0");
   });
 
   it("es no-op cuando no hay slides en esa dirección", () => {
@@ -170,47 +170,47 @@ describe("items sin slides", () => {
 describe("reemplazo y reset", () => {
   it("preserva la slide actual si sigue existiendo", () => {
     const state = next(loaded([item("a", 2), item("b", 1)]));
-    const reloaded = load(state, [item("a", 2), item("b", 2)]);
+    const reloaded = loadPresentation(state, [item("a", 2), item("b", 2)]);
 
-    expect(reloaded.currentSlideId).toBe("a:s1");
+    expect(reloaded.previewSlideId).toBe("a:s1");
   });
 
   it("cae a la primera slide del item cuando la slide desaparece", () => {
     const state = next(loaded([item("a", 2)]));
-    const reloaded = load(state, [item("a", 1)]);
+    const reloaded = loadPresentation(state, [item("a", 1)]);
 
-    expect(reloaded.currentItemId).toBe("a");
-    expect(reloaded.currentSlideId).toBe("a:s0");
+    expect(reloaded.previewItemId).toBe("a");
+    expect(reloaded.previewSlideId).toBe("a:s0");
   });
 
   it("cae a la primera slide navegable cuando el item desaparece", () => {
     const state = loaded([item("a", 1)]);
-    const reloaded = load(state, [item("b", 1)]);
+    const reloaded = loadPresentation(state, [item("b", 1)]);
 
-    expect(reloaded.currentSlideId).toBe("b:s0");
+    expect(reloaded.previewSlideId).toBe("b:s0");
   });
 
   it("queda vacío cuando no queda ninguna slide", () => {
     const state = loaded([item("a", 1)]);
-    const reloaded = load(state, []);
+    const reloaded = loadPresentation(state, []);
 
-    expect(reloaded.currentItemId).toBeNull();
-    expect(reloaded.currentSlideId).toBeNull();
+    expect(reloaded.previewItemId).toBeNull();
+    expect(reloaded.previewSlideId).toBeNull();
   });
 
   it("mantiene el item seleccionado si sobrevive sin slides", () => {
     const state = loaded([item("a", 1)]);
-    const reloaded = load(state, [item("a", 0)]);
+    const reloaded = loadPresentation(state, [item("a", 0)]);
 
-    expect(reloaded.currentItemId).toBe("a");
-    expect(reloaded.currentSlideId).toBeNull();
+    expect(reloaded.previewItemId).toBe("a");
+    expect(reloaded.previewSlideId).toBeNull();
   });
 
   it("reset devuelve el estado inicial vacío", () => {
     const state = reset();
 
     expect(isEmpty(state)).toBe(true);
-    expect(state.currentSlideId).toBeNull();
+    expect(state.previewSlideId).toBeNull();
   });
 
   it("IDs inválidos nunca rompen el estado", () => {
