@@ -301,3 +301,119 @@ Estados visibles: `Guardando…`, `Guardado hh:mm`, `Cambios sin guardar`,
   el volumen esperado es pequeño temporalmente y los errores de cuota son
   errores reales de persistencia que se muestran al usuario.
 - IndexedDB será la solución definitiva en su fase (Fase 11).
+
+---
+
+## ADR-014 — Presentation Engine como dominio puro
+
+### Contexto
+
+El motor debe alimentar Live, Outputs, Stage, Stream y Remote sin que la
+lógica de presentación se reparta entre componentes React.
+
+### Decisión
+
+- Comandos puros `(state, ...) => state`: `load`, `reset`, `selectItem`,
+  `selectSlide`, `next`, `previous`, `goToFirst`, `goToLast`.
+- Índices derivados explícitos mediante `buildPresentationRuntime(items)`,
+  construidos solo cuando cambia la presentación. No hay caches mutables
+  ocultos dentro del motor.
+- Única fuente de verdad posicional: `currentItemId` + `currentSlideId`.
+  Los índices, `currentItem`, `currentSlide`, `nextSlide` y `previousSlide`
+  son selectores derivados, nunca estado almacenado.
+- Sin `window`, `document`, `localStorage` ni `BroadcastChannel`.
+
+### Semántica de items sin slides
+
+1. `currentItemId` puede apuntar a un item válido aunque no tenga slides.
+2. `currentSlideId` es `null` cuando ese item no tiene slides.
+3. Si `currentSlideId !== null`, pertenece siempre a `currentItemId`.
+
+Desde un item vacío, `next()` busca la primera slide navegable posterior y
+`previous()` la última anterior. Si no existe, es no-op. Durante la
+navegación normal los items sin slides se saltan.
+
+### Límites
+
+`next()` en la última slide navegable y `previous()` en la primera son
+no-ops: sin wrap y sin excepción. Los IDs inexistentes devuelven la misma
+referencia de estado, nunca un error ni una referencia imposible.
+
+---
+
+## ADR-015 — Store vanilla en lugar de Zustand
+
+### Contexto
+
+ADR-008 difirió la elección de librería de estado hasta esta fase.
+
+### Decisión
+
+Store propio framework-agnóstico (`getState`, `subscribe`, comandos) sobre el
+dominio puro. En React se consume con `useSyncExternalStore`, con
+`getServerSnapshot` explícito para SSR en TanStack Start.
+
+### Motivo
+
+Zustand aportaría prácticamente lo mismo que unas pocas líneas propias,
+mientras que la independencia del dominio respecto de React ya obliga a
+separar dominio y store. Context + reducer ataría el estado al árbol de
+React, y las ventanas de output no comparten árbol.
+
+### Consecuencias
+
+- Cero dependencias nuevas.
+- El store permite suscripciones dentro de UN mismo runtime JS.
+- NO sincroniza por sí mismo ventanas distintas; la sincronización entre
+  ventanas llegará por otro mecanismo en su fase (ver ADR-010).
+
+---
+
+## ADR-016 — Slides de runtime derivadas e identidad de instancia
+
+### Decisión
+
+- Las slides no se persisten en la Fase 4: se derivan de la Song mediante
+  una transformación pura y determinista.
+- `PresentationItem.id` es la identidad de ESA instancia dentro de una
+  presentación; `sourceId` es la identidad de la entidad original.
+- IDs de slide: `${itemId}:${sectionId}:${chunkIndex}`.
+
+### Motivo
+
+Una misma canción puede repetirse dentro de un mismo rundown (A, B, A). La
+separación evita colisiones y mantiene los IDs estables mientras se use el
+mismo `itemId`.
+
+### Consecuencias
+
+- El item de runtime lleva `slides` embebidas en lugar de `slideIds`:
+  divergencia consciente respecto al modelo persistido.
+- División versión 1: una sección = una slide. Dividir por líneas o altura
+  requiere tipografía y tamaño de output (Presets, Fase 7).
+
+---
+
+## ADR-017 — Nomenclatura neutral y Preview/Program pospuesto
+
+### Contexto
+
+Más adelante hará falta seleccionar una slide en Preview y enviarla a
+Program, pero hoy no existe ningún consumidor de esa separación.
+
+### Decisión
+
+Una sola posición (`currentSlideId`) y selectores con nombres neutrales:
+`getCurrentItem()` y `getCurrentSlide()`. No se usa todavía nomenclatura
+`program*`.
+
+### Motivo
+
+El estado actual no representa Program; nombrarlo así hoy introduciría
+semántica falsa. Un rename controlado en la Fase 5 es preferible.
+
+### Consecuencias
+
+En la Fase 5, al aparecer `previewSlideId` y `programSlideId`, se añadirán
+`getPreviewSlide()` y `getProgramSlide()` con un rename controlado.
+`clear`, `black` y `logo` quedan fuera del motor: son estado de salida.

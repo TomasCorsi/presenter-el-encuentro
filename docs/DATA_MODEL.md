@@ -174,3 +174,56 @@ interface SyncMetadata {
 ## Nota
 
 El modelo debe evolucionar por migraciones controladas. Evitar agregar campos innecesarios antes de que una fase los requiera.
+
+---
+
+## Modelo de runtime del Presentation Engine (Fase 4)
+
+El motor no consume el modelo persistido tal cual: recibe una presentación ya
+resuelta, con las slides embebidas en cada item en lugar de `slideIds`. Las
+slides no se persisten en esta fase; se derivan de la Song.
+
+```ts
+interface Slide {
+  id: string          // `${itemId}:${sectionId}:${chunkIndex}`
+  itemId: string
+  order: number       // 0..n-1 dentro del item
+  content: { kind: "text"; lines: string[] }
+  label?: string
+  sourceSectionId?: string
+}
+
+interface PresentationItem {
+  id: string          // identidad de ESTA instancia en la presentación
+  type: PresentationItemType
+  title: string
+  order: number
+  slides: Slide[]
+  sourceId?: string   // identidad de la entidad original (song.id)
+}
+```
+
+Identidad de instancia vs. identidad de origen: una misma Song puede aparecer
+varias veces en un rundown (A, B, A). `item.id` distingue cada aparición y
+`sourceId` apunta a la canción original.
+
+### Estado y runtime derivado
+
+```ts
+interface PresentationRuntime {
+  items: readonly PresentationItem[]
+  itemIndexById: ReadonlyMap<string, number>
+  slideLocationById: ReadonlyMap<string, SlideLocation>
+  navigableSlideIds: readonly string[]
+}
+
+interface PresentationState {
+  runtime: PresentationRuntime
+  currentItemId: string | null
+  currentSlideId: string | null
+}
+```
+
+El runtime son datos derivados e inmutables, construidos solo cuando cambia la
+presentación. El estado operativo del motor NO se persiste (ni localStorage, ni
+IndexedDB, ni nube).

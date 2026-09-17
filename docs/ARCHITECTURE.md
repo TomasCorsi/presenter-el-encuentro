@@ -244,3 +244,28 @@ handler de una server function.
 
 Fase 0 no define ni conecta backend. La decisión de backend (Supabase u otra)
 pertenece a la Fase 12; hasta entonces ningún módulo asume su existencia.
+
+## Presentation Engine en Fase 4
+
+Implementación real de ADR-004:
+
+```text
+Song → songToPresentationItem() → PresentationItem (slides embebidas)
+     → buildPresentationRuntime() → PresentationRuntime (índices derivados)
+     → comandos puros → PresentationState
+     → presentation store (vanilla) → React (useSyncExternalStore)
+```
+
+Ubicación:
+
+```text
+src/domain/presentation/     tipos, runtime, comandos, selectores, Song → Item
+src/stores/                  presentation-store.ts (vanilla, sin React)
+src/features/presentation/   provider y hooks de React
+```
+
+El dominio no importa React, DOM ni APIs del navegador, así que puede
+ejecutarse en servidor, en tests y en futuras ventanas de output. El store
+permite suscripciones dentro de un mismo runtime JS; no sincroniza ventanas
+distintas. Live, Outputs, Stage, Stream y Remote consumirán este motor en lugar
+de reimplementar su lógica.
