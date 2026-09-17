@@ -11,14 +11,14 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Fase actual completada: **Fase 3 — Songs**.
-- Próxima fase: **Fase 4 — Presentation Engine** (pendiente de aprobación).
+- Fase actual completada: **Fase 4 — Presentation Engine**.
+- Próxima fase: **Fase 5 — Live Mode** (pendiente de aprobación).
 - Backend: no conectado. Se decide en la Fase 12.
-- Dependencias añadidas hasta la Fase 2: ninguna.
+- Dependencias añadidas hasta la Fase 4: ninguna.
 - Implementado hasta ahora: documentación en `/docs`, tema oscuro con tokens
-  semánticos, App Shell, gestión local completa de Projects y biblioteca de
-  Songs con editor de secciones, autoguardado y persistencia temporal aislada
-  detrás de un repository.
+  semánticos, App Shell, gestión local completa de Projects, biblioteca de
+  Songs con editor de secciones y autoguardado, y el Presentation Engine como
+  dominio puro con store vanilla, sin UI todavía.
 - Ancho de página: lo decide cada pantalla (`contained` o `full`), no el shell.
 - Tipografía: stack del sistema, sin fuentes externas (offline-first).
 - Dirección visual: superficie de control broadcast, con jerarquía operativa,
@@ -161,13 +161,24 @@ Fase 5. IndexedDB continúa diferido a la Fase 11.
 
 ## Fase 4 — Presentation Engine
 
-- [ ] Current slide.
-- [ ] Next.
-- [ ] Previous.
-- [ ] Clear.
-- [ ] Black.
-- [ ] Logo.
-- [ ] Tests del motor.
+- [x] Modelo de runtime (`Slide`, `PresentationItem`, `PresentationRuntime`).
+- [x] Runtime derivado explícito (`buildPresentationRuntime`), sin caches ocultos.
+- [x] Comandos puros: load, reset, selectItem, selectSlide, next, previous,
+      goToFirst, goToLast.
+- [x] Selectores derivados: current item/slide, índices, next/previous slide.
+- [x] Navegación entre items, sin wrap en los extremos.
+- [x] Semántica de items sin slides e IDs inválidos como no-op.
+- [x] Transformación pura Song → PresentationItem (una sección = una slide).
+- [x] Store vanilla framework-agnóstico + provider React con SSR snapshot.
+- [x] Tests del motor (`bun test`).
+- [ ] Clear / Black / Logo → estado de salida, corresponde a Live / Outputs.
+
+### Estado
+
+- [x] Completada
+
+Sin UI: el motor no se consume todavía desde ninguna pantalla. Preview y
+Program continúan unificados en una sola posición (ADR-017).
 
 ---
 
