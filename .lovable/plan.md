@@ -57,11 +57,11 @@ Semántica: `content` muestra la slide de Program; `clear` = salida vacía (sin 
 
 ## 5. Carga del Project activo: snapshot explícito
 
-Live toma un **snapshot** al cargar: lee el Project activo y las Songs, ejecuta `projectToPresentation(project, songs)` y hace `store.load(items)`. Después, ni editar el rundown ni editar una canción alteran el show en curso.
+Live toma un **snapshot** al cargar: lee el Project activo y las Songs, ejecuta `projectToPresentation(project, songs)` y aplica `loadPresentation(items)`. Después, ni editar el rundown ni editar una canción alteran el show en curso.
 
 Justificación: durante la operación, un cambio silencioso de contenido es un fallo de producción, no una mejora. Además, al recomponer desde Projects cambiarían ids de slide y Program podría apuntar a nada.
 
-Detección de desfase: se guarda una firma del origen (`project.updatedAt` + `updatedAt` de las Songs referenciadas). Si difiere del snapshot, Live muestra un aviso no intrusivo con acción **Recargar presentación**, que recompone y aplica `load`.
+Detección de desfase: se guarda una firma del origen (`project.updatedAt` + `updatedAt` de las Songs referenciadas). Si difiere del snapshot, Live muestra un aviso no intrusivo con acción **Recargar presentación**, que recompone y aplica `reloadPresentation(items)` (conserva Preview y Program cuando sus ids siguen existiendo).
 
 **Cambio de Project activo con `/live` abierto**: no se recarga nada. Se muestra `El proyecto activo cambió a "X"` con acción **Cargar este proyecto**. Sin acción explícita, el show sigue operando el snapshot anterior.
 
@@ -138,8 +138,9 @@ Preview independiente de Program; selección de item y de slide; TAKE con y sin 
 
 - **ADR-022 — Preview y Program separados**: `previewSlideId` + `programSlideId`; `programItemId` derivado; cierre de ADR-017.
 - **ADR-023 — Live opera sobre un snapshot**: carga explícita, detección de desfase y recarga manual; el Project activo no cambia el show en curso sin acción del operador.
-- **ADR-024 — ProgramMode como estado de salida**: `content | clear | black`, ortogonal al contenido; Logo pospuesto hasta Presets/Media.
+- **ADR-024 — ProgramMode como estado de salida**: `content | clear | black`, ortogonal al contenido; Clear/Black nunca borran `programSlideId`; Logo pospuesto hasta Presets/Media.
 - **ADR-025 — Selección + TAKE**: el click nunca manda al aire; Next/Previous mueven Preview.
+- **ADR-026 — `loadPresentation` vs `reloadPresentation`**: dos comandos explícitos con semántica distinta de preservación, sin flags de UI que alteren el comportamiento de un único `load`.
 
 ## 11. Fuera de alcance
 
@@ -149,7 +150,7 @@ Preview independiente de Program; selección de item y de slide; TAKE con y sin 
 
 1. **Logo pospuesto** (no se añade botón sin contenido real).
 2. **Next/Previous solo mueven Preview** en Fase 6; sin modo rápido que avance Program.
-3. **`load` descarta Program** salvo que la misma slide siga existiendo en una recarga explícita.
+3. **`loadPresentation` descarta Program siempre**; solo `reloadPresentation` intenta conservarlo.
 4. **Rename Preview** de los selectores actuales: toca tests y firmas existentes de Fase 4.
 5. **Detección de desfase por `updatedAt`**, no comparación profunda de contenido: barata y suficiente, con posible falso positivo si se guarda sin cambios reales.
 6. **Sin persistencia**: recargar la página reinicia la sesión en vivo, incluido lo que estaba al aire.
