@@ -20,11 +20,43 @@ interface Project {
   workspaceId: string
   name: string
   eventDate?: string
-  itemIds: string[]
+  rundown: RundownItem[]
   createdAt: string
   updatedAt: string
 }
 ```
+
+### Rundown (Fase 5)
+
+El rundown vive embebido en el Project (ADR-018); `itemIds` fue eliminado.
+
+```ts
+type RundownItemType =
+  | "song" | "bible" | "media" | "presentation" | "countdown" | "message"
+
+interface RundownItem {
+  id: string        // identidad de instancia dentro de este rundown
+  type: RundownItemType
+  sourceId: string  // identidad de origen, p. ej. song.id
+  title: string     // snapshot para referencias rotas
+  order: number     // normalizado siempre a 0..n-1
+}
+```
+
+Solo `type: "song"` es funcional en la Fase 5; los demás quedan declarados.
+`id` ≠ `sourceId` permite repetir la misma canción varias veces (A, B, A).
+Si la fuente ya no existe, el item se conserva y se muestra como contenido
+faltante (ADR-020).
+
+### Persistencia
+
+Clave `broadcast-control.projects.v2`. Si solo existe
+`broadcast-control.projects.v1`, se migra añadiendo `rundown: []` y
+descartando `itemIds`; la clave v1 se conserva como respaldo (ADR-019). La
+capacidad de localStorage es limitada y depende del navegador y del entorno:
+un error de cuota es un error real y se propaga. IndexedDB sigue diferido a la
+Fase 11.
+
 
 ### Proyecto activo
 

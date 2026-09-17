@@ -269,3 +269,32 @@ ejecutarse en servidor, en tests y en futuras ventanas de output. El store
 permite suscripciones dentro de un mismo runtime JS; no sincroniza ventanas
 distintas. Live, Outputs, Stage, Stream y Remote consumirán este motor en lugar
 de reimplementar su lógica.
+
+## Composición del Project en Fase 5
+
+El rundown conecta Projects, Songs y Presentation Engine sin acoplar features:
+
+```text
+Project.rundown + Song[] → projectToPresentation() → PresentationItem[]
+                                                   → buildPresentationRuntime()
+```
+
+`projectToPresentation` es una función pura de `src/domain/presentation/` que
+reutiliza `songToPresentationItem`. La UI de Fase 5 no carga el motor: la
+conversión existe y está probada, y su consumo visible llega en la Fase 6
+(Live Mode).
+
+### Límite entre features
+
+`features/songs` no importa lógica, contextos ni servicios de
+`features/projects`, ni al revés. Cuando una pantalla necesita ambos, la
+composición ocurre en la ruta:
+
+```text
+Route → useSongs() + useProjects()
+      → findSongUsage() (función pura de dominio)
+      → props hacia los componentes de Songs
+```
+
+Así no hay ciclos entre features y las reglas de uso quedan testeables sin
+React ni persistencia.

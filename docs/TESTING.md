@@ -148,3 +148,19 @@ dependencias antes de que su fase las requiera.
   omitidas y canción sin secciones.
 - **Store**: notificación, `unsubscribe` e identidad de estado estable sin
   notificar cuando un comando no cambia nada.
+
+## Fase 5 — Project Rundown / Composition
+
+`bun test` cubre la composición sin DOM:
+
+- **Rundown**: agregar al final, repetir la misma canción con ids de instancia
+  distintos, mover con no-op en los extremos, eliminar solo esa instancia,
+  normalización de `order` a 0..n-1 y duplicación con identidades nuevas.
+- **Uso de una Song**: `findSongUsage` como regla pura sobre los projects.
+- **Migración v1 → v2**: `rundown: []` por defecto, `itemIds` descartado, clave
+  v1 conservada como respaldo, v2 leída sin volver a migrar, rundown inválido
+  reparado, items inválidos descartados conservando los válidos, datos
+  corruptos → estado vacío y persistencia de un rundown completo.
+- **Rundown → PresentationItems**: orden, `itemId` de instancia, `sourceId` de
+  origen, canción repetida sin colisiones de ids de slide, referencia rota como
+  item sin slides y rundown vacío.

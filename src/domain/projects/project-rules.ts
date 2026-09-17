@@ -5,6 +5,7 @@ import {
   type Project,
   type ProjectFactoryDependencies,
 } from "./project";
+import { duplicateRundown } from "./rundown-rules";
 
 export class ProjectNameError extends Error {
   constructor(message: string) {
@@ -34,7 +35,7 @@ export function createProject(
     id: dependencies.createId(),
     workspaceId: input.workspaceId ?? LOCAL_WORKSPACE_ID,
     name: normalizeProjectName(input.name),
-    itemIds: [],
+    rundown: [],
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -56,7 +57,7 @@ export function duplicateProject(
     ...project,
     id: dependencies.createId(),
     name: normalizeProjectName(copiedName),
-    itemIds: [...project.itemIds],
+    rundown: duplicateRundown(project.rundown, dependencies),
     createdAt: timestamp,
     updatedAt: timestamp,
   };

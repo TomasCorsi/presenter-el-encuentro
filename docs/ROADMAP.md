@@ -11,10 +11,12 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Fase actual completada: **Fase 4 — Presentation Engine**.
-- Próxima fase: **Fase 5 — Live Mode** (pendiente de aprobación).
-- Backend: no conectado. Se decide en la Fase 12.
-- Dependencias añadidas hasta la Fase 4: ninguna.
+- Fase actual completada: **Fase 5 — Project Rundown / Composition**.
+- Próxima fase: **Fase 6 — Live Mode** (pendiente de aprobación).
+- Backend: no conectado. Se decide en la Fase 13.
+- Dependencias añadidas hasta la Fase 5: ninguna.
+- Renumeración: Rundown pasa a ser la Fase 5 y las fases posteriores se
+  desplazan una posición (Live Mode → Fase 6, …, Supabase → Fase 13).
 - Implementado hasta ahora: documentación en `/docs`, tema oscuro con tokens
   semánticos, App Shell, gestión local completa de Projects, biblioteca de
   Songs con editor de secciones y autoguardado, y el Presentation Engine como
@@ -143,7 +145,7 @@ No se añadieron funcionalidades, rutas, dependencias ni datos técnicos fictici
 - [x] Completada
 
 El rundown funcional y drag & drop no pertenecen a esta fase; permanecen en la
-Fase 5. IndexedDB continúa diferido a la Fase 11.
+Fase 5. IndexedDB continúa diferido a la Fase 12.
 
 ---
 
@@ -154,7 +156,7 @@ Fase 5. IndexedDB continúa diferido a la Fase 11.
 - [x] Editar.
 - [x] Secciones.
 - [x] Buscar.
-- [ ] Slides (Fase 4, Presentation Engine).
+- [x] Slides (Fase 4, Presentation Engine).
 - [ ] Añadir a proyecto (cuando Projects y Songs se integren).
 
 ---
@@ -182,7 +184,32 @@ Program continúan unificados en una sola posición (ADR-017).
 
 ---
 
-## Fase 5 — Live Mode
+## Fase 5 — Project Rundown / Composition
+
+- [x] `rundown: RundownItem[]` embebido en Project; `itemIds` eliminado.
+- [x] Migración `broadcast-control.projects.v1` → `v2`, conservando v1.
+- [x] Identidad de instancia (`id`) separada del origen (`sourceId`).
+- [x] Agregar canciones desde `/projects/$projectId` con panel de búsqueda.
+- [x] Misma Song repetible dentro del mismo rundown.
+- [x] Reordenar con botones subir/bajar y eliminar con confirmación.
+- [x] Referencias rotas conservadas como contenido faltante.
+- [x] Aviso al eliminar una Song en uso (advertir, no bloquear).
+- [x] `projectToPresentation` puro, reutilizando `songToPresentationItem`.
+- [x] Tests de rundown, migración y conversión (`bun test`).
+- [ ] Drag & drop: diferido, sin dependencias nuevas.
+
+### Estado
+
+- [x] Completada
+
+Sin Live ni Outputs: la conversión a `PresentationItem[]` existe y está
+probada, pero la UI todavía no carga el Presentation Engine. Eliminar un item
+del rundown afecta solo a esa instancia y nunca a la Song original; volver a
+agregarla genera otro `itemId` y no restaura la posición anterior.
+
+---
+
+## Fase 6 — Live Mode
 
 - [ ] Rundown.
 - [ ] Preview.
@@ -194,7 +221,7 @@ Program continúan unificados en una sola posición (ADR-017).
 
 ---
 
-## Fase 6 — Output Main
+## Fase 7 — Output Main
 
 - [ ] `/output/main`.
 - [ ] Sin controles.
@@ -204,7 +231,7 @@ Program continúan unificados en una sola posición (ADR-017).
 
 ---
 
-## Fase 7 — Presets
+## Fase 8 — Presets
 
 - [ ] Biblioteca.
 - [ ] Editor.
@@ -217,7 +244,7 @@ Program continúan unificados en una sola posición (ADR-017).
 
 ---
 
-## Fase 8 — Bible
+## Fase 9 — Bible
 
 - [ ] Versiones.
 - [ ] Libros.
@@ -230,7 +257,7 @@ Program continúan unificados en una sola posición (ADR-017).
 
 ---
 
-## Fase 9 — Media
+## Fase 10 — Media
 
 - [ ] Images.
 - [ ] Videos.
@@ -242,7 +269,7 @@ Program continúan unificados en una sola posición (ADR-017).
 
 ---
 
-## Fase 10 — Stage + Stream Outputs
+## Fase 11 — Stage + Stream Outputs
 
 - [ ] `/output/stage`.
 - [ ] `/output/stream`.
@@ -253,7 +280,7 @@ Program continúan unificados en una sola posición (ADR-017).
 
 ---
 
-## Fase 11 — PWA + Offline
+## Fase 12 — PWA + Offline
 
 - [ ] Manifest.
 - [ ] Service Worker.
@@ -265,7 +292,7 @@ Program continúan unificados en una sola posición (ADR-017).
 
 ---
 
-## Fase 12 — Supabase
+## Fase 13 — Supabase
 
 - [ ] Auth.
 - [ ] Workspaces.
@@ -276,7 +303,7 @@ Program continúan unificados en una sola posición (ADR-017).
 
 ---
 
-## Fase 13 — Sync Engine
+## Fase 14 — Sync Engine
 
 - [ ] Local → Cloud.
 - [ ] Cloud → Local.
@@ -287,7 +314,7 @@ Program continúan unificados en una sola posición (ADR-017).
 
 ---
 
-## Fase 14 — Backups
+## Fase 15 — Backups
 
 - [ ] Export workspace.
 - [ ] Import workspace.
@@ -297,7 +324,7 @@ Program continúan unificados en una sola posición (ADR-017).
 
 ---
 
-## Fase 15 — Mobile Remote
+## Fase 16 — Mobile Remote
 
 - [ ] `/remote`.
 - [ ] Diseño móvil dedicado.
@@ -310,7 +337,7 @@ Program continúan unificados en una sola posición (ADR-017).
 
 ---
 
-## Fase 16 — Optimización
+## Fase 17 — Optimización
 
 - [ ] Performance audit.
 - [ ] Accessibility audit.

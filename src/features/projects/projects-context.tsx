@@ -18,6 +18,9 @@ interface ProjectsContextValue extends ProjectsState {
   duplicateProject(id: string): Promise<Project>;
   deleteProject(id: string): Promise<void>;
   setActiveProject(id: string | null): Promise<void>;
+  addSongToProject(projectId: string, song: { id: string; title: string }): Promise<void>;
+  removeRundownItem(projectId: string, itemId: string): Promise<void>;
+  moveRundownItem(projectId: string, itemId: string, direction: "up" | "down"): Promise<void>;
   clearError(): void;
 }
 
@@ -98,6 +101,18 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     setActiveProject: async (id) => {
       if (!service) throw new Error("El almacenamiento local no está disponible.");
       await run(() => service.setActiveProject(id));
+    },
+    addSongToProject: async (projectId, song) => {
+      if (!service) throw new Error("El almacenamiento local no está disponible.");
+      await run(() => service.addSong(projectId, song));
+    },
+    removeRundownItem: async (projectId, itemId) => {
+      if (!service) throw new Error("El almacenamiento local no está disponible.");
+      await run(() => service.removeRundownItem(projectId, itemId));
+    },
+    moveRundownItem: async (projectId, itemId, direction) => {
+      if (!service) throw new Error("El almacenamiento local no está disponible.");
+      await run(() => service.moveRundownItem(projectId, itemId, direction));
     },
     clearError: () => dispatch({ type: "clearError" }),
   }), [run, service, state]);
