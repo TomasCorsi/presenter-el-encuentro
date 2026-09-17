@@ -5,7 +5,8 @@ export interface LiveSlideGridProps {
   item: PresentationItem | null;
   previewSlideId: string | null;
   programSlideId: string | null;
-  onSelect(slideId: string): void;
+  /** Un clic manda la slide AL AIRE (ADR-043). */
+  onGoLive(slideId: string): void;
 }
 
 function excerpt(lines: string[]): string {
