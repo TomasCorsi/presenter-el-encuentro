@@ -17,6 +17,7 @@ interface SongsContextValue extends SongsState {
   updateAuthor(id: string, author: string | undefined): Promise<Song>;
   duplicateSong(id: string): Promise<Song>;
   deleteSong(id: string): Promise<void>;
+  saveSong(draft: Song): Promise<Song>;
   addSection(id: string, type: SongSectionType): Promise<Song>;
   updateSection(id: string, sectionId: string, input: UpdateSectionInput): Promise<Song>;
   removeSection(id: string, sectionId: string): Promise<Song>;
@@ -85,6 +86,7 @@ export function SongsProvider({ children }: { children: ReactNode }) {
     updateAuthor: (id, author) => run((service) => service.updateAuthor(id, author)),
     duplicateSong: (id) => run((service) => service.duplicate(id)),
     deleteSong: async (id) => { await run((service) => service.delete(id)); },
+    saveSong: (draft) => run((service) => service.save(draft)),
     addSection: (id, type) => run((service) => service.addSection(id, type)),
     updateSection: (id, sectionId, input) => run((service) => service.updateSection(id, sectionId, input)),
     removeSection: (id, sectionId) => run((service) => service.removeSection(id, sectionId)),
