@@ -4,11 +4,11 @@ import { FolderOpen, Settings } from "lucide-react";
 import { Page, PageHeader } from "@/components/layout/page";
 import { NAV_GROUPS } from "@/components/layout/nav-items";
 import {
-  ACTIVE_PROJECT_PLACEHOLDER,
   CONNECTION_PLACEHOLDER,
 } from "@/components/layout/shell-placeholders";
 import { ProductionShortcut } from "@/components/ui/production-shortcut";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { useProjects } from "@/features/projects/projects-context";
 
 const TITLE = "Home — Plataforma de presentación en vivo";
 const DESCRIPTION =
@@ -29,6 +29,7 @@ export const Route = createFileRoute("/_app/")({
 });
 
 function HomePage() {
+  const { activeProject, loading } = useProjects();
   const items = NAV_GROUPS.flatMap((group) => group.items);
   const projects = items.find((item) => item.to === "/projects");
   const live = items.find((item) => item.to === "/live");
@@ -99,7 +100,9 @@ function HomePage() {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Proyecto activo</p>
-                <p className="mt-0.5 truncate text-sm font-medium text-foreground">{ACTIVE_PROJECT_PLACEHOLDER}</p>
+                <p className="mt-0.5 truncate text-sm font-medium text-foreground">
+                  {loading ? "Cargando…" : activeProject?.name ?? "Sin proyecto activo"}
+                </p>
               </div>
             </div>
             <div className="flex items-center justify-between p-4">

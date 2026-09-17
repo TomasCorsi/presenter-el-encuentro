@@ -20,8 +20,6 @@ export const USER_PLACEHOLDER = {
   initials: "US",
 } as const;
 
-export const ACTIVE_PROJECT_PLACEHOLDER = "Sin proyecto activo";
-
 export const CONNECTION_PLACEHOLDER: ConnectionStatus = {
   tone: "offline",
   label: "Offline",
