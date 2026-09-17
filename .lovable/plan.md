@@ -301,7 +301,9 @@ simultáneos y la recarga de Output.
   no `localStorage`, `postMessage` ni `SharedWorker`; límite explícito a un
   mismo navegador y dispositivo.
 - **ADR-028 — Protocolo Output Sync**: `hello` / `snapshot` / `update` / `bye`,
-  estado completo en cada mensaje, `sessionId` efímero y `sequence`.
+  estado completo en cada mensaje, `sessionId` efímero, `sequence` por sesión,
+  heartbeat cada 2 s con timeout de 5 s como garantía de liveness, y política
+  de vinculación de sesión (un Output, un Live).
 - **ADR-029 — Live es la única autoridad**: flujo unidireccional, Output sin
   comandos.
 - **ADR-030 — Salida segura por defecto**: sin Live, sin Program o con datos
