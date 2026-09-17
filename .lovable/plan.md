@@ -1,338 +1,76 @@
-# Fase 7 — Output Main
+# Fase 7.1 — Navegación instantánea entre secciones
 
-Salida de presentación independiente en `/output/main`, sincronizada con el
-Program de Live dentro del mismo navegador. Live manda; Output solo muestra.
+## Causa raíz (confirmada por lectura de código)
 
----
+No es el enrutador ni una animación: todas las rutas están en el mismo bundle, ninguna tiene `loader`, `pendingComponent` ni `Suspense`, el sidebar ya usa `Link` (no `<a href>`, así que no hay recarga de documento) y no existe transición CSS sobre el contenido.
 
-## 1. Ruta y encuadre
+El retraso viene de dos cosas:
 
-- Nueva ruta `src/routes/output.main.tsx` → `/output/main`. Queda fuera de
-  `_app`, así que no hereda sidebar, topbar ni breadcrumbs.
-- Ocupa el viewport completo (`h-dvh w-dvw overflow-hidden`), sin scroll.
-- `head()` propio con `robots: noindex` y título corto; no es una página para
-  compartir.
-- Render seguro en servidor: en SSR y en el primer render pinta la salida
-  vacía. Toda la conexión (BroadcastChannel, teclado, ratón, fullscreen) se
-  monta en `useEffect`.
+1. **`SongsProvider` se monta por ruta, no una sola vez.**
+   - `src/routes/_app.projects.tsx:9-15` monta su propio `SongsProvider`.
+   - `src/routes/_app.songs.tsx:9-15` monta otro.
+   - `src/routes/_app.live.tsx:59-65` monta un tercero.
+   Al cambiar entre Projects, Songs y Live, React desmonta y vuelve a montar el provider: se pierde todo lo que ya estaba en memoria.
 
-Contenido: una superficie 16:9 centrada con safe area, sin ningún texto de
-sistema. Nunca aparecen mensajes tipo "No hay contenido": lo que no se puede
-mostrar se muestra vacío.
+2. **Cada montaje vuelve a leer y validar localStorage y muestra un texto de carga que tapa la pantalla.**
+   - `songs-context.tsx:33,66-68` y `projects-context.tsx:32,67-69` arrancan en `loading: true` y cargan dentro de un efecto.
+   - `_app.projects.index.tsx:47`, `_app.songs.index.tsx:58` y `_app.live.tsx:100-102` reemplazan todo el contenido por "Cargando…" mientras `loading` es true.
 
----
+Resultado: en cada visita a Projects/Songs/Live aparece un parpadeo con texto de carga aunque los datos ya se hubieran leído antes.
 
-## 2. Sincronización: BroadcastChannel
+## Qué se va a cambiar
 
-Sí, BroadcastChannel, por detrás de una interfaz de transporte.
+### 1. Un solo provider estable en el App Shell
+- Montar `SongsProvider` una única vez en `src/routes/_app.tsx`, junto a `ProjectsProvider`, dentro del shell y por encima del `<Outlet />`.
+- Eliminar los `SongsProvider` de `_app.projects.tsx`, `_app.songs.tsx` y `_app.live.tsx`.
+- `_app.projects.tsx` y `_app.songs.tsx` quedan como layouts que solo devuelven `<Outlet />` (o se eliminan si dejan de aportar). `_app.live.tsx` conserva `PresentationProvider`, que sí es propio de Live.
+- Con esto, AppShell, sidebar, topbar y ambos providers dejan de remontarse al navegar.
 
-Motivo: es la única API pensada exactamente para esto (mismo origen, varias
-pestañas, sin servidor), es nativa, no añade dependencias, entrega en el mismo
-tick y no ensucia el almacenamiento. Las alternativas locales son peores:
-`localStorage` + evento `storage` persiste estado operativo que decidimos no
-persistir y no notifica a la pestaña que escribe; `window.postMessage` exige
-guardar la referencia a la ventana abierta y se pierde si el operador recarga
-o abre Output a mano; `SharedWorker` no tiene soporte fiable en todos los
-navegadores de destino.
+### 2. La lectura de almacenamiento ocurre una sola vez
+- La carga inicial sigue en un efecto (seguro para SSR), pero al no remontarse el provider se ejecuta una sola vez por sesión de app.
+- No se agregan lecturas nuevas ni se bloquea la navegación: los datos ya cargados permanecen en memoria.
 
-El transporte se define como interfaz (`publish`, `subscribe`, `close`) con
-dos implementaciones: BroadcastChannel real y un transporte en memoria para
-tests. Los componentes React nunca tocan la API del navegador directamente.
+### 3. Sin pantalla de carga entre secciones
+- Diferenciar "primera carga" de "ya cargado": las páginas solo muestran el texto de carga si todavía no se cargó nunca (`loading && nunca cargado`); en cualquier navegación posterior se renderiza directamente la lista.
+- Aplica a `_app.projects.index.tsx`, `_app.songs.index.tsx`, `_app.index.tsx` y `_app.live.tsx`.
 
-```text
-PresentationStore (Live)
-  → OutputPublisher (servicio)
-      → OutputTransport (BroadcastChannel | memoria)
-          → OutputSubscriber (servicio)
-              → OutputStore / snapshot
-                  → /output/main
-```
+### 4. Nada más cambia
+- Sin dependencias nuevas, sin cambio de arquitectura, se respetan las capas UI → feature/service → repository → adaptador local. Navegación por teclado y foco quedan intactos (solo se mueve dónde vive el provider).
 
----
+## Medición
 
-## 3. Protocolo de mensajes
+Antes y después, con el navegador automatizado sobre `/`, `/projects`, `/songs`, `/bible`, `/media`, `/presets`, `/live`, `/outputs`, `/settings`:
+- `performance.mark` al hacer clic y al aparecer el nuevo `<h1>`, para medir el inicio del cambio visual (objetivo < 50 ms).
+- Conteo de peticiones de documento durante la navegación (debe ser 0).
+- Conteo de lecturas de `localStorage` por navegación (debe ser 0 tras la primera carga).
+- Comprobación de que el nodo del sidebar es el mismo elemento antes y después (no hay remontaje) y de que la ruta activa se marca de inmediato.
+- Consola sin errores ni warnings.
 
-Canal `broadcast-control.output.v1`. Cuatro mensajes, todos validados al
-recibir; cualquier mensaje con forma inválida se ignora en silencio.
+## Pruebas de regresión
 
-| Mensaje | Emisor | Cuándo | Carga |
-| --- | --- | --- | --- |
-| `hello` | Output | al montar y al reconectar | `{ type }` |
-| `snapshot` | Live | al recibir `hello` y al montar Live | snapshot completo |
-| `update` | Live | cada vez que cambia lo que Output ve | snapshot completo |
-| `bye` | Live | al desmontarse / cerrar la pestaña | `{ sessionId }` |
+En `tests/`, con las convenciones actuales (`bun:test`):
+- **Estructura de rutas:** verificar por análisis del código fuente que `_app.projects.tsx`, `_app.songs.tsx` y `_app.live.tsx` no montan `SongsProvider` y que `_app.tsx` sí lo hace (detecta el retroceso a providers por ruta).
+- **Repositorio:** con un almacenamiento en memoria instrumentado, comprobar que una secuencia de operaciones no dispara lecturas repetidas innecesarias.
+- **Estado de carga:** prueba pura de la regla "mostrar carga solo si nunca se cargó", extraída como función/derivación testeable.
 
-`snapshot` y `update` llevan siempre el estado completo (no deltas): el
-snapshot es pequeño y así una ventana nueva y una ventana antigua convergen
-con el mismo mensaje.
+Al final: `bun test` completo, typecheck y build.
 
-### Política de sesión: un Output, un Live
-
-Output NO adopta cualquier `sessionId` que reciba. Regla explícita:
-
-- Al recibir el **primer snapshot válido**, Output queda **vinculado** a ese
-  `sessionId`.
-- Mientras esa sesión siga viva, ignora `snapshot` y `update` de cualquier
-  otro `sessionId`. Esto evita que dos ventanas Live abiertas hagan que
-  Output alterne entre ellas.
-- La sesión termina por `bye` o por timeout de heartbeat (punto 3.2). Solo
-  entonces Output queda libre y puede adoptar la primera sesión válida que
-  responda.
-- Si Output abre con dos Live ya activos, adopta el primero que responda y lo
-  mantiene. **Limitación documentada:** no hay selección manual de sesión en
-  esta fase; la recomendación operativa es tener un solo Live abierto.
-
-### Liveness: heartbeat, no `bye`
-
-`bye` se envía como optimización (desconexión inmediata), pero NO es la
-garantía: un cierre de pestaña, crash o suspensión puede impedir que llegue.
-La garantía real es el heartbeat:
-
-- Output envía `hello` cada **2 s**, siempre, esté conectado o no.
-- Live responde a cada `hello` con un `snapshot` (o `heartbeat` si nada
-  cambió desde el último envío a esa sesión; en la práctica el snapshot
-  completo es barato y simplifica el protocolo, así que se responde siempre
-  con snapshot).
-- Si Output no recibe ninguna señal válida de **su sesión vinculada** durante
-  **5 s**, considera a Live desconectado: pasa a salida segura vacía, queda
-  libre de sesión y sigue escuchando y reintentando.
-- Nada de polling de estado de aplicación ni de storage: el heartbeat vive
-  solo en el protocolo Output Sync.
-
-### Inicialización de una ventana nueva
-
-- **Output abre después de Live:** el `hello` periódico obtiene `snapshot`
-  en el primer ciclo (latencia máxima ~2 s; el primer `hello` se envía al
-  montar, así que en la práctica es inmediato).
-- **Live abre después de Output:** Live emite `snapshot` al montar y además
-  responde al `hello` periódico; Output lo adopta como primera sesión.
-- **Output se cierra y se reabre / se recarga:** repite `hello` y recibe el
-  estado actual. No hay estado que restaurar.
-- **Varias ventanas Output:** el canal es difusión pura. Cada Output mantiene
-  su propia vinculación de sesión y su propio contador de secuencia; todas
-  convergen al mismo contenido.
-
-### Live ausente
-
-Sin respuesta a `hello` durante 5 s (o `bye` recibido): salida vacía segura
-(negra). Sin texto de error, sin spinner, sin nada proyectable. El único
-indicador de desconexión vive dentro del overlay de configuración (punto 7),
-que solo aparece con actividad del ratón o del teclado.
-
-### Reconexión
-
-Output nunca deja de emitir `hello` ni de escuchar. Cuando aparece una sesión
-Live nueva, su `snapshot` llega en respuesta al siguiente `hello` y, como
-Output ya está libre, la adopta: nuevo `sessionId`, secuencia reiniciada.
-
----
-
-## 4. `sessionId` y `sequence`
-
-Ambos, sí, y son baratos.
-
-- `sessionId`: identificador efímero generado al montar Live (nunca en módulo
-  ni en SSR: se crea en `useEffect`, regla de la plataforma). No se persiste.
-  Sirve para la vinculación de sesión del punto 3.1.
-- `sequence`: entero incremental **por sesión**. Output descarta cualquier
-  mensaje con `sequence` menor o igual al último aplicado **de su sesión
-  vinculada**. Protege contra el reordenamiento que puede producir el
-  `snapshot` de respuesta a un `hello` cruzándose con un `update`. Al adoptar
-  una sesión nueva, la secuencia se reinicia.
-
----
-
-## 5. `OutputSnapshot`
-
-Contenido resuelto: Output nunca lee Projects ni Songs ni reconstruye nada.
-
-```ts
-interface OutputSlide {
-  id: string;
-  lines: string[];
-}
-
-interface OutputSnapshot {
-  sessionId: string;
-  sequence: number;
-  mode: "content" | "clear" | "black";
-  /** Ya resuelta: null en clear, black o Program vacío. */
-  slide: OutputSlide | null;
-}
-```
-
-Se deriva en Live con el selector existente `getProgramOutput()`, que ya
-devuelve `slide: null` en `clear` y `black`. No viaja Preview, ni el rundown,
-ni títulos, ni etiquetas de sección: nada de eso se pinta en la salida.
-
-Publicación sin retardo: el publisher se suscribe al `PresentationStore`,
-recalcula el snapshot y publica al instante si cambia **cualquier cosa que
-Output deba pintar**. La comparación NO es solo `mode` + `slide.id`: incluye
-el contenido. Regla concreta:
-
-```text
-cambió mode  → publicar
-cambió slide.id  → publicar
-cambió slide.lines (mismo id)  → publicar
-cualquier otra cosa (Preview, navegación…)  → NO publicar
-```
-
-El caso real que cubre: se edita una Song, el operador pulsa "Recargar
-presentación", la slide conserva su id determinista pero su letra cambió, y
-Output recibe el texto nuevo. La comparación se implementa como función pura
-`snapshotsEqual(a, b)` (compara `mode`, `slide.id` y `lines` elemento a
-elemento), simple y testeable, sin hashes. Sin debounce: un TAKE, un cambio
-de modo o una recarga con contenido nuevo salen en el mismo tick.
-
----
-
-## 6. `content`, `clear`, `black` y Program vacío
-
-- **content con slide:** líneas centradas, un `<span>` por línea, respetando
-  los saltos.
-- **content sin slide** (`programSlideId = null`): fondo base, sin texto. Es
-  el mismo render que `clear`.
-- **clear:** fondo base opaco, sin contenido. **Decisión:** opaco, no
-  transparente. Una salida transparente hoy mostraría el blanco del navegador
-  en proyector, que es el peor resultado posible en vivo. La transparencia
-  real (para browser source) llega con Presets, cuando pueda activarse de
-  forma explícita.
-- **black:** negro puro (`#000`), distinto del fondo base del escenario, que
-  es un negro ligeramente levantado. Así "black" significa realmente apagar.
-
-Safe area: padding proporcional al viewport mediante un token nuevo
-(`--output-safe-area`, del orden del 6 % del lado menor), aplicado a la caja de
-texto, no al fondo. No se añaden controles de diseño.
-
-Tipografía neutral temporal: el stack del sistema ya en uso, tamaño escalado
-con `clamp()`, peso semibold, interlineado ajustado. Sin presets todavía.
-
----
-
-## 7. Fullscreen, cursor y overlay
-
-Un único overlay de configuración, invisible durante la salida normal:
-
-- Aparece al mover el ratón o pulsar una tecla.
-- Se oculta tras 3 s de inactividad, junto con el cursor
-  (`cursor: none`).
-- Contiene solo un botón discreto de pantalla completa y, si procede, un punto
-  de estado "sin señal de Live". Nada más.
-- `F` y doble clic también alternan pantalla completa.
-- Nunca se llama a `requestFullscreen()` automáticamente: los navegadores lo
-  bloquean sin gesto del usuario. Si la llamada falla, se ignora sin mostrar
-  error.
-
----
-
-## 8. Cambio en Live
-
-`Abrir Output` en la barra de show: `window.open("/output/main", "_blank")`,
-sin gestión de monitores. Live sigue funcionando igual si no se abre nunca.
-
----
-
-## 9. Archivos
-
-**Nuevos**
-
-- `src/domain/output/output-snapshot.ts` — tipos `OutputSlide`,
-  `OutputSnapshot`, `OutputMessage`; `toOutputSnapshot(programOutput, …)`,
-  `parseOutputMessage()` (validación defensiva), `EMPTY_OUTPUT`.
-- `src/services/output-sync/output-transport.ts` — interfaz + implementación
-  BroadcastChannel + implementación en memoria para tests.
-- `src/services/output-sync/output-publisher.ts` — lado Live: sesión,
-  secuencia, respuesta a `hello`, `bye`.
-- `src/services/output-sync/output-subscriber.ts` — lado Output: `hello`,
-  filtrado por sesión y secuencia, callback de snapshot.
-- `src/features/output/use-output-publisher.ts` — hook de ciclo de vida (Live).
-- `src/features/output/use-output-snapshot.ts` — hook de ciclo de vida (Output).
-- `src/features/output/components/output-surface.tsx` — render de la salida.
-- `src/features/output/components/output-overlay.tsx` — overlay fullscreen.
-- `src/features/output/use-idle-ui.ts` — actividad de ratón/teclado y cursor.
-- `src/routes/output.main.tsx` — la ruta.
+## Archivos
 
 **Modificados**
+- `src/routes/_app.tsx` (monta `SongsProvider`)
+- `src/routes/_app.projects.tsx`, `src/routes/_app.songs.tsx` (quitan el provider)
+- `src/routes/_app.live.tsx` (quita el provider, mantiene `PresentationProvider`)
+- `src/features/songs/songs-context.tsx`, `src/features/projects/projects-context.tsx` (exponer "ya cargado alguna vez")
+- `src/routes/_app.projects.index.tsx`, `src/routes/_app.songs.index.tsx`, `src/routes/_app.index.tsx` (no tapar el contenido)
+- `docs/ARCHITECTURE.md`, `docs/DECISIONS.md` (ADR: providers de datos viven en el App Shell), `docs/TESTING.md`
 
-- `src/routes/_app.live.tsx` — monta el publisher.
-- `src/features/live/components/live-show-bar.tsx` — acción `Abrir Output`.
-- `src/styles.css` — tokens `--output-safe-area` y negro puro de `black`.
-- `docs/ROADMAP.md`, `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md`,
-  `docs/DECISIONS.md`, `docs/TESTING.md`.
+**Nuevos**
+- `tests/routing/app-shell-providers.test.ts`
+- `tests/features/loading-state.test.ts`
 
-No se tocan el Presentation Engine ni el store: Output se construye encima de
-`getProgramOutput()`.
+## Decisiones que necesitan tu aprobación
 
----
-
-## 10. Tests
-
-`bun test`, con transporte en memoria (nada depende de BroadcastChannel real):
-
-- Serialización y validación de `OutputSnapshot` y de cada mensaje.
-- `snapshotsEqual`: mismo `slide.id` con `lines` distintas → NO son iguales →
-  se publica `update` (el caso "editar la Song y recargar").
-- `hello` → `snapshot`; `update` en cada cambio de Program; `bye`.
-- Output que abre después de Live obtiene el estado actual.
-- Output que abre antes de Live recibe el `snapshot` inicial.
-- `sequence`: mensajes fuera de orden descartados; sesión nueva aceptada y
-  secuencia reiniciada.
-- Vinculación de sesión: Output vinculado a Live A ignora `snapshot`/`update`
-  de Live B; Live A termina (`bye` o timeout) → Output queda libre y puede
-  adoptar Live B.
-- Heartbeat: Live desaparece sin `bye` → tras el timeout Output pasa a salida
-  segura; Live vuelve → Output recupera el snapshot; `bye` → desconexión
-  inmediata sin esperar al timeout.
-- Múltiples subscribers reciben el mismo snapshot.
-- Mensajes inválidos (forma incorrecta, campos faltantes, JSON ajeno)
-  ignorados sin lanzar.
-- `content` con slide, `clear`, `black`, Program vacío.
-- Preview que se mueve NO produce publicación.
-
-**Verificación en navegador** (Playwright, 1920×1080 y ventana secundaria):
-la secuencia completa de 20 pasos del pedido, incluidos dos Outputs
-simultáneos y la recarga de Output.
-
----
-
-## 11. ADR propuestas
-
-- **ADR-027 — BroadcastChannel para sincronización local**: por qué, y por qué
-  no `localStorage`, `postMessage` ni `SharedWorker`; límite explícito a un
-  mismo navegador y dispositivo.
-- **ADR-028 — Protocolo Output Sync**: `hello` / `snapshot` / `update` / `bye`,
-  estado completo en cada mensaje, `sessionId` efímero, `sequence` por sesión,
-  heartbeat cada 2 s con timeout de 5 s como garantía de liveness, y política
-  de vinculación de sesión (un Output, un Live).
-- **ADR-029 — Live es la única autoridad**: flujo unidireccional, Output sin
-  comandos.
-- **ADR-030 — Salida segura por defecto**: sin Live, sin Program o con datos
-  inválidos la salida es vacía y silenciosa; `clear` opaco hasta que exista
-  transparencia explícita.
-
----
-
-## 12. Fuera de alcance
-
-Stage Display, Stream Output, Remote, sincronización entre dispositivos,
-WebSocket, Supabase Realtime, presets, backgrounds, vídeo, imágenes,
-tipografía configurable, transiciones, lower thirds, Bible, Media, logo, PWA,
-IndexedDB, cloud sync, selección de monitor, NDI/SDI/DeckLink/Spout.
-Sin dependencias nuevas.
-
----
-
-## 13. Decisiones que necesitan tu visto bueno
-
-1. **`clear` opaco, no transparente.** Prioriza el proyector; la transparencia
-   llega con Presets.
-2. **Sin señal de Live = salida vacía, no última slide congelada.** Si
-   prefieres congelar el último contenido, cámbialo aquí.
-3. **Ritmo del heartbeat:** `hello` cada 2 s y desconexión a los 5 s sin
-   señal válida. Ajustable.
-4. **Overlay y ocultado de cursor a los 3 s.** Se puede subir o quitar.
-5. **Riesgo aceptado:** BroadcastChannel no funciona entre navegadores ni
-   dispositivos distintos, ni en modo incógnito contra una ventana normal. La
-   salida en otro equipo es una fase posterior.
-6. **Riesgo aceptado:** no hay persistencia. Recargar Live pierde la sesión y
-   los Outputs se quedan en vacío hasta que Live vuelva a cargar el show.
+1. **Subir `SongsProvider` al App Shell** implica que las canciones se cargan también en secciones que no las usan (Bible, Media, Settings). Es una lectura local única y barata; la alternativa sería un caché compartido fuera de React, más complejo. Propuesta: subirlo al shell.
+2. **`_app.projects.tsx` y `_app.songs.tsx`** quedan casi vacíos. Propuesta: conservarlos devolviendo `<Outlet />` para no tocar el árbol de rutas.
+3. **Carga inicial**: se mantiene en efecto (compatible con SSR) en lugar de leer localStorage de forma síncrona, para evitar diferencias de hidratación. El coste es un único parpadeo en el primer arranque de la app.
