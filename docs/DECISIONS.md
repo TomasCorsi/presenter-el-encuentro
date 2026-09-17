@@ -753,6 +753,12 @@ todo el markup, los enlaces previous/next y la metadata duplicada. Dominio,
 repositorio y UI nunca ven la forma externa, así que agregar otro formato es
 agregar otro adaptador.
 
+La frontera es tolerante con los tipos del archivo real: `verse_numbers` y
+`version_id` se aceptan como texto o número, y `publisher`/`copyright` pueden
+llegar como objeto (`{ name }`, `{ text, html }`), del que se toma el texto y
+nunca el HTML. La normalización vive en el adaptador; el modelo canónico sigue
+siendo estricto.
+
 ## ADR-041 — Un versículo por slide y líneas originales
 
 **Estado:** aceptada (Fase 9).

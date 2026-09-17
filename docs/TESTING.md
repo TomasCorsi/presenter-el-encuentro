@@ -263,8 +263,9 @@ automatizadas de dominio y store siguen siendo la red de seguridad):
 
 - **Importación** (`tests/domain/bible-import.test.ts`): conversión al modelo
   canónico, versículos multilínea, descarte de HTML y metadata redundante,
-  JSON inválido, formato desconocido, archivo sin libros legibles, valores por
-  defecto de metadata.
+  JSON inválido, formato desconocido, archivo sin versículos legibles, valores
+  por defecto de metadata, números de versículo y `version_id` numéricos,
+  `publisher`/`copyright` como objeto.
 - **Referencias** (`tests/domain/bible-reference.test.ts`): abreviaturas,
   acentos, rangos, referencia inexistente, `buildPassage`, `verseRange`.
 - **Pasaje → presentación** (`tests/domain/bible-passage-presentation.test.ts`):
@@ -275,7 +276,7 @@ automatizadas de dominio y store siguen siendo la red de seguridad):
   listar, leer por capítulo, reinstalar sin duplicar, eliminar por completo.
 
 Verificación manual en navegador (1366×768 y 1440×900, consola limpia):
-importar una Biblia real, navegar libro/capítulo/versículo, buscar
+importar las Biblias reales NVI (27 MB) y RVR1960 (23 MB), navegar libro/capítulo/versículo, buscar
 `jn 3:2-4`, previsualizar, agregar al Project, eliminar la traducción y
 comprobar que el item sigue funcionando en el rundown, en Live (TAKE,
 auto-advance) y en `/output/main` con la referencia secundaria visible.
