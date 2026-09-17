@@ -110,7 +110,9 @@ function ProjectDetailPage() {
           songs={songs}
           loading={!songsLoaded}
           usageBySongId={usageBySongId}
-          onAdd={(song) => addSongToProject(project.id, { id: song.id, title: song.title })}
+          onAdd={async (song) => {
+            await addSongToProject(project.id, { id: song.id, title: song.title });
+          }}
         />
 
         <section aria-labelledby="rundown-title" className="min-w-0">
