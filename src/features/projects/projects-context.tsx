@@ -125,11 +125,11 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     },
     addSongToProject: async (projectId, song) => {
       if (!service) throw new Error("El almacenamiento local no está disponible.");
-      await run(() => service.addSong(projectId, song));
+      return run(() => service.addSong(projectId, song));
     },
     addPassageToProject: async (projectId, passage) => {
       if (!service) throw new Error("El almacenamiento local no está disponible.");
-      await run(() => service.addPassage(projectId, passage));
+      return run(() => service.addPassage(projectId, passage));
     },
     removeRundownItem: async (projectId, itemId) => {
       if (!service) throw new Error("El almacenamiento local no está disponible.");
