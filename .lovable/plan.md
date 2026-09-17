@@ -107,13 +107,13 @@ projectToPresentation(project: Project, songs: readonly Song[]): PresentationIte
 - Para `type: "song"` con Song existente: `songToPresentationItem(song, { itemId: item.id, order: item.order })` — cero duplicación de lógica.
 - Para referencia rota o tipo aún no implementado: item con `slides: []`, `title` snapshot, `sourceId` y `order` conservados.
 
-La UI de esta fase **no** carga el Presentation Engine: composición y motor siguen desacoplados. La función queda cubierta por tests y disponible para Fase 5.
+La UI de esta fase **no** carga el Presentation Engine: composición y motor siguen desacoplados. La función queda cubierta por tests y disponible para Fase 6 (Live Mode).
 
 ## 9. Archivos
 
 Crear:
 - `src/domain/projects/rundown.ts` — tipos `RundownItem`, `RundownItemType`.
-- `src/domain/projects/rundown-rules.ts` — add, remove, move, normalización de `order`, recuento de uso de una Song.
+- `src/domain/projects/rundown-rules.ts` — add, remove, move, normalización de `order`, y `findSongUsage(projects, songId)` como función pura.
 - `src/domain/presentation/project-to-presentation.ts` — `projectToPresentation`.
 - `src/features/projects/components/rundown-list.tsx`, `rundown-row.tsx`, `song-picker-panel.tsx`.
 - `tests/domain/rundown-rules.test.ts`
@@ -126,9 +126,11 @@ Modificar:
 - `src/services/projects/local-storage-project-repository.ts` — clave v2, migración desde v1, validación por item.
 - `src/features/projects/project-service.ts` y `projects-context.tsx` — operaciones de rundown.
 - `src/routes/_app.projects.$projectId.tsx` — pantalla de preparación; envolver la rama Projects con `SongsProvider` para acceder a la biblioteca.
-- `src/features/songs/components/song-actions.tsx` — aviso de uso antes de eliminar.
+- `src/features/songs/components/song-actions.tsx` — recibe `usage` por props y lo muestra antes de eliminar; sin importar nada de `features/projects`.
+- `src/routes/_app.songs.index.tsx` — capa de composición: combina Songs y Projects y calcula el uso con la función pura.
 - `tests/services/local-storage-project-repository.test.ts`, `tests/domain/project-rules.test.ts` — actualizados al nuevo modelo.
-- `docs/ROADMAP.md` (nueva Fase 4.5 entre 4 y 5), `docs/DATA_MODEL.md`, `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/TESTING.md`.
+- `docs/ROADMAP.md` — renumeración completa: esta fase como Fase 5 y desplazamiento de todas las posteriores.
+- `docs/DATA_MODEL.md`, `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/TESTING.md`.
 
 No se modifican `package.json` ni `bun.lock`.
 
@@ -147,7 +149,7 @@ Duplicar project: rundown copiado con ids de instancia nuevos y mismos `sourceId
 - **ADR-018 — Rundown embebido en Project**: justificación frente a colección separada; `itemIds` eliminado.
 - **ADR-019 — Migración versionada de la clave de Projects**: v1 → v2 sin destruir datos, respaldo conservado, validación por item no destructiva a nivel de lista.
 - **ADR-020 — Referencias rotas conservadas**: nunca se borran en cascada; se muestran como contenido faltante y se convierten en items sin slides.
-- **ADR-021 — Eliminar Song usada: advertir, no bloquear**.
+- **ADR-021 — Eliminar Song usada: advertir, no bloquear**, con el cálculo de uso compuesto en la ruta y sin dependencia de Songs hacia Projects.
 
 ## 12. Fuera de alcance
 
