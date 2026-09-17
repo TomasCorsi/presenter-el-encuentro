@@ -33,7 +33,6 @@ import { LiveSlideGrid } from "@/features/live/components/live-slide-grid";
 import { useLiveKeyboard } from "@/features/live/use-live-keyboard";
 import { useOutputPublisher } from "@/features/output/use-output-publisher";
 import {
-  PresentationProvider,
   usePresentationState,
   usePresentationStore,
 } from "@/features/presentation/presentation-context";
