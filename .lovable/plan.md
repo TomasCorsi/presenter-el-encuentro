@@ -270,18 +270,24 @@ No se tocan el Presentation Engine ni el store: Output se construye encima de
 `bun test`, con transporte en memoria (nada depende de BroadcastChannel real):
 
 - Serialización y validación de `OutputSnapshot` y de cada mensaje.
+- `snapshotsEqual`: mismo `slide.id` con `lines` distintas → NO son iguales →
+  se publica `update` (el caso "editar la Song y recargar").
 - `hello` → `snapshot`; `update` en cada cambio de Program; `bye`.
 - Output que abre después de Live obtiene el estado actual.
 - Output que abre antes de Live recibe el `snapshot` inicial.
 - `sequence`: mensajes fuera de orden descartados; sesión nueva aceptada y
   secuencia reiniciada.
-- `sessionId`: mensajes de otra sesión no mezclados con la actual.
+- Vinculación de sesión: Output vinculado a Live A ignora `snapshot`/`update`
+  de Live B; Live A termina (`bye` o timeout) → Output queda libre y puede
+  adoptar Live B.
+- Heartbeat: Live desaparece sin `bye` → tras el timeout Output pasa a salida
+  segura; Live vuelve → Output recupera el snapshot; `bye` → desconexión
+  inmediata sin esperar al timeout.
 - Múltiples subscribers reciben el mismo snapshot.
 - Mensajes inválidos (forma incorrecta, campos faltantes, JSON ajeno)
   ignorados sin lanzar.
 - `content` con slide, `clear`, `black`, Program vacío.
 - Preview que se mueve NO produce publicación.
-- Reconexión: `bye` → salida vacía → nuevo Live → snapshot adoptado.
 
 **Verificación en navegador** (Playwright, 1920×1080 y ventana secundaria):
 la secuencia completa de 20 pasos del pedido, incluidos dos Outputs
