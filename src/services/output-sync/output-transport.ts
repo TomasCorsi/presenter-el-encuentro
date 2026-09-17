@@ -68,6 +68,7 @@ export function createMemoryTransport(bus: MemoryBus): OutputTransport {
     },
   };
   bus.transports.add(transport);
+  memoryListeners.set(transport, listeners);
   return transport;
 }
 
