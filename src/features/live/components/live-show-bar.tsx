@@ -37,6 +37,13 @@ export function LiveShowBar({
         <Button variant="outline" size="sm" className="ml-auto" onClick={onReload}>
           <RefreshCw />Recargar presentación
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => window.open("/output/main", "_blank", "noopener")}
+        >
+          <ExternalLink />Abrir Output
+        </Button>
       </div>
 
       {activeProjectName ? (
