@@ -22,8 +22,9 @@ interface ProjectsContextValue extends ProjectsState {
   duplicateProject(id: string): Promise<Project>;
   deleteProject(id: string): Promise<void>;
   setActiveProject(id: string | null): Promise<void>;
-  addSongToProject(projectId: string, song: { id: string; title: string }): Promise<void>;
-  addPassageToProject(projectId: string, passage: BiblePassage): Promise<void>;
+  /** Devuelve el Project ya guardado: Live necesita el RundownItem nuevo. */
+  addSongToProject(projectId: string, song: { id: string; title: string }): Promise<Project>;
+  addPassageToProject(projectId: string, passage: BiblePassage): Promise<Project>;
   removeRundownItem(projectId: string, itemId: string): Promise<void>;
   moveRundownItem(projectId: string, itemId: string, direction: "up" | "down"): Promise<void>;
   setRundownItemPreset(projectId: string, itemId: string, presetId: string | undefined): Promise<void>;
