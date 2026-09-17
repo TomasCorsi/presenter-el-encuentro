@@ -107,6 +107,28 @@ export function reloadPresentation(
   return restorePreview(base, state);
 }
 
+/**
+ * Alta INCREMENTAL de un item al final del show (ADR-043).
+ *
+ * A diferencia de `reloadPresentation`, no reconstruye el contenido de los
+ * items existentes ni toca Preview, Program o `programMode`: solo amplía el
+ * runtime. Es la operación que usa la biblioteca de Live para que una alta
+ * controlada no incorpore cambios externos pendientes.
+ *
+ * Único caso en que mueve Preview: cuando todavía no había ninguna selección.
+ */
+export function appendPresentationItem(
+  state: PresentationState,
+  item: PresentationItem,
+): PresentationState {
+  if (state.runtime.itemIndexById.has(item.id)) return state;
+
+  const items = [...state.runtime.items, { ...item, order: state.runtime.items.length }];
+  const base: PresentationState = { ...state, runtime: buildPresentationRuntime(items) };
+
+  return base.previewItemId ? base : selectItem(base, item.id);
+}
+
 export function reset(): PresentationState {
   return createInitialPresentationState();
 }
