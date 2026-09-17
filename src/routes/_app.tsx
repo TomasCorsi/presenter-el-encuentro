@@ -31,18 +31,19 @@ function AppShell() {
                 módulo al dividirse el bundle de la ruta. */}
             <PresentationProvider>
               <SidebarProvider>
-              {/* Altura fija de viewport: el scroll vive dentro de <main>,
-                  nunca en la ventana (la consola de Live no debe desplazarse). */}
-              <div className="flex h-screen w-full overflow-hidden bg-background">
-                <AppSidebar />
-                <SidebarInset className="flex min-w-0 flex-1 flex-col bg-background">
-                  <AppTopbar />
-                  <main className="min-w-0 flex-1 overflow-y-auto">
-                    <Outlet />
-                  </main>
-                </SidebarInset>
-              </div>
-            </SidebarProvider>
+                {/* Altura fija de viewport: el scroll vive dentro de <main>,
+                    nunca en la ventana (la consola de Live no debe desplazarse). */}
+                <div className="flex h-screen w-full overflow-hidden bg-background">
+                  <AppSidebar />
+                  <SidebarInset className="flex min-w-0 flex-1 flex-col bg-background">
+                    <AppTopbar />
+                    <main className="min-w-0 flex-1 overflow-y-auto">
+                      <Outlet />
+                    </main>
+                  </SidebarInset>
+                </div>
+              </SidebarProvider>
+            </PresentationProvider>
           </BibleProvider>
         </PresetsProvider>
       </SongsProvider>
