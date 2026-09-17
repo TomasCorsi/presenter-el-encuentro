@@ -328,8 +328,8 @@ Sin dependencias nuevas.
    llega con Presets.
 2. **Sin señal de Live = salida vacía, no última slide congelada.** Si
    prefieres congelar el último contenido, cámbialo aquí.
-3. **Tiempo de espera antes de vaciar** tras perder la señal: propongo
-   inmediato con `bye` y 5 s sin respuesta al reintento. Ajustable.
+3. **Ritmo del heartbeat:** `hello` cada 2 s y desconexión a los 5 s sin
+   señal válida. Ajustable.
 4. **Overlay y ocultado de cursor a los 3 s.** Se puede subir o quitar.
 5. **Riesgo aceptado:** BroadcastChannel no funciona entre navegadores ni
    dispositivos distintos, ni en modo incógnito contra una ventana normal. La
