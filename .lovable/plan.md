@@ -1,76 +1,111 @@
-# Fase 7.1 — Navegación instantánea entre secciones
+# Fase 8 — Presets
 
-## Causa raíz (confirmada por lectura de código)
+Contenido y apariencia quedan separados: la Song guarda texto, el Preset guarda cómo se ve, y un único renderer compartido dibuja la combinación en Preview, Program, Output y el editor.
 
-No es el enrutador ni una animación: todas las rutas están en el mismo bundle, ninguna tiene `loader`, `pendingComponent` ni `Suspense`, el sidebar ya usa `Link` (no `<a href>`, así que no hay recarga de documento) y no existe transición CSS sobre el contenido.
+## 1. Modelo de Preset
 
-El retraso viene de dos cosas:
+`src/domain/presets/preset.ts`:
 
-1. **`SongsProvider` se monta por ruta, no una sola vez.**
-   - `src/routes/_app.projects.tsx:9-15` monta su propio `SongsProvider`.
-   - `src/routes/_app.songs.tsx:9-15` monta otro.
-   - `src/routes/_app.live.tsx:59-65` monta un tercero.
-   Al cambiar entre Projects, Songs y Live, React desmonta y vuelve a montar el provider: se pierde todo lo que ya estaba en memoria.
+```ts
+type PresetFontFamily = "sans" | "serif" | "mono";   // stacks locales, sin CDN
+type HorizontalAlign = "left" | "center" | "right";
+type VerticalAlign = "top" | "center" | "bottom";
 
-2. **Cada montaje vuelve a leer y validar localStorage y muestra un texto de carga que tapa la pantalla.**
-   - `songs-context.tsx:33,66-68` y `projects-context.tsx:32,67-69` arrancan en `loading: true` y cargan dentro de un efecto.
-   - `_app.projects.index.tsx:47`, `_app.songs.index.tsx:58` y `_app.live.tsx:100-102` reemplazan todo el contenido por "Cargando…" mientras `loading` es true.
+interface PresetStyle {
+  fontFamily: PresetFontFamily;
+  fontSize: number;      // % de la ALTURA del lienzo (1..30), ver §"Tamaño"
+  fontWeight: 400 | 600 | 700;
+  lineHeight: number;    // multiplicador 1.0..2.0
+  align: HorizontalAlign;
+  verticalAlign: VerticalAlign;
+  textColor: string;     // hex, dato del usuario
+  backgroundColor: string; // hex, dato del usuario
+  safeAreaX: number;     // % del ancho  (0..20)
+  safeAreaY: number;     // % de la altura (0..20)
+}
 
-Resultado: en cada visita a Projects/Songs/Live aparece un parpadeo con texto de carga aunque los datos ya se hubieran leído antes.
+interface Preset {
+  id: string; workspaceId: string; name: string;
+  style: PresetStyle;
+  createdAt: string; updatedAt: string;
+}
+```
 
-## Qué se va a cambiar
+Sin propiedades anticipadas (nada de imagen, vídeo, overlays, transiciones).
 
-### 1. Un solo provider estable en el App Shell
-- Montar `SongsProvider` una única vez en `src/routes/_app.tsx`, junto a `ProjectsProvider`, dentro del shell y por encima del `<Outlet />`.
-- Eliminar los `SongsProvider` de `_app.projects.tsx`, `_app.songs.tsx` y `_app.live.tsx`.
-- `_app.projects.tsx` y `_app.songs.tsx` quedan como layouts que solo devuelven `<Outlet />` (o se eliminan si dejan de aportar). `_app.live.tsx` conserva `PresentationProvider`, que sí es propio de Live.
-- Con esto, AppShell, sidebar, topbar y ambos providers dejan de remontarse al navegar.
+**Tamaño de texto (opción D).** `fontSize` es un número relativo a la altura del lienzo. El renderer envuelve la slide en un contenedor 16:9 con `container-type: size` y expresa tipografía y safe area en unidades de contenedor (`cqh` / `cqw`). Así el Preview pequeño de Live, el Program y `/output/main` a 1920×1080 se ven proporcionalmente idénticos, y un cambio de resolución no rompe nada. Sin píxeles fijos en ningún caso.
 
-### 2. La lectura de almacenamiento ocurre una sola vez
-- La carga inicial sigue en un efecto (seguro para SSR), pero al no remontarse el provider se ejecuta una sola vez por sesión de app.
-- No se agregan lecturas nuevas ni se bloquea la navegación: los datos ya cargados permanecen en memoria.
+**Colores.** Los colores del Preset son datos del usuario y se aplican por `style` inline dentro del renderer. Los componentes de la aplicación (paneles, listas, botones) siguen usando exclusivamente tokens semánticos.
 
-### 3. Sin pantalla de carga entre secciones
-- Diferenciar "primera carga" de "ya cargado": las páginas solo muestran el texto de carga si todavía no se cargó nunca (`loading && nunca cargado`); en cualquier navegación posterior se renderiza directamente la lista.
-- Aplica a `_app.projects.index.tsx`, `_app.songs.index.tsx`, `_app.index.tsx` y `_app.live.tsx`.
+## 2. Default Preset
 
-### 4. Nada más cambia
-- Sin dependencias nuevas, sin cambio de arquitectura, se respetan las capas UI → feature/service → repository → adaptador local. Navegación por teclado y foco quedan intactos (solo se mueve dónde vive el provider).
+Constante de dominio `DEFAULT_PRESET` con id reservado `preset-default`: texto blanco, fondo oscuro sobrio, centrado horizontal y vertical, safe area 8%/8%. No se persiste; el servicio la antepone siempre a la lista. No se puede eliminar ni editar (se duplica para partir de ella). Resultado: el sistema nunca queda sin estilo válido, ni siquiera con el almacenamiento vacío o corrupto.
 
-## Medición
+## 3. Asignación y resolución
 
-Antes y después, con el navegador automatizado sobre `/`, `/projects`, `/songs`, `/bible`, `/media`, `/presets`, `/live`, `/outputs`, `/settings`:
-- `performance.mark` al hacer clic y al aparecer el nuevo `<h1>`, para medir el inicio del cambio visual (objetivo < 50 ms).
-- Conteo de peticiones de documento durante la navegación (debe ser 0).
-- Conteo de lecturas de `localStorage` por navegación (debe ser 0 tras la primera carga).
-- Comprobación de que el nodo del sidebar es el mismo elemento antes y después (no hay remontaje) y de que la ruta activa se marca de inmediato.
-- Consola sin errores ni warnings.
+`RundownItem` gana `presetId?: string` (opcional, migración no destructiva: ausente = default). Es el nivel correcto porque la misma Song puede aparecer dos veces con estilos distintos sin tocar la Song.
 
-## Pruebas de regresión
+Resolución pura `resolvePreset(presetId, presets) → Preset`: si no hay id, o el id ya no existe, devuelve el Default. `projectToPresentation` propaga `presetId` al `PresentationItem`; el estilo del Program se resuelve por su item.
 
-En `tests/`, con las convenciones actuales (`bun:test`):
-- **Estructura de rutas:** verificar por análisis del código fuente que `_app.projects.tsx`, `_app.songs.tsx` y `_app.live.tsx` no montan `SongsProvider` y que `_app.tsx` sí lo hace (detecta el retroceso a providers por ruta).
-- **Repositorio:** con un almacenamiento en memoria instrumentado, comprobar que una secuencia de operaciones no dispara lecturas repetidas innecesarias.
-- **Estado de carga:** prueba pura de la regla "mostrar carga solo si nunca se cargó", extraída como función/derivación testeable.
+En `/projects/$projectId` cada fila del rundown gana un selector compacto de Preset (acción secundaria), sin convertir el rundown en formulario.
 
-Al final: `bun test` completo, typecheck y build.
+## 4. Renderer compartido
+
+`src/features/presentation/components/slide-renderer.tsx`: componente puro que recibe `{ lines, style }` y no conoce ni el App Shell ni ningún provider. Lo consumen Live Preview, Live Program, `/output/main` y la vista previa del editor de Presets. Ninguna de esas superficies define tipografía o fondo por su cuenta.
+
+## 5. Output Snapshot
+
+`OutputSnapshot` pasa a llevar el estilo **resuelto**:
+
+```ts
+snapshot.slide = { id, lines, style: PresetStyle } | null
+```
+
+Output nunca lee repositories ni conoce `presetId`. `snapshotsEqual` compara además el estilo completo, así que cambiar solo el Preset (misma slide, mismo texto) produce un `update` inmediato.
+
+## 6. CLEAR / BLACK
+
+Sin cambios de semántica: `black` → negro puro (`--output-safe`), ignora el Preset. `clear` → fondo base opaco (`--output-base`), ignora el Preset. Sin sesión Live → negro puro. El Preset solo pinta en `content` con slide.
+
+## 7. Biblioteca y editor
+
+- `/presets`: tabla compacta con búsqueda, crear, abrir, renombrar, duplicar, eliminar. El Default aparece marcado, sin eliminar ni renombrar.
+- `/presets/$presetId`: panel de configuración a la izquierda, vista previa 16:9 en vivo a la derecha, con texto de ejemplo propio ("Esta es una vista previa del texto" + varias líneas), nunca letras reales.
+- Autoguardado con el mismo patrón que Songs: borrador local, debounce, indicador Guardando… / Guardado / Error al guardar.
+
+## 8. Eliminar un Preset en uso
+
+Se calcula el uso (items del rundown por project) y se advierte antes de eliminar, nombrando cuántos items y qué projects. Al confirmar, el preset se borra y los items afectados caen al Default por la resolución tolerante; no se reescriben los Projects. Motivo: evita una escritura masiva y mantiene una sola regla de fallback, la misma que cubre datos corruptos.
 
 ## Archivos
 
-**Modificados**
-- `src/routes/_app.tsx` (monta `SongsProvider`)
-- `src/routes/_app.projects.tsx`, `src/routes/_app.songs.tsx` (quitan el provider)
-- `src/routes/_app.live.tsx` (quita el provider, mantiene `PresentationProvider`)
-- `src/features/songs/songs-context.tsx`, `src/features/projects/projects-context.tsx` (exponer "ya cargado alguna vez")
-- `src/routes/_app.projects.index.tsx`, `src/routes/_app.songs.index.tsx`, `src/routes/_app.index.tsx` (no tapar el contenido)
-- `docs/ARCHITECTURE.md`, `docs/DECISIONS.md` (ADR: providers de datos viven en el App Shell), `docs/TESTING.md`
+**Nuevos:** `src/domain/presets/preset.ts`, `preset-rules.ts`, `preset-resolution.ts`; `src/services/presets/preset-repository.ts`, `local-storage-preset-repository.ts` (`broadcast-control.presets.v1`); `src/features/presets/preset-service.ts`, `presets-context.tsx`, `components/preset-list.tsx`, `preset-row.tsx`, `preset-editor.tsx`, `preset-style-form.tsx`, `preset-picker.tsx`; `src/features/presentation/components/slide-renderer.tsx`; `src/routes/_app.presets.index.tsx`, `_app.presets.$presetId.tsx`.
 
-**Nuevos**
-- `tests/routing/app-shell-providers.test.ts`
-- `tests/features/loading-state.test.ts`
+**Modificados:** `src/routes/_app.presets.tsx` (layout con `Outlet`), `src/routes/_app.tsx` (montar `PresetsProvider` junto a los demás, ADR-031), `src/domain/projects/rundown.ts` y `rundown-rules.ts` (`presetId` opcional + comando para asignarlo), `project-to-presentation.ts` y `presentation.ts` (`presetId` en el item), `src/domain/output/output-snapshot.ts` y `output-publisher.ts` (estilo resuelto y comparación), `src/features/live/components/slide-surface.tsx` y `live-slide-grid.tsx`, `src/features/output/components/output-surface.tsx`, `src/features/projects/components/rundown-row.tsx`, `src/services/projects/local-storage-project-repository.ts` (aceptar `presetId`), `src/styles.css` (stacks de fuente), docs.
+
+## Tests (`bun test`, sin dependencias nuevas)
+
+Crear/editar/validar nombre, duplicar (`— copia`, id y fechas nuevas), default presente, default no eliminable, eliminar preset en uso, fallback a Default con id inexistente, persistencia y datos inválidos, resolución RundownItem → Preset, alineaciones y background del renderer (prueba pura del cálculo de estilo), OutputSnapshot con estilo resuelto, y el caso crítico: **misma slide y mismo texto con Preset distinto → produce `update`**.
+
+## ADR propuestas
+
+- ADR-032 Preset separado del contenido.
+- ADR-033 Default Preset con id reservado, no persistido ni editable.
+- ADR-034 Preset asignado por RundownItem, con resolución tolerante.
+- ADR-035 Renderer de slide compartido por Preview, Program, Output y editor.
+- ADR-036 Estilo resuelto dentro de OutputSnapshot.
+- ADR-037 Tamaño tipográfico relativo al lienzo mediante unidades de contenedor.
+
+Documentación actualizada: ROADMAP, DATA_MODEL, ARCHITECTURE, DECISIONS, TESTING.
+
+## Fuera de alcance
+
+Backgrounds de imagen/vídeo/gradiente, Media, Bible, transiciones, lower thirds, Stage, Stream, Remote, fuentes externas o subidas, Supabase, IndexedDB, cloud sync, logo, temas complejos.
 
 ## Decisiones que necesitan tu aprobación
 
-1. **Subir `SongsProvider` al App Shell** implica que las canciones se cargan también en secciones que no las usan (Bible, Media, Settings). Es una lectura local única y barata; la alternativa sería un caché compartido fuera de React, más complejo. Propuesta: subirlo al shell.
-2. **`_app.projects.tsx` y `_app.songs.tsx`** quedan casi vacíos. Propuesta: conservarlos devolviendo `<Outlet />` para no tocar el árbol de rutas.
-3. **Carga inicial**: se mantiene en efecto (compatible con SSR) en lugar de leer localStorage de forma síncrona, para evitar diferencias de hidratación. El coste es un único parpadeo en el primer arranque de la app.
+1. **Default Preset no editable** (solo duplicable). Es la opción más robusta: nunca hay que reparar un default roto. Alternativa: hacerlo editable y persistir un override.
+2. **Eliminar preset en uso no reescribe los Projects**; los items caen al Default por resolución. Alternativa: limpiar las referencias al borrar (más escrituras, misma apariencia final).
+3. **`fontSize` como % de la altura del lienzo** con unidades de contenedor, en lugar de px o vh. Garantiza que Preview y Output se vean iguales.
+4. **Fuentes limitadas a tres stacks del sistema** (sans, serif, mono), sin selector libre.
+5. **`presetId` vive en el RundownItem**, no en la Song ni en el Project. Un preset global de Project se podría añadir después como nivel intermedio de la jerarquía.
