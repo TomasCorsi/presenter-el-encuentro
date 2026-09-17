@@ -33,7 +33,6 @@ import { LiveSlideGrid } from "@/features/live/components/live-slide-grid";
 import { useLiveKeyboard } from "@/features/live/use-live-keyboard";
 import { useOutputPublisher } from "@/features/output/use-output-publisher";
 import {
-  PresentationProvider,
   usePresentationState,
   usePresentationStore,
 } from "@/features/presentation/presentation-context";
@@ -83,16 +82,9 @@ export const Route = createFileRoute("/_app/live")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: LivePage,
+  // El PresentationProvider vive en el shell (_app.tsx), no en esta ruta.
+  component: LiveConsole,
 });
-
-function LivePage() {
-  return (
-    <PresentationProvider>
-      <LiveConsole />
-    </PresentationProvider>
-  );
-}
 
 function LiveConsole() {
   const { projects, activeProject, hasLoaded, addSongToProject, addPassageToProject } = useProjects();
