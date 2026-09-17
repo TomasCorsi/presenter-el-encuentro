@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { BibleProvider } from "@/features/bible/bible-context";
+import { PresentationProvider } from "@/features/presentation/presentation-context";
 import { PresetsProvider } from "@/features/presets/presets-context";
 import { ProjectsProvider } from "@/features/projects/projects-context";
 import { SongsProvider } from "@/features/songs/songs-context";
