@@ -1,65 +1,141 @@
-# Fase 8.2 — Rediseño del espacio de trabajo Live
+# Fase 9 — Bible
 
-Rediseño exclusivamente de interfaz y distribución de `/live`. No cambia el Presentation Engine, Output Sync, Presets, Songs, Projects ni la semántica Preview/Program/TAKE (auto-advance ya implementado en Fase 8.1 se mantiene tal cual).
+Sistema bíblico local y offline: importar Biblias desde archivos `.json`, dejarlas
+instaladas en el dispositivo, navegar por libro/capítulo/versículo, seleccionar un
+pasaje, previsualizarlo y agregarlo al rundown para que Live y Output lo traten
+exactamente igual que una canción.
 
-## 1. Nueva organización de la pantalla
+## Decisiones acordadas
 
-Tres columnas con scroll independiente y barra de controles fija abajo, todo dentro del alto de la ventana (sin scroll global):
+- Versículos multilínea: se conservan los saltos de línea del archivo original.
+- Un rango genera **un versículo por slide**, cada una con su referencia.
+- Almacenamiento: **IndexedDB, solo para Bible** (el resto sigue en el
+  almacenamiento local actual hasta la Fase 12). Se registra como excepción.
+- Búsqueda: **solo por referencia** ("Juan 3:16", "Sal 23"). Búsqueda de texto
+  completo queda fuera de esta fase.
+
+## Flujo de datos
 
 ```text
-┌───────────── barra de show: proyecto · avisos · recargar · abrir salida ─────────────┐
-├──────────────┬────────────────────────────────────────────┬──────────────────────────┤
-│ RUNDOWN      │ SLIDES DEL ELEMENTO SELECCIONADO           │ PROGRAM   16:9           │
-│ 01 Canción A │ [01 Verso 1] [02 Coro]  [03 Verso 2]       │ estado CONTENT/CLEAR/    │
-│ 02 Canción B │ [04 Puente ] [05 Coro]                     │ BLACK + acento al aire   │
-│ 03 Aviso     │                                            ├──────────────────────────┤
-│ (scroll)     │ (scroll, zona con más espacio)             │ PREVIEW   16:9           │
-├──────────────┴────────────────────────────────────────────┴──────────────────────────┤
-│ Previous (←)   Next (→)   TAKE (Enter)   Clear   Black                               │
-└──────────────────────────────────────────────────────────────────────────────────────┘
+Archivo .json  →  Import Adapter  →  Canonical Bible  →  IndexedDB
+                                                          ↓
+                                                    BibleRepository
+                                                          ↓
+                                              Bible UI / agregar a Project
+                                                          ↓
+                                              Passage → PresentationItem
+                                                          ↓
+                                                    Live → Output
 ```
 
-Dimensionado: rundown de ancho fijo (`260px`, `220px` por debajo de 1440px), columna derecha fija (`340px`, `300px` en pantallas menores), y la rejilla de slides ocupa todo el resto. En anchos menores a `lg` las zonas se apilan: Program, Preview, slides, rundown, controles. Densidad compacta: separadores de 1px, padding reducido, sin tarjetas grandes ni huecos decorativos.
+Bible no conoce Live ni Output. Live no toca IndexedDB. Output no conoce Bible.
 
-## 2. Comportamiento
+## 1. Pantalla /bible
 
-- Rundown: solo lectura, con número, título, tipo/conteo, marca de «sin contenido», elemento seleccionado y elemento al aire.
-- Slides: rejilla auto-ajustable (`repeat(auto-fill, minmax(190px, 1fr))`) para que un juego típico de canción se vea entero. Cada miniatura muestra número, etiqueta, extracto legible y sus marcas de estado. Un clic selecciona Preview; nunca envía al aire.
-- Program arriba a la derecha con acento «live»; Preview debajo, con acento azul (`primary`), más compacto.
-- Elemento vacío o con contenido faltante: mensaje compacto en la zona central, TAKE deshabilitado, Program sin cambios.
-- Controles abajo, siempre visibles, con atajos indicados y foco visible. Sin Logo.
-- Auto-advance: sin cambios de lógica; los botones y las flechas siguen llamando a los mismos comandos del store, de modo que dentro del mismo elemento arrastran Program y al cruzar de elemento solo mueven Preview.
+- **Biblias instaladas**: nombre, abreviatura, idioma, número de libros,
+  publisher y estado. Acciones por fila: Abrir y Eliminar (con confirmación).
+- Botón **+ Importar Biblia**.
+- Estado vacío compacto, con el mismo lenguaje visual de Songs y Presets.
 
-## 3. Detalles técnicos
+### Importar
 
-Reutilizados sin cambios de contrato: `PresentationProvider`, store, selectores, `presentation-live.ts`, `buildLiveSnapshot`, `useLiveKeyboard`, `useOutputPublisher`, `SlideRenderer`, `LiveShowBar`.
+1. El usuario elige un archivo `.json` desde su equipo (todo se lee en el
+   navegador; nada se envía a ningún servidor).
+2. Se detecta el formato y se valida la estructura y la metadata.
+3. Se convierte al modelo canónico interno.
+4. Se muestra una vista previa: nombre, abreviatura, idioma, publisher,
+   copyright y cantidad de libros.
+5. El usuario confirma y la Biblia queda instalada y disponible sin Internet.
+6. Errores claros y accionables: archivo ilegible, formato no soportado,
+   estructura inválida, versión ya instalada, espacio insuficiente.
 
-Modificados (solo presentación):
-- `src/routes/_app.live.tsx` — nueva rejilla de tres columnas a alto completo, barra de controles fija, paso de props a los paneles; sin cambios de lógica de carga, desfase ni handlers.
-- `src/features/live/components/live-rundown.tsx` — filas más densas, indicador de posición, estado al aire más sobrio.
-- `src/features/live/components/live-slide-grid.tsx` — rejilla auto-ajustable, miniaturas mayores, estados Preview/Program explícitos (anillo `primary` para Preview, barra y anillo `live` para Program, ambos combinables) y etiqueta accesible por miniatura.
-- `src/features/live/components/live-monitors.tsx` — pasa de dos columnas a apilado vertical (Program arriba, Preview abajo) mediante una prop de orientación; conserva badges y semántica de modos.
-- `src/features/live/components/slide-surface.tsx` — acento por tono: `primary` para Preview, `live` para Program al aire.
-- `src/features/live/components/live-controls.tsx` — barra densa con atajos visibles; TAKE destacado.
-- `src/components/layout/page.tsx` — sin cambios; Live seguirá usando `Page` con clases de alto completo.
+Importar una Biblia ya instalada pide confirmación para reemplazarla.
 
-Nuevo: ninguno obligatorio. Solo si el archivo de ruta crece demasiado, se extrae `src/features/live/components/live-workspace.tsx` con el armado de las tres zonas, sin lógica propia.
+## 2. Navegador bíblico
 
-Tokens: se usan únicamente tokens semánticos existentes (`border`, `card`, `muted`, `primary`, `live`, `stage`). Si hace falta una altura de barra de controles o un ancho de rundown reutilizable, se añaden como variables en `src/styles.css` y se documentan en `DESIGN_SYSTEM.md` como reglas de densidad broadcast.
+`/bible/$versionId`: tres zonas con scroll propio y densidad de trabajo, en la
+línea del espacio Live.
 
-Sin dependencias nuevas.
+- Libros (agrupados Antiguo/Nuevo Testamento).
+- Capítulos del libro elegido.
+- Versículos del capítulo, con número y texto.
 
-## 4. Pruebas y verificación
+Selección: clic en un versículo lo selecciona; clic con Shift extiende el rango
+dentro del mismo capítulo. Campo de referencia para saltar directo
+("Juan 3:16", "jn 3:16-18", "Sal 23"), tolerante a abreviaturas y acentos.
 
-Las pruebas actuales de dominio y store no cambian (la lógica no se toca) y deben seguir pasando: 166 tests. Se añade un test de interfaz ligero para el rundown y la rejilla (elemento seleccionado marcado, slide en Preview marcada, slide en Program marcada, clic en slide selecciona Preview y no cambia Program) usando el entorno de pruebas ya configurado.
+Panel de pasaje seleccionado: referencia resultante, número de versículos,
+vista previa con el renderer compartido (mismo que Live y Output) y el botón
+**Agregar al proyecto**, que usa el proyecto activo y permite elegir otro.
 
-Verificación en navegador con datos de ejemplo: rundown visible, selección de elemento, rejilla de slides, marcas de Preview y Program simultáneas, TAKE, auto-advance dentro del elemento, límite de elemento exige TAKE, Clear, Black, contenido faltante, teclado, 1920×1080 y 1366×768, consola limpia. Más `bun test`, typecheck y build.
+## 3. Bible en el rundown y en Live
 
-Documentación: `ROADMAP.md` (Fase 8.2), `TESTING.md` (checklist de layout) y `DESIGN_SYSTEM.md` solo si se añaden reglas de densidad.
+- El rundown acepta items de tipo `bible`, con la referencia como título.
+- Cada item guarda el pasaje resuelto en el momento de agregarlo, de modo que
+  el show sigue funcionando aunque después se elimine la traducción.
+- Conversión: un versículo = una slide, con las líneas originales y la
+  referencia como etiqueta.
+- Presets se aplican por aparición igual que en las canciones; Live, TAKE,
+  auto-advance, Clear/Black y Output Main funcionan sin cambios.
+- Un pasaje cuya traducción ya no existe se comporta como contenido faltante,
+  igual que una canción borrada.
 
-## 5. Riesgos de regresión
+## Detalles técnicos
 
-- Alto completo sin scroll global: si el App Shell impone padding o alto automático, la barra inferior podría quedar fuera de vista en 1366×768. Se comprueba en ambas resoluciones.
-- Cambiar la orientación de los monitores podría alterar el tamaño de las superficies 16:9; el renderer compartido usa unidades de contenedor, así que se verifica que Preview, Program y `/output/main` sigan viéndose iguales.
-- Reordenar el DOM afecta el orden de tabulación; se revisa que el teclado y el foco visible sigan funcionando.
-- Riesgo bajo en lógica: no se tocan engine, store, snapshot ni protocolo de salida.
+- Dominio nuevo `src/domain/bible/`: `BibleVersionMeta`, `BibleBook`,
+  `BibleChapter`, `BibleVerse` (`lines: string[]`), `BiblePassage`, reglas de
+  parseo/formateo de referencias y `passageToPresentationItem` (puro, espejo de
+  `songToPresentationItem`).
+- `src/domain/bible/import/`: tipos `ExternalBibleJson` y
+  `BibleImportAdapter`; primera implementación para el formato con
+  `version_id`, `local_abbreviation`, `local_title`, `language`, `publisher`,
+  `copyright`, `books[] → chapters[] → items[]`. Se descartan `chapter_html`,
+  marcado HTML, enlaces previous/next y metadata duplicada. Registro de
+  adaptadores por detección, para admitir otros formatos sin tocar dominio ni UI.
+- `src/services/bible/`: `BibleRepository` asíncrono (listar versiones,
+  obtener metadata, obtener capítulo, obtener pasaje, instalar, eliminar) con
+  implementación IndexedDB propia, sin dependencias nuevas. Metadata y libros
+  separados del texto por capítulo, para no cargar una Biblia entera en memoria.
+  Adaptador en memoria para tests.
+- `src/features/bible/`: `BibleProvider` (solo metadata de versiones instaladas)
+  montado en el App Shell junto a Projects, Songs y Presets; el texto se carga
+  bajo demanda por capítulo. Componentes de lista, importador, navegador y panel
+  de pasaje.
+- `RundownItem` gana el soporte real de `type: "bible"`; el pasaje resuelto vive
+  en el item (`payload`) porque no hay entidad de origen editable. Migración de
+  almacenamiento de Projects solo si el esquema lo requiere; los proyectos
+  existentes siguen siendo válidos.
+- `projectToPresentation` incorpora la rama `bible` reutilizando la función pura
+  de dominio; el Presentation Engine, el snapshot de Live y `OutputSnapshot` no
+  cambian.
+- SSR: IndexedDB y la lectura de archivos solo tras el montaje en cliente.
+- Sin dependencias nuevas, sin backend, sin peticiones de red.
+
+## Testing
+
+- Adaptador de importación: archivo válido, campos faltantes, formato
+  desconocido, HTML descartado, versículos multilínea, numeraciones con letra
+  o rangos combinados.
+- Repositorio IndexedDB: instalar, listar, leer capítulo, eliminar, reemplazar.
+- Parseo de referencias: nombre completo, abreviatura, acentos, rango, rango
+  inválido, capítulo fuera de límites.
+- `passageToPresentationItem`: una slide por versículo, líneas conservadas,
+  etiquetas de referencia.
+- Integración: pasaje en el rundown → Live → TAKE → Output Main; pasaje cuya
+  traducción se eliminó se muestra como contenido faltante.
+- Verificación en navegador con una Biblia real importada, en 1920×1080 y
+  1366×768, con la consola limpia.
+
+## Documentación
+
+Actualizar ROADMAP (Fase 9 completada), DATA_MODEL (modelo canónico y pasaje),
+ARCHITECTURE (capa de importación y repositorio), OFFLINE_STRATEGY (Biblia
+instalada), TESTING y DECISIONS con nuevos ADR: modelo canónico separado del
+formato externo, IndexedDB solo para Bible, pasaje congelado en el rundown, un
+versículo por slide y búsqueda solo por referencia.
+
+## Fuera de alcance
+
+Búsqueda de texto completo, descarga de Biblias en línea, comparación de
+versiones, notas y referencias cruzadas, resaltados, historial de pasajes y
+edición del texto bíblico.
