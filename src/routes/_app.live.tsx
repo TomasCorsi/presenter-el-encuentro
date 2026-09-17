@@ -256,7 +256,9 @@ function LiveConsole() {
     onClear,
     onSearch,
     onEscape,
-    enabled: Boolean(session) && state.runtime.items.length > 0,
+    // La biblioteca también se abre con `/` en un show todavía vacío; los
+    // comandos de navegación son no-op cuando no hay slides.
+    enabled: Boolean(session),
   });
 
   if (!hasLoaded || !songsLoaded || !presetsLoaded) {
