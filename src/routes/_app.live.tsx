@@ -68,6 +68,10 @@ function LiveConsole() {
   const state = usePresentationState();
   const [snapshot, setSnapshot] = useState<LiveSnapshot | null>(null);
 
+  // Live es la autoridad del protocolo Output Sync: publica Program a
+  // `/output/main` (ADR-027/028).
+  useOutputPublisher();
+
   // Carga inicial del show: un único snapshot explícito por sesión.
   useEffect(() => {
     if (snapshot || loading || songsLoading || !activeProject) return;
