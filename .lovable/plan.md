@@ -19,7 +19,7 @@ interface PresetStyle {
   align: HorizontalAlign;
   verticalAlign: VerticalAlign;
   textColor: string;     // hex, dato del usuario
-  backgroundColor: string; // hex, dato del usuario
+  background: { type: "solid"; color: string }; // discriminado desde el inicio
   safeAreaX: number;     // % del ancho  (0..20)
   safeAreaY: number;     // % de la altura (0..20)
 }
@@ -32,6 +32,8 @@ interface Preset {
 ```
 
 Sin propiedades anticipadas (nada de imagen, vídeo, overlays, transiciones).
+
+**Background.** `background` es una unión discriminada desde la Fase 8, con un único caso válido `{ type: "solid"; color }`. Así añadir `image` o `video` en la fase de Media es ampliar la unión, no migrar el modelo. No existe caso `transparent` en esta fase: `/output/main` es una ventana opaca del navegador y una salida "transparente" solo tendría sentido con browser source real; se evalúa cuando exista ese consumidor. El renderer valida el tipo y cae al Default ante un background desconocido.
 
 **Tamaño de texto (opción D).** `fontSize` es un número relativo a la altura del lienzo. El renderer envuelve la slide en un contenedor 16:9 con `container-type: size` y expresa tipografía y safe area en unidades de contenedor (`cqh` / `cqw`). Así el Preview pequeño de Live, el Program y `/output/main` a 1920×1080 se ven proporcionalmente idénticos, y un cambio de resolución no rompe nada. Sin píxeles fijos en ningún caso.
 
