@@ -19,6 +19,8 @@ import { Route as AppPresetsRouteImport } from './routes/_app.presets'
 import { Route as AppProjectsRouteImport } from './routes/_app.projects'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppSongsRouteImport } from './routes/_app.songs'
+import { Route as AppProjectsIndexRouteImport } from './routes/_app.projects.index'
+import { Route as AppProjectsProjectIdRouteImport } from './routes/_app.projects.$projectId'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -69,6 +71,16 @@ const AppSongsRoute = AppSongsRouteImport.update({
   path: '/songs',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProjectsIndexRoute = AppProjectsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppProjectsRoute,
+} as any)
+const AppProjectsProjectIdRoute = AppProjectsProjectIdRouteImport.update({
+  id: '/$projectId',
+  path: '/$projectId',
+  getParentRoute: () => AppProjectsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -77,9 +89,11 @@ export interface FileRoutesByFullPath {
   '/media': typeof AppMediaRoute
   '/outputs': typeof AppOutputsRoute
   '/presets': typeof AppPresetsRoute
-  '/projects': typeof AppProjectsRoute
+  '/projects': typeof AppProjectsRouteWithChildren
   '/settings': typeof AppSettingsRoute
   '/songs': typeof AppSongsRoute
+  '/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/projects/': typeof AppProjectsIndexRoute
 }
 export interface FileRoutesByTo {
   '/bible': typeof AppBibleRoute
@@ -87,10 +101,11 @@ export interface FileRoutesByTo {
   '/media': typeof AppMediaRoute
   '/outputs': typeof AppOutputsRoute
   '/presets': typeof AppPresetsRoute
-  '/projects': typeof AppProjectsRoute
   '/settings': typeof AppSettingsRoute
   '/songs': typeof AppSongsRoute
   '/': typeof AppIndexRoute
+  '/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/projects': typeof AppProjectsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -100,10 +115,12 @@ export interface FileRoutesById {
   '/_app/media': typeof AppMediaRoute
   '/_app/outputs': typeof AppOutputsRoute
   '/_app/presets': typeof AppPresetsRoute
-  '/_app/projects': typeof AppProjectsRoute
+  '/_app/projects': typeof AppProjectsRouteWithChildren
   '/_app/settings': typeof AppSettingsRoute
   '/_app/songs': typeof AppSongsRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/_app/projects/': typeof AppProjectsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -117,6 +134,8 @@ export interface FileRouteTypes {
     | '/projects'
     | '/settings'
     | '/songs'
+    | '/projects/$projectId'
+    | '/projects/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/bible'
@@ -124,10 +143,11 @@ export interface FileRouteTypes {
     | '/media'
     | '/outputs'
     | '/presets'
-    | '/projects'
     | '/settings'
     | '/songs'
     | '/'
+    | '/projects/$projectId'
+    | '/projects'
   id:
     | '__root__'
     | '/_app'
@@ -140,6 +160,8 @@ export interface FileRouteTypes {
     | '/_app/settings'
     | '/_app/songs'
     | '/_app/'
+    | '/_app/projects/$projectId'
+    | '/_app/projects/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -218,8 +240,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSongsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/projects/': {
+      id: '/_app/projects/'
+      path: '/'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof AppProjectsIndexRouteImport
+      parentRoute: typeof AppProjectsRoute
+    }
+    '/_app/projects/$projectId': {
+      id: '/_app/projects/$projectId'
+      path: '/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof AppProjectsProjectIdRouteImport
+      parentRoute: typeof AppProjectsRoute
+    }
   }
 }
+
+interface AppProjectsRouteChildren {
+  AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRoute
+  AppProjectsIndexRoute: typeof AppProjectsIndexRoute
+}
+
+const AppProjectsRouteChildren: AppProjectsRouteChildren = {
+  AppProjectsProjectIdRoute: AppProjectsProjectIdRoute,
+  AppProjectsIndexRoute: AppProjectsIndexRoute,
+}
+
+const AppProjectsRouteWithChildren = AppProjectsRoute._addFileChildren(
+  AppProjectsRouteChildren,
+)
 
 interface AppRouteChildren {
   AppBibleRoute: typeof AppBibleRoute
@@ -227,7 +277,7 @@ interface AppRouteChildren {
   AppMediaRoute: typeof AppMediaRoute
   AppOutputsRoute: typeof AppOutputsRoute
   AppPresetsRoute: typeof AppPresetsRoute
-  AppProjectsRoute: typeof AppProjectsRoute
+  AppProjectsRoute: typeof AppProjectsRouteWithChildren
   AppSettingsRoute: typeof AppSettingsRoute
   AppSongsRoute: typeof AppSongsRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -239,7 +289,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMediaRoute: AppMediaRoute,
   AppOutputsRoute: AppOutputsRoute,
   AppPresetsRoute: AppPresetsRoute,
-  AppProjectsRoute: AppProjectsRoute,
+  AppProjectsRoute: AppProjectsRouteWithChildren,
   AppSettingsRoute: AppSettingsRoute,
   AppSongsRoute: AppSongsRoute,
   AppIndexRoute: AppIndexRoute,

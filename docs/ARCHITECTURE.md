@@ -190,6 +190,26 @@ features → services → persistence
 
 Nunca al revés. Un componente jamás accede a IndexedDB ni a la nube directamente.
 
+### Projects en Fase 2
+
+La primera implementación concreta respeta este flujo:
+
+```text
+UI → ProjectsProvider / ProjectService → ProjectRepository → localStorage temporal
+```
+
+El contrato del repository es asíncrono y contiene solo operaciones de
+persistencia. Reglas como validar, renombrar o duplicar pertenecen al dominio y
+al servicio. El adaptador de `localStorage` se reemplazará por IndexedDB sin
+modificar los componentes.
+
+`ProjectsProvider` usa Context de React para compartir Projects y
+`activeProjectId` entre rutas y shell. No es el store global del Presentation
+Engine, que continúa diferido a la Fase 4 según ADR-008.
+
+La carga desde `localStorage` ocurre después del montaje en cliente. SSR y el
+primer render usan estado de carga y nunca acceden a APIs del navegador.
+
 ### Convención de rutas de outputs
 
 | URL              | Archivo                          |

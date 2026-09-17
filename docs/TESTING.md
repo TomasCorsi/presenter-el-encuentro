@@ -103,6 +103,17 @@ Una fase no está completa si:
 2. **Lazy Tooling**: No añadir runners hasta la Fase 4.
 3. **Mocking**: Usar `msw` solo cuando la complejidad de red lo requiera.
 
+## Fase 2 — Projects
+
+La lógica pura y el repository temporal se prueban con `bun test`, disponible
+sin instalar dependencias. Cubre validación, creación, renombrado, duplicación,
+eliminación del proyecto activo, orden, búsqueda, persistencia y recuperación
+ante datos locales inválidos.
+
+Vitest, Testing Library y Playwright como dependencias del proyecto continúan
+diferidos hasta que su alcance lo requiera. Las comprobaciones E2E de esta fase
+usan únicamente el entorno de desarrollo.
+
 ## Nota de Fase 0
 
 Aún no hay runner de tests instalado. Vitest y Playwright se añaden en la

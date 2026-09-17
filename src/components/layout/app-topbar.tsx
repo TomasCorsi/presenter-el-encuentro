@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
-  ACTIVE_PROJECT_PLACEHOLDER,
   CONNECTION_PLACEHOLDER,
   USER_PLACEHOLDER,
   WORKSPACE_PLACEHOLDER,
 } from "@/components/layout/shell-placeholders";
+import { useProjects } from "@/features/projects/projects-context";
 
 /**
  * Barra superior del App Shell.
@@ -17,6 +17,8 @@ import {
  * Sin lógica real en esta fase.
  */
 export function AppTopbar() {
+  const { activeProject, loading } = useProjects();
+  const projectName = loading ? "Cargando…" : activeProject?.name ?? "Sin proyecto activo";
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-3 sm:px-5">
       <SidebarTrigger className="size-8 shrink-0 rounded-sm border border-transparent hover:border-border" />
@@ -27,7 +29,7 @@ export function AppTopbar() {
         </span>
         <ChevronRight aria-hidden="true" className="hidden size-3.5 text-border sm:block" />
         <span className="hidden truncate text-sm font-medium text-foreground sm:inline">
-          {ACTIVE_PROJECT_PLACEHOLDER}
+          {projectName}
         </span>
       </div>
 
