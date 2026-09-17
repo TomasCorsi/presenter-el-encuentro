@@ -11,13 +11,14 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Fase actual completada: **Fase 2 — Projects**.
-- Próxima fase: **Fase 3 — Songs** (pendiente de aprobación).
+- Fase actual completada: **Fase 3 — Songs**.
+- Próxima fase: **Fase 4 — Presentation Engine** (pendiente de aprobación).
 - Backend: no conectado. Se decide en la Fase 12.
 - Dependencias añadidas hasta la Fase 2: ninguna.
 - Implementado hasta ahora: documentación en `/docs`, tema oscuro con tokens
-  semánticos, App Shell y gestión local completa de Projects con proyecto activo,
-  búsqueda, detalle y persistencia temporal aislada detrás de un repository.
+  semánticos, App Shell, gestión local completa de Projects y biblioteca de
+  Songs con editor de secciones, autoguardado y persistencia temporal aislada
+  detrás de un repository.
 - Ancho de página: lo decide cada pantalla (`contained` o `full`), no el shell.
 - Tipografía: stack del sistema, sin fuentes externas (offline-first).
 - Dirección visual: superficie de control broadcast, con jerarquía operativa,
@@ -148,13 +149,13 @@ Fase 5. IndexedDB continúa diferido a la Fase 11.
 
 ## Fase 3 — Songs
 
-- [ ] Biblioteca.
-- [ ] Crear.
-- [ ] Editar.
-- [ ] Secciones.
-- [ ] Slides.
-- [ ] Buscar.
-- [ ] Añadir a proyecto.
+- [x] Biblioteca.
+- [x] Crear.
+- [x] Editar.
+- [x] Secciones.
+- [x] Buscar.
+- [ ] Slides (Fase 4, Presentation Engine).
+- [ ] Añadir a proyecto (cuando Projects y Songs se integren).
 
 ---
 

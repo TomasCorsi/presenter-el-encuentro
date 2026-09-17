@@ -75,14 +75,14 @@ interface Song {
   workspaceId: string
   title: string
   author?: string
-  tags: string[]
-  sectionIds: string[]
-  presetId?: string
-  favorite: boolean
+  sections: SongSection[] // embebidas, ordenadas por `order`
   createdAt: string
   updatedAt: string
 }
 ```
+
+Campos diferidos a fases posteriores (ADR-012): `tags`, `favorite`,
+`presetId` y cualquier metadata de copyright.
 
 ## Song Section
 
@@ -90,20 +90,25 @@ interface Song {
 type SongSectionType =
   | "verse"
   | "chorus"
+  | "prechorus"
   | "bridge"
-  | "ending"
   | "intro"
+  | "outro"
   | "custom"
 
 interface SongSection {
   id: string
-  songId: string
   type: SongSectionType
   label: string
-  order: number
-  text: string
+  content: string
+  order: number // normalizado a 0..n-1
 }
 ```
+
+Las secciones viven embebidas en `Song` (sin tabla/colección separada ni
+`songId`): son una unidad de persistencia en la fase local. Los labels
+automáticos (Verso N, Coro, Pre-coro, Puente, Intro, Outro) se generan al
+crear la sección y nunca sobrescriben un label personalizado.
 
 ## Preset
 
