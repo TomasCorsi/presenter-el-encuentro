@@ -249,13 +249,24 @@ interface PresentationRuntime {
   navigableSlideIds: readonly string[]
 }
 
+type ProgramMode = "content" | "clear" | "black"
+
 interface PresentationState {
   runtime: PresentationRuntime
-  currentItemId: string | null
-  currentSlideId: string | null
+  previewItemId: string | null
+  previewSlideId: string | null
+  programSlideId: string | null   // el item de Program se deriva del runtime
+  programMode: ProgramMode
 }
 ```
 
 El runtime son datos derivados e inmutables, construidos solo cuando cambia la
 presentación. El estado operativo del motor NO se persiste (ni localStorage, ni
 IndexedDB, ni nube).
+
+Desde la Fase 6 la posición está separada: la navegación mueve Preview y solo
+TAKE escribe en Program. `clear` y `black` son modos temporales de salida y
+nunca borran `programSlideId`, así que volver a `content` devuelve al aire la
+misma slide. `loadPresentation` descarta Program; `reloadPresentation` lo
+conserva mientras su id siga existiendo.
+

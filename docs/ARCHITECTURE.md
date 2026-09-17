@@ -280,9 +280,11 @@ Project.rundown + Song[] → projectToPresentation() → PresentationItem[]
 ```
 
 `projectToPresentation` es una función pura de `src/domain/presentation/` que
-reutiliza `songToPresentationItem`. La UI de Fase 5 no carga el motor: la
-conversión existe y está probada, y su consumo visible llega en la Fase 6
-(Live Mode).
+reutiliza `songToPresentationItem`. Desde la Fase 6, `/live` consume esa
+conversión mediante `buildLiveSnapshot`: compone el show UNA vez y opera
+siempre sobre ese snapshot. Editar el rundown o una canción no altera el show
+en curso; Live avisa del desfase y el operador decide recargar (ADR-023).
+La navegación mueve Preview y solo TAKE escribe en Program (ADR-022, ADR-025).
 
 ### Límite entre features
 

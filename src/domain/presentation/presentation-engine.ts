@@ -7,13 +7,18 @@ import { EMPTY_PRESENTATION_RUNTIME, buildPresentationRuntime } from "./presenta
  * Todos son funciones puras `(state, ...) => state`. Cuando un comando no
  * cambia nada devuelven la MISMA referencia de estado, de modo que los
  * suscriptores puedan evitar trabajo innecesario.
+ *
+ * Todos los comandos de navegación operan sobre PREVIEW. Program solo cambia
+ * mediante los comandos de `presentation-program.ts` (ADR-022, ADR-025).
  */
 
 export function createInitialPresentationState(): PresentationState {
   return {
     runtime: EMPTY_PRESENTATION_RUNTIME,
-    currentItemId: null,
-    currentSlideId: null,
+    previewItemId: null,
+    previewSlideId: null,
+    programSlideId: null,
+    programMode: "content",
   };
 }
 
@@ -32,8 +37,8 @@ function positioned(
   itemId: string | null,
   slideId: string | null,
 ): PresentationState {
-  if (state.currentItemId === itemId && state.currentSlideId === slideId) return state;
-  return { ...state, currentItemId: itemId, currentSlideId: slideId };
+  if (state.previewItemId === itemId && state.previewSlideId === slideId) return state;
+  return { ...state, previewItemId: itemId, previewSlideId: slideId };
 }
 
 function atSlide(state: PresentationState, slideId: string): PresentationState {
@@ -43,23 +48,63 @@ function atSlide(state: PresentationState, slideId: string): PresentationState {
 }
 
 /**
- * Carga o reemplaza la presentación, preservando la posición cuando es posible:
- * misma slide → mismo item → primera slide navegable → vacío.
+ * Posiciona Preview en un estado recién construido siguiendo la estrategia de
+ * preservación: misma slide → mismo item → primera slide navegable → vacío.
  */
-export function load(state: PresentationState, items: PresentationItem[]): PresentationState {
+function restorePreview(base: PresentationState, previous: PresentationState): PresentationState {
+  if (previous.previewSlideId && base.runtime.slideLocationById.has(previous.previewSlideId)) {
+    return atSlide(base, previous.previewSlideId);
+  }
+
+  if (previous.previewItemId && base.runtime.itemIndexById.has(previous.previewItemId)) {
+    return selectItem(base, previous.previewItemId);
+  }
+
+  const first = firstNavigableSlideId(base);
+  return first ? atSlide(base, first) : base;
+}
+
+/**
+ * Inicio o cambio de show: reconstruye el runtime y DESCARTA Program siempre.
+ * Un show nuevo nunca hereda lo que estaba al aire (ADR-026).
+ */
+export function loadPresentation(
+  state: PresentationState,
+  items: PresentationItem[],
+): PresentationState {
+  const base: PresentationState = {
+    runtime: buildPresentationRuntime(items),
+    previewItemId: null,
+    previewSlideId: null,
+    programSlideId: null,
+    programMode: "content",
+  };
+
+  return restorePreview(base, state);
+}
+
+/**
+ * Recarga explícita solicitada por el operador: reconstruye el runtime,
+ * conserva Preview cuando es posible y conserva Program únicamente si
+ * `programSlideId` sigue existiendo. Sin Program, el modo vuelve a `content`.
+ */
+export function reloadPresentation(
+  state: PresentationState,
+  items: PresentationItem[],
+): PresentationState {
   const runtime = buildPresentationRuntime(items);
-  const next: PresentationState = { runtime, currentItemId: null, currentSlideId: null };
+  const programSurvives = state.programSlideId !== null
+    && runtime.slideLocationById.has(state.programSlideId);
 
-  if (state.currentSlideId && runtime.slideLocationById.has(state.currentSlideId)) {
-    return atSlide(next, state.currentSlideId);
-  }
+  const base: PresentationState = {
+    runtime,
+    previewItemId: null,
+    previewSlideId: null,
+    programSlideId: programSurvives ? state.programSlideId : null,
+    programMode: programSurvives ? state.programMode : "content",
+  };
 
-  if (state.currentItemId && runtime.itemIndexById.has(state.currentItemId)) {
-    return selectItem(next, state.currentItemId);
-  }
-
-  const first = firstNavigableSlideId(next);
-  return first ? atSlide(next, first) : next;
+  return restorePreview(base, state);
 }
 
 export function reset(): PresentationState {
@@ -67,8 +112,8 @@ export function reset(): PresentationState {
 }
 
 /**
- * Selecciona un item. Si el item no tiene slides, queda seleccionado con
- * `currentSlideId = null` (invariante 1 y 2 del modelo).
+ * Selecciona un item en Preview. Si el item no tiene slides, queda
+ * seleccionado con `previewSlideId = null` (invariantes 1 y 2).
  */
 export function selectItem(state: PresentationState, itemId: string): PresentationState {
   const itemIndex = state.runtime.itemIndexById.get(itemId);
@@ -96,15 +141,15 @@ export function goToLast(state: PresentationState): PresentationState {
 }
 
 /**
- * Índice navegable de referencia cuando no hay slide actual pero sí un item
- * seleccionado (item vacío): devuelve el rango [antes, después] del item.
+ * Índice navegable de referencia cuando no hay slide de Preview pero sí un
+ * item seleccionado (item vacío): devuelve el rango [antes, después].
  */
 function navigableBoundsOfEmptySelection(state: PresentationState): {
   before: number;
   after: number;
 } | null {
-  if (!state.currentItemId) return null;
-  const itemIndex = state.runtime.itemIndexById.get(state.currentItemId);
+  if (!state.previewItemId) return null;
+  const itemIndex = state.runtime.itemIndexById.get(state.previewItemId);
   if (itemIndex === undefined) return null;
 
   let before = -1;
@@ -125,14 +170,14 @@ function step(state: PresentationState, direction: 1 | -1): PresentationState {
   const ids = state.runtime.navigableSlideIds;
   if (ids.length === 0) return state;
 
-  if (state.currentSlideId) {
-    const location = state.runtime.slideLocationById.get(state.currentSlideId);
+  if (state.previewSlideId) {
+    const location = state.runtime.slideLocationById.get(state.previewSlideId);
     if (!location) return state;
     const targetId = ids[location.navigableIndex + direction];
     return targetId ? atSlide(state, targetId) : state;
   }
 
-  // Sin slide actual: desde un item vacío buscamos la slide navegable más
+  // Sin slide de Preview: desde un item vacío buscamos la slide navegable más
   // cercana en la dirección pedida; si no hay item, empezamos por los extremos.
   const bounds = navigableBoundsOfEmptySelection(state);
   if (!bounds) {
@@ -145,12 +190,12 @@ function step(state: PresentationState, direction: 1 | -1): PresentationState {
   return targetId ? atSlide(state, targetId) : state;
 }
 
-/** Avanza; atraviesa items y es no-op en la última slide navegable (sin wrap). */
+/** Avanza Preview; atraviesa items y es no-op en la última slide (sin wrap). */
 export function next(state: PresentationState): PresentationState {
   return step(state, 1);
 }
 
-/** Retrocede; atraviesa items y es no-op en la primera slide navegable. */
+/** Retrocede Preview; atraviesa items y es no-op en la primera slide. */
 export function previous(state: PresentationState): PresentationState {
   return step(state, -1);
 }
