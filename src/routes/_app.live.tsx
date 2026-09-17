@@ -82,16 +82,9 @@ export const Route = createFileRoute("/_app/live")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: LivePage,
+  // El PresentationProvider vive en el shell (_app.tsx), no en esta ruta.
+  component: LiveConsole,
 });
-
-function LivePage() {
-  return (
-    <PresentationProvider>
-      <LiveConsole />
-    </PresentationProvider>
-  );
-}
 
 function LiveConsole() {
   const { projects, activeProject, hasLoaded, addSongToProject, addPassageToProject } = useProjects();
