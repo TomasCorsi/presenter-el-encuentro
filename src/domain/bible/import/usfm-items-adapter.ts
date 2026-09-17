@@ -23,6 +23,31 @@ function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
 }
 
+/** Acepta texto o número; descarta valores vacíos o no finitos. */
+function asLooseString(value: unknown): string | undefined {
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : undefined;
+  return asString(value);
+}
+
+/** `publisher` puede llegar como texto o como objeto `{ name }`. */
+function readPublisher(value: unknown): string | undefined {
+  const direct = asString(value);
+  if (direct) return direct;
+  const record = asRecord(value);
+  if (!record) return undefined;
+  return asString(record["name"]) ?? asString(record["local_name"]);
+}
+
+/** `copyright` puede llegar como texto o como objeto `{ text, html }`: nunca el HTML. */
+function readCopyright(value: unknown): string | undefined {
+  const direct = asString(value);
+  if (direct) return cleanLine(direct) || undefined;
+  const record = asRecord(value);
+  if (!record) return undefined;
+  const text = asString(record["text"]) ?? asString(record["html"]);
+  return text ? cleanLine(text) || undefined : undefined;
+}
+
 /** `language` puede llegar como texto o como objeto `{ name, iso }`. */
 function readLanguage(value: unknown): string {
   const direct = asString(value);
@@ -51,7 +76,9 @@ function readVerses(items: unknown): BibleVerse[] {
     if (!item) continue;
 
     const numbers = Array.isArray(item["verse_numbers"])
-      ? item["verse_numbers"].filter((n): n is string => typeof n === "string" && n.trim() !== "")
+      ? item["verse_numbers"]
+          .map((n) => asLooseString(n))
+          .filter((n): n is string => n !== undefined)
       : [];
     if (numbers.length === 0) continue;
 
@@ -95,7 +122,7 @@ export const usfmItemsBibleAdapter: BibleImportAdapter = {
 
     const books: BibleBookMeta[] = [];
     const chapters: BibleChapter[] = [];
-    const versionId = asString(root["version_id"]) ?? dependencies.createId();
+    const versionId = asLooseString(root["version_id"]) ?? dependencies.createId();
 
     for (const rawBook of root["books"]) {
       const book = asRecord(rawBook);
@@ -130,7 +157,7 @@ export const usfmItemsBibleAdapter: BibleImportAdapter = {
 
     if (books.length === 0) {
       throw new BibleImportError(
-        "No se encontró ningún libro con versículos legibles en el archivo.",
+        "El archivo parece una Biblia, pero no se pudo leer ningún versículo. Revisa que cada capítulo incluya sus versículos con su número y su texto.",
       );
     }
 
@@ -141,12 +168,12 @@ export const usfmItemsBibleAdapter: BibleImportAdapter = {
 
     const meta = {
       id: versionId,
-      externalId: asString(root["version_id"]),
+      externalId: asLooseString(root["version_id"]),
       abbreviation,
       title,
       language: readLanguage(root["language"]),
-      publisher: asString(root["publisher"]),
-      copyright: asString(root["copyright"]),
+      publisher: readPublisher(root["publisher"]),
+      copyright: readCopyright(root["copyright"]),
       bookCount: books.length,
       installedAt: dependencies.now(),
     };
