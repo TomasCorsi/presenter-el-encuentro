@@ -318,3 +318,23 @@ comandos. El transporte es una interfaz (`OutputTransport`) con
 implementación BroadcastChannel en el navegador y en memoria para tests;
 los componentes React no acceden al canal. Sin sesión válida la superficie
 es negro puro (ADR-030).
+
+## Providers del App Shell (Fase 7.1)
+
+```text
+_app.tsx
+  ProjectsProvider   ← se monta una sola vez
+    SongsProvider    ← se monta una sola vez
+      SidebarProvider → AppShell → <Outlet /> (rutas)
+```
+
+Los layouts intermedios (`_app.projects.tsx`, `_app.songs.tsx`,
+`_app.live.tsx`) solo renderizan `<Outlet />` (o `PresentationProvider` en
+Live). Ningún layout hijo vuelve a montar un provider de datos: montarlos por
+ruta provocaba desmontaje, relectura de `localStorage` y un placeholder
+"Cargando…" en cada navegación.
+
+Cada estado de datos distingue tres campos: `loading` (operación en curso),
+`hasLoaded` (la carga inicial terminó, con éxito o error) y `error`. Las
+vistas bloquean solo mientras `hasLoaded` es `false`; refrescos posteriores no
+sustituyen la pantalla.
