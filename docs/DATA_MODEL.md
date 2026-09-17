@@ -325,3 +325,39 @@ se sintetiza en memoria y nunca se persiste.
 
 Persistencia temporal en `localStorage` bajo `broadcast-control.presets.v1`;
 un estilo corrupto se normaliza campo a campo en lugar de perder el preset.
+
+## Fase 9 — Bible
+
+Modelo canónico (independiente del archivo importado):
+
+```ts
+interface BibleVersionMeta {
+  id: string; abbreviation: string; title: string;
+  language: string; publisher?: string; copyright?: string;
+  bookCount: number; installedAt: string;
+}
+interface BibleBookMeta { usfm: string; name: string; chapters: number[] }
+interface BibleVerse { number: string; lines: string[] }   // multilínea real
+interface BibleChapter { versionId: string; bookUsfm: string; chapter: number; verses: BibleVerse[] }
+interface CanonicalBible { version: BibleVersionMeta; books: BibleBookMeta[]; chapters: BibleChapter[] }
+```
+
+Pasaje congelado que viaja al Rundown:
+
+```ts
+interface BiblePassage {
+  versionId: string; versionAbbreviation: string;
+  bookUsfm: string; bookName: string; chapter: number;
+  reference: string;            // "Juan 3:2-4"
+  verses: BibleVerse[];         // texto completo, copiado
+}
+```
+
+`RundownItem` gana `payload?: { kind: "bible"; passage: BiblePassage }` y
+`Slide` gana `secondaryText?: string`. El item Bible es autosuficiente: no
+depende de la traducción instalada (ADR-042).
+
+Persistencia de Biblias: IndexedDB `broadcast-control.bible` (v1), stores
+`versions` (key `id`), `books` (key `versionId`) y `chapters`
+(key `${versionId}|${bookUsfm}|${chapter}`, índice `versionId`). Reinstalar
+una versión reemplaza sus datos sin dejar huérfanos.
