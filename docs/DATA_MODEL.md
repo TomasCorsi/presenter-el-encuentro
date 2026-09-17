@@ -280,10 +280,48 @@ interface OutputSnapshot {
   sessionId: string;        // efímero, generado al montar Live
   sequence: number;         // incremental por sesión
   mode: ProgramMode;        // content | clear | black
-  slide: { id: string; lines: string[] } | null;
+  slide: { id: string; lines: string[]; style: PresetStyle } | null;
 }
 ```
 
 Transmite el contenido RESUELTO de Program: Output nunca reconstruye nada
 desde Projects/Songs. Preview no se sincroniza. No hay persistencia: el
 protocolo vive solo en memoria y en el canal de broadcast.
+
+
+## Preset (Fase 8)
+
+```ts
+interface Preset {
+  id: string;
+  workspaceId: string;
+  name: string;
+  style: PresetStyle;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface PresetStyle {
+  fontFamily: "sans" | "serif" | "mono";  // stacks locales, sin CDN
+  fontSize: number;                        // % de la ALTURA del lienzo → cqh
+  fontWeight: 400 | 600 | 700;
+  lineHeight: number;                      // 1.0 .. 2.0
+  align: "left" | "center" | "right";
+  verticalAlign: "top" | "center" | "bottom";
+  textColor: string;                       // dato del usuario, no token de UI
+  background: { type: "solid"; color: string };  // discriminado: solo solid
+  safeAreaX: number;                       // % del ancho → cqw
+  safeAreaY: number;                       // % de la altura → cqh
+}
+```
+
+El Preset define APARIENCIA; Song y Slide definen CONTENIDO. Ningún estilo se
+guarda dentro del texto de una Song.
+
+`RundownItem` gana `presetId?: string`. Al estar en la aparición y no en la
+Song, la misma canción puede verse distinta en dos momentos del show. Un
+`presetId` ausente o inexistente resuelve al Default (`preset-default`), que
+se sintetiza en memoria y nunca se persiste.
+
+Persistencia temporal en `localStorage` bajo `broadcast-control.presets.v1`;
+un estilo corrupto se normaliza campo a campo en lugar de perder el preset.

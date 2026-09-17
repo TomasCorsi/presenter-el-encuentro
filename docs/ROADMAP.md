@@ -11,8 +11,8 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Fase actual completada: **Fase 7 — Output Main**.
-- Próxima fase: **Fase 8 — Presets** (pendiente de aprobación).
+- Fase actual completada: **Fase 8 — Presets**.
+- Próxima fase: **Fase 9 — Bible** (pendiente de aprobación).
 - Backend: no conectado. Se decide en la Fase 13.
 - Dependencias añadidas hasta la Fase 6: ninguna.
 - Renumeración: Rundown pasa a ser la Fase 5 y las fases posteriores se
@@ -249,12 +249,15 @@ Project activo no altera el show en curso sin acción del operador.
 
 ## Fase 8 — Presets
 
-- [ ] Biblioteca.
-- [ ] Editor.
-- [ ] Background.
-- [ ] Typography.
-- [ ] Alignment.
-- [ ] Position.
+- [x] Modelo `Preset` separado del contenido (ADR-032).
+- [x] Default Preset reservado `preset-default`, no editable ni eliminable, duplicable (ADR-033).
+- [x] `presetId` opcional por aparición del rundown, con fallback al Default (ADR-034).
+- [x] Biblioteca `/presets`: crear, abrir, renombrar, duplicar, eliminar, buscar.
+- [x] Editor `/presets/$presetId` con vista previa 16:9 en vivo y autoguardado.
+- [x] Tipografía (stacks locales), tamaño, peso, alineación H/V, color, fondo sólido y safe area.
+- [x] Renderer compartido por Live Preview, Live Program, Output Main y el editor (ADR-035).
+- [x] Estilo resuelto y congelado en el snapshot de Live y en `OutputSnapshot` (ADR-036).
+- [ ] Background de imagen/vídeo (llega con Media).
 - [ ] Logo.
 - [ ] Transition.
 

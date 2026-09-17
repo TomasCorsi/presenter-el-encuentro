@@ -210,3 +210,23 @@ dependencias antes de que su fase las requiera.
 - **Medición** (Playwright sobre el build de producción): navegación SPA sin
   peticiones de documento adicionales, sidebar no remontado, sin placeholders
   de carga entre secciones y consola limpia.
+
+## Fase 8 — Presets
+
+- **Dominio** (`tests/domain/preset-rules.test.ts`): creación y validación de
+  nombre, duplicado independiente con nuevas fechas, protección del Default
+  (renombrar/editar/eliminar lanzan), normalización de valores fuera de rango
+  y de datos inválidos, comparación de estilos, orden y búsqueda.
+- **Resolución y render** (`tests/domain/preset-resolution.test.ts`): fallback
+  al Default sin id o con id inexistente, uso de un preset en rundowns,
+  conversión a `cqh`/`cqw`, alineaciones a ejes flex y colores del preset.
+- **Rundown** (`tests/domain/rundown-rules.test.ts`): la misma canción con
+  presets distintos en dos apariciones; quitar el preset vuelve al Default.
+- **Live** (`tests/features/live-presentation.test.ts`): el snapshot congela el
+  estilo por aparición y la firma cambia al editar un Preset en uso, lo que
+  dispara el aviso de contenido desactualizado.
+- **Output** (`tests/output/output-snapshot.test.ts`): misma slide y mismo
+  texto con estilo distinto producen update.
+- **Persistencia** (`tests/services/local-storage-preset-repository.test.ts`):
+  CRUD, datos corruptos ignorados, id reservado nunca persistido y estilo
+  inválido normalizado.
