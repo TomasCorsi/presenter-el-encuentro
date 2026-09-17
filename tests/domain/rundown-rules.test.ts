@@ -9,6 +9,7 @@ import {
   moveRundownItem,
   normalizeRundown,
   removeRundownItem,
+  setRundownItemPreset,
 } from "@/domain/projects/rundown-rules";
 
 function createIdSequence(prefix: string) {
@@ -99,5 +100,30 @@ describe("rundown rules", () => {
 
     expect(findSongUsage(projects, "song-a")).toEqual({ occurrences: 2, projectNames: ["Domingo"] });
     expect(findSongUsage(projects, "song-z")).toEqual({ occurrences: 0, projectNames: [] });
+  });
+});
+
+describe("preset por aparición del rundown", () => {
+  test("asigna un preset distinto a cada aparición de la misma canción", () => {
+    let rundown = buildRundown();
+    rundown = setRundownItemPreset(rundown, "item-1", "preset-lyrics");
+    rundown = setRundownItemPreset(rundown, "item-3", "preset-cierre");
+
+    expect(rundown[0]?.presetId).toBe("preset-lyrics");
+    expect(rundown[2]?.presetId).toBe("preset-cierre");
+    expect(rundown[1]?.presetId).toBeUndefined();
+  });
+
+  test("quitar el preset deja el item sin asignación (cae al Default)", () => {
+    let rundown = setRundownItemPreset(buildRundown(), "item-1", "preset-lyrics");
+    rundown = setRundownItemPreset(rundown, "item-1", undefined);
+
+    expect(rundown[0]).not.toHaveProperty("presetId");
+  });
+
+  test("un itemId inexistente no altera el rundown", () => {
+    const rundown = buildRundown();
+
+    expect(setRundownItemPreset(rundown, "no-existe", "preset-x")).toEqual(rundown);
   });
 });
