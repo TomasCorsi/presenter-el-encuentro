@@ -4,7 +4,6 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ProjectsProvider } from "@/features/projects/projects-context";
-import { SongsProvider } from "@/features/songs/songs-context";
 
 export const Route = createFileRoute("/_app")({
   component: AppShell,
@@ -17,8 +16,7 @@ export const Route = createFileRoute("/_app")({
 function AppShell() {
   return (
     <ProjectsProvider>
-      <SongsProvider>
-      <SidebarProvider>
+            <SidebarProvider>
         <div className="flex min-h-screen w-full bg-background">
           <AppSidebar />
           <SidebarInset className="flex min-w-0 flex-1 flex-col bg-background">
@@ -29,7 +27,6 @@ function AppShell() {
           </SidebarInset>
         </div>
       </SidebarProvider>
-      </SongsProvider>
-    </ProjectsProvider>
+          </ProjectsProvider>
   );
 }

@@ -1,13 +1,6 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
+import { SongsProvider } from "@/features/songs/songs-context";
 
-export const Route = createFileRoute("/_app/songs")({
-  component: SongsLayout,
-});
+export const Route = createFileRoute("/_app/songs")({ component: L });
 
-/**
- * Layout de Songs. Los providers de datos viven en el App Shell (`_app`)
- * para que no se remonten al navegar entre secciones (ADR-031).
- */
-function SongsLayout() {
-  return <Outlet />;
-}
+function L() { return (<SongsProvider><Outlet /></SongsProvider>); }
