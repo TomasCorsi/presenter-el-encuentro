@@ -20,9 +20,9 @@ LocalStorageProjectRepository (adaptador temporal, solo cliente)
 
 - **Dominio:** `Project` tendrá `id`, `workspaceId`, `name`, `itemIds`, `createdAt` y `updatedAt`. `eventDate` seguirá siendo opcional y no se solicitará. `itemIds` comenzará vacío para respetar el modelo existente sin implementar rundown.
 - **Workspace temporal:** se usará un identificador local estable para el único workspace mock actual; no se implementará gestión de workspaces.
-- **Repository:** contrato asíncrono para listar, obtener, crear, actualizar, duplicar y eliminar proyectos, además de leer/escribir `activeProjectId`. La forma async permitirá sustituir el adaptador por IndexedDB sin cambiar la UI.
+- **Repository:** contrato asíncrono enfocado exclusivamente en persistencia: listar, obtener, crear/guardar, actualizar y eliminar proyectos, además de leer/escribir `activeProjectId`. No tendrá una operación `duplicate()`. La forma async permitirá sustituir el adaptador por IndexedDB sin cambiar la UI.
 - **Persistencia temporal:** un adaptador de `localStorage`, con clave versionada, validación defensiva al leer y acceso únicamente desde métodos ejecutados en cliente. No habrá acceso directo desde componentes.
-- **Feature service:** concentrará las operaciones y reglas que coordinan el repositorio, incluida la limpieza de `activeProjectId` al eliminar el proyecto activo.
+- **Feature service:** concentrará las operaciones y reglas que coordinan el repositorio, incluida la duplicación y la limpieza de `activeProjectId` al eliminar el proyecto activo. Para duplicar, obtendrá el original, aplicará la regla pura, generará un Project independiente y pedirá al repository que lo guarde.
 - **Estado compartido:** un `ProjectsProvider` de React, montado dentro del layout `_app`, con Context + reducer/hooks. Es necesario porque Projects, Home y Topbar deben reaccionar inmediatamente al mismo proyecto activo. No se instalará Zustand ni otra librería, y no se utilizará `src/stores/`, reservado para la Fase 4.
 - **SSR:** servidor y primera hidratación parten de estado `loading`; el repositorio se carga después de montar el cliente. Así no se toca `localStorage` durante importación/render SSR ni se producen diferencias de hidratación.
 
@@ -90,9 +90,8 @@ LocalStorageProjectRepository (adaptador temporal, solo cliente)
 - `src/routes/_app.index.tsx` — leer el proyecto activo real.
 - `src/components/layout/app-topbar.tsx` — mostrar el proyecto activo real.
 - `src/components/layout/shell-placeholders.ts` — retirar únicamente el placeholder de proyecto activo; conservar workspace, usuario y conexión mock.
-- `package.json` — añadir solo el comando `test` usando `bun test`; ninguna dependencia.
 - `docs/ROADMAP.md` — marcar Fase 2 al completarse y corregir su alcance: CRUD, búsqueda, activo, detalle placeholder y persistencia temporal; mover rundown funcional/drag & drop a su fase posterior.
-- `docs/DATA_MODEL.md` — documentar `activeProjectId` como estado local de sesión, no como campo de Project.
+- `docs/DATA_MODEL.md` — documentar `activeProjectId` como estado local del workspace/dispositivo, no como campo de Project ni parte del modelo sincronizado. Su futura sincronización quedará sin decidir.
 - `docs/ARCHITECTURE.md` — registrar el flujo concreto UI → feature/service → repository y la carga client-only.
 - `docs/DECISIONS.md` — nueva ADR para el adaptador temporal de `localStorage` y el Context de feature sin librería global.
 - `docs/TESTING.md` — aclarar que Fase 2 inicia tests de lógica con el runner de Bun, mientras Vitest/Testing Library/Playwright como tooling de proyecto siguen diferidos.
@@ -111,7 +110,7 @@ No se editará `src/routeTree.gen.ts`; TanStack Router lo regenerará.
 - Lectura/escritura del repositorio, recuperación ante contenido inválido y persistencia de `activeProjectId`.
 - Orden por modificación y búsqueda por nombre.
 
-Se usará `bun test`, ya disponible, sin instalar Vitest ni librerías de DOM. Los flujos visuales se verificarán con Playwright del entorno, sin añadirlo al proyecto.
+Se ejecutará `bun test` directamente, sin modificar `package.json`, instalar Vitest ni añadir librerías de DOM. Los flujos visuales se verificarán con Playwright del entorno, sin añadirlo al proyecto.
 
 ### Verificación funcional
 
@@ -146,5 +145,6 @@ Existe una contradicción en el roadmap actual: Fase 2 todavía enumera **Rundow
 3. **Carga client-only:** evita riesgos SSR, con un estado de carga breve al abrir o recargar.
 4. **Datos locales sin migración definitiva:** la clave será versionada y la lectura defensiva; no se promete migración de estos datos temporales a IndexedDB salvo que una fase futura la defina.
 5. **Errores de almacenamiento:** la UI mantendrá el último estado válido y mostrará un error operativo; no afirmará que una operación se guardó si `localStorage` falla.
+6. **`activeProjectId` local al dispositivo:** persistirá entre recargas y sesiones del mismo navegador, pero no será campo de Project ni dato sincronizado. Una fase futura decidirá si permanece por dispositivo o se sincroniza.
 
 Aprobar este plan aprueba estas decisiones. La ejecución se detendrá al completar Fase 2 y no avanzará automáticamente.
