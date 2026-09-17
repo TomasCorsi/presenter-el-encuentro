@@ -11,8 +11,8 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Fase actual completada: **Fase 8.1 — Auto-advance de Program dentro del
-  item al aire** (sobre la Fase 8 — Presets).
+- Fase actual completada: **Fase 8.2 — Rediseño del espacio de trabajo Live**
+  (sobre la Fase 8.1 — Auto-advance).
 - Próxima fase: **Fase 9 — Bible** (pendiente de aprobación).
 - Backend: no conectado. Se decide en la Fase 13.
 - Dependencias añadidas hasta la Fase 6: ninguna.
@@ -271,6 +271,17 @@ Project activo no altera el show en curso sin acción del operador.
 - [x] Cruzar de item mueve solo Preview: cambiar de item exige TAKE.
 - [x] `clear` / `black` conservan el modo mientras avanza `programSlideId`.
 - [x] Teclado (← / →) con la misma semántica; sin toggle ni configuración.
+
+---
+
+## Fase 8.2 — Rediseño del espacio de trabajo Live
+
+- [x] Layout de tres zonas: rundown, rejilla de slides y monitores.
+- [x] Program siempre visible con Preview compacto debajo.
+- [x] Barra de controles fija a alto de ventana, sin scroll global.
+- [x] Estados Preview/Program con etiqueta textual además del color.
+- [x] Anchos flexibles (`clamp`) verificados en 1920×1080 y 1366×768.
+- [x] Sin cambios en Presentation Engine, Output Sync, Presets ni Projects.
 
 ---
 

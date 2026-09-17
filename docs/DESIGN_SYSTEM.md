@@ -251,3 +251,23 @@ El App Shell no impone ancho máximo. Cada pantalla elige mediante `Page`:
 - Evitan cajas punteadas de gran tamaño y no llenan artificialmente el viewport.
 - Incluyen únicamente icono, título, explicación breve y acciones reales cuando
   existan.
+
+## Espacio de trabajo broadcast (Fase 8.2)
+
+Reglas de layout para pantallas de operación en directo (`/live`):
+
+- **Alto de ventana, sin scroll global.** La página ocupa el alto disponible y
+  cada zona (rundown, slides, monitores) tiene su propio scroll. La barra de
+  controles queda siempre visible al pie.
+- **Anchos objetivo, no rígidos.** Las columnas laterales usan `clamp` para
+  comprimirse en pantallas menores sin romper la zona principal:
+  rundown `clamp(170px, 15vw, 260px)`, monitores `clamp(230px, 22vw, 340px)`.
+- **Prioridad visual:** slides > Program > rundown > Preview. Preview puede
+  compactarse más que Program.
+- **Rejilla de slides auto-ajustable** (`auto-fill` con mínimo de 170–200px)
+  para que un juego típico de canción se vea completo sin scroll.
+- **Estado nunca solo por color.** Preview (`primary`) y Program (`live`) se
+  marcan además con etiqueta textual y `aria-label`; una misma slide puede
+  mostrar los dos estados a la vez.
+- **Densidad:** separadores de 1px, padding reducido, sin tarjetas grandes ni
+  espacios decorativos.
