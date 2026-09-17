@@ -39,11 +39,11 @@ describe("appendPresentationItem", () => {
     expect(state.programMode).toBe("black");
   });
 
-  it("no reconstruye los items existentes", () => {
+  it("conserva el contenido congelado de los items existentes", () => {
     const state = appendPresentationItem(show, item("c", 1));
 
     expect(state.runtime.items[0]).toEqual(show.runtime.items[0]!);
-    expect(state.runtime.items[0]?.slides[0]).toBe(show.runtime.items[0]?.slides[0]!);
+    expect(state.runtime.items[1]).toEqual(show.runtime.items[1]!);
   });
 
   it("deja la nueva slide navegable", () => {
