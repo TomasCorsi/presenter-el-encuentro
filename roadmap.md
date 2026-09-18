@@ -1,18 +1,18 @@
 # Roadmap
 
-## Fase 9.2 — Correcciones de Live, Bible Dock y Rundown (en curso)
+## Fase 9.2 — Correcciones de Live, Bible Dock y Rundown (completada)
 
-- [ ] Bible Dock de Live usa la misma fuente de verdad que `/bible` (contexto, repositorio, parser)
-- [ ] Selección de traducción: auto con una, última elegida con varias, fallback si se eliminó, estado vacío
-- [ ] Parser de referencias: estado neutro con entrada incompleta, error solo con referencia completa inválida
-- [ ] Refresco ligero de metadata de traducciones al volver a Live
-- [ ] Quitar RundownItem desde `/projects/$projectId` (revisión + tests)
-- [ ] Quitar RundownItem desde Live (persistencia + baja incremental del runtime)
-- [ ] `detachedProgramSlide`: snapshot renderizable completo al quitar el item al aire
-- [ ] `goLive` y `take` siempre vuelven a `content` y limpian el snapshot congelado
-- [ ] Quitar el monitor Preview visual; Program más grande; Preview sigue como estado interno
-- [ ] Tests (Bible dock, rundown, Live sin Preview) + verificación en navegador
-- [ ] Documentación (ROADMAP, DECISIONS, TESTING, DESIGN_SYSTEM)
+- [x] Bible Dock de Live usa la misma fuente de verdad que `/bible` (contexto, repositorio, parser)
+- [x] Selección de traducción: auto con una, última elegida con varias, fallback si se eliminó, estado vacío
+- [x] Parser de referencias: estado neutro con entrada incompleta, error solo con referencia completa inválida
+- [x] Refresco ligero de metadata de traducciones al volver a Live
+- [x] Quitar RundownItem desde `/projects/$projectId` (revisión + tests)
+- [x] Quitar RundownItem desde Live (persistencia + baja incremental del runtime)
+- [x] `detachedProgramSlide`: snapshot renderizable completo al quitar el item al aire
+- [x] `goLive` y `take` siempre vuelven a `content` y limpian el snapshot congelado
+- [x] Quitar el monitor Preview visual; Program más grande; Preview sigue como estado interno
+- [x] Tests (Bible dock, rundown, Live sin Preview) + verificación en navegador
+- [x] Documentación (ROADMAP, DECISIONS, TESTING, DESIGN_SYSTEM)
 
 ## Siguiente
 
