@@ -14,6 +14,19 @@
 - [x] Tests (Bible dock, rundown, Live sin Preview) + verificación en navegador
 - [x] Documentación (ROADMAP, DECISIONS, TESTING, DESIGN_SYSTEM)
 
+## Fase 9.3 — Output sobre proyector (en curso)
+
+- [ ] Servicio de gestión de ventanas (soporte, permiso, detección, fingerprint, matching conservador)
+- [ ] Declaraciones de tipos locales de la Window Management API
+- [ ] Preferencia local de pantalla de audiencia (localStorage)
+- [ ] Settings → Pantalla del proyector (detectar, identificar, probar, olvidar)
+- [ ] Abrir Output sobre el proyector (reutilizar, reposicionar, popup bloqueado, proyector ausente)
+- [ ] Estado real de la ventana de salida en Live (cierre manual, proyector desconectado)
+- [ ] `/output/main`: «Iniciar salida», tecla F, doble clic, fullscreen con `screen`
+- [ ] `/output/main?mode=test`: pantalla de prueba aislada
+- [ ] Tests unitarios + verificación en navegador
+- [ ] Documentación (DECISIONS, ARCHITECTURE, TESTING con checklist Windows, ROADMAP)
+
 ## Siguiente
 
 - Fase 10 — Media (no empezar hasta indicación del usuario)
