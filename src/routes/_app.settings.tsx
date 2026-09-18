@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Settings } from "lucide-react";
 
 import { Page, PageHeader } from "@/components/layout/page";
-import { EmptyState } from "@/components/ui/empty-state";
+import { AudienceScreenSettings } from "@/features/display/components/audience-screen-settings";
 
 const TITLE = "Settings — Plataforma de presentación en vivo";
 const DESCRIPTION =
-  "Preferencias del workspace, apariencia y opciones del entorno de producción.";
+  "Preferencias del workspace: pantalla del proyector, apariencia y opciones del entorno.";
 
 export const Route = createFileRoute("/_app/settings")({
   head: () => ({
@@ -28,13 +27,9 @@ function SettingsPage() {
       <PageHeader
         eyebrow="Sistema"
         title="Settings"
-        description="Preferencias del workspace y del entorno."
+        description="Preferencias del puesto de trabajo y del entorno."
       />
-      <EmptyState
-        icon={Settings}
-        title="Sin opciones disponibles"
-        description="Las preferencias reales aparecen cuando cada módulo del producto se construya."
-      />
+      <AudienceScreenSettings />
     </Page>
   );
 }
