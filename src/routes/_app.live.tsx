@@ -34,6 +34,7 @@ import { LiveSlideGrid } from "@/features/live/components/live-slide-grid";
 import { useLiveKeyboard } from "@/features/live/use-live-keyboard";
 import { useBible } from "@/features/bible/bible-context";
 import { useOutputPublisher } from "@/features/output/use-output-publisher";
+import { useOutputWindow } from "@/features/output/use-output-window";
 import {
   usePresentationState,
   usePresentationStore,
@@ -132,6 +133,7 @@ function LiveConsole() {
   // Live es la autoridad del protocolo Output Sync: publica Program a
   // `/output/main` (ADR-027/028).
   useOutputPublisher();
+  const outputWindow = useOutputWindow();
 
   // Carga inicial del show: un único snapshot explícito por sesión.
   useEffect(() => {
@@ -333,6 +335,9 @@ function LiveConsole() {
         itemCount={state.runtime.items.length}
         outdated={outdated}
         activeProjectName={changedActiveProject?.name ?? null}
+        outputStatus={outputWindow.status}
+        outputMessage={outputWindow.message}
+        onOpenOutput={() => void outputWindow.open()}
         onReload={reload}
         onLoadActiveProject={loadActiveProject}
       />

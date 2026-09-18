@@ -122,3 +122,24 @@ docs (`DECISIONS` con un ADR nuevo sobre la salida en segunda pantalla, `ARCHITE
   de la etiqueta.
 - Firefox y Safari no implementan la API: el camino alternativo es el comportamiento actual, intacto.
 - Renderizado en servidor: todo el acceso a `window` ocurre tras el montaje en cliente.
+
+## 9. Precisiones aprobadas
+
+1. La referencia nativa de cada pantalla se conserva en memoria durante la sesión; solo se persiste el
+   modelo normalizado. En la salida, «Iniciar salida» vuelve a pedir las pantallas si el permiso ya está
+   concedido y usa `currentScreen` para el fullscreen; si no se puede, fullscreen sin `screen`.
+2. Al reutilizar la ventana `audience-main` se comprueba `closed` y se aplican `moveTo`, `resizeTo` y
+   `focus()`, cada uno tolerante a excepciones del navegador.
+3. El estado «Output abierto» se mantiene veraz con una comprobación periódica moderada de `closed`;
+   timers y listeners se limpian al desmontar Live.
+4. «Identificar» actúa sobre una pantalla por vez, informa si el navegador bloqueó la ventana, ofrece
+   cierre manual además del automático y nunca deja ventanas abiertas.
+5. La prueba usa `/output/main?mode=test`: patrón, número de pantalla y resolución, botón de cierre; no
+   se suscribe al canal de sincronización ni toca Program.
+6. Coincidencia conservadora: exacta; label + resolución + posición; resolución + posición solo si hay
+   una única candidata no principal; ambigua → «Proyector no identificado» y no se abre la salida.
+7. Declaraciones de tipos locales mínimas para la API de gestión de ventanas, sin `any` general ni
+   dependencias nuevas.
+8. `window.isSecureContext` como comprobación principal.
+9. Todos los listeners (`screenschange`, `change` por pantalla, cierre de la salida) con limpieza.
+10. Checklist de verificación manual en Windows documentada en `docs/TESTING.md`.

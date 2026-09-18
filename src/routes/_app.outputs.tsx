@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { Clapperboard } from "lucide-react";
 
 import { Page, PageHeader } from "@/components/layout/page";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 
 const TITLE = "Outputs — Plataforma de presentación en vivo";
@@ -32,8 +33,13 @@ function OutputsPage() {
       />
       <EmptyState
         icon={Clapperboard}
-        title="Sin salidas configuradas"
-        description="La salida principal llega en la Fase 6; stage y stream en la Fase 10."
+        title="Salida principal en uso"
+        description="La salida principal se abre desde Live. Elegí en qué pantalla se muestra desde Settings; stage y stream llegan más adelante."
+        actions={
+          <Button asChild variant="outline">
+            <Link to="/settings">Configurar pantalla del proyector</Link>
+          </Button>
+        }
       />
     </Page>
   );

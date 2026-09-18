@@ -871,3 +871,33 @@ elegida ya no existe se cae a la primera y se reescribe la preferencia; sin ning
 no hay selector, solo un estado vacío. `classifyReferenceInput` distingue entrada
 incompleta (mensaje neutro) de referencia formada pero inválida (error). Al montar
 Live y al recuperar el foco se revalida SOLO la metadata de traducciones.
+
+## ADR-047 — La salida se ubica en el proyector con la Window Management API
+
+**Contexto.** La aplicación es web/PWA y se opera en Chrome o Edge sobre Windows
+con un proyector como segunda pantalla. Mover la ventana de salida a mano en cada
+reunión es lento y propenso a errores, pero no se quiere Tauri ni Electron.
+
+**Decisión.** Un único servicio (`src/services/display/window-management.ts`)
+concentra todo el contacto con la API: feature detection, `isSecureContext`,
+estado del permiso `window-management` y normalización a `ScreenInfo`.
+`getScreenDetails()` se llama SOLO desde un gesto del usuario («Detectar
+pantallas»), que es lo que permite al navegador pedir permiso. La pantalla
+elegida se persiste como huella normalizada (etiqueta, resolución, área
+disponible, posición, escala, principal) en `broadcast-control.display.audience`,
+porque los identificadores nativos no son estables entre sesiones.
+
+El emparejado es conservador: exacto → etiqueta + geometría → geometría con una
+única candidata no principal; ante varias candidatas es ambiguo y NO se abre
+nada. Nunca se cae en la pantalla principal.
+
+`openOutputWindow` usa el nombre fijo `audience-main`, de modo que reabrir
+reutiliza la ventana en lugar de duplicar la salida, y luego intenta mover,
+redimensionar y enfocar de forma tolerante a las restricciones del navegador.
+
+**Consecuencias.** Sin la API (Firefox, Safari) se conserva el comportamiento
+actual: ventana suelta más la indicación «Mové esta ventana al proyector y
+presioná F». El pantalla completa nunca es automático (los navegadores lo
+bloquean): botón «Iniciar salida», tecla F o doble clic, con `screen` cuando el
+navegador lo admite y sin él como respaldo. Si el proyector se desconecta, Live
+lo informa y no toca Program ni mueve la ventana ya abierta.

@@ -1,7 +1,8 @@
 import { ExternalLink, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
+import type { OutputWindowStatus } from "@/features/output/use-output-window";
 
 export interface LiveShowBarProps {
   showName: string;
@@ -10,21 +11,46 @@ export interface LiveShowBarProps {
   outdated: boolean;
   /** Nombre del Project activo cuando difiere del show cargado. */
   activeProjectName: string | null;
+  /** Estado real de la ventana de salida. */
+  outputStatus: OutputWindowStatus;
+  /** Aviso sobre la salida; `null` cuando no hay nada que explicar. */
+  outputMessage: string | null;
   onReload(): void;
   onLoadActiveProject(): void;
+  onOpenOutput(): void;
 }
 
+const OUTPUT_LABEL: Record<OutputWindowStatus, string> = {
+  closed: "Output cerrado",
+  open: "Output abierto",
+  blocked: "Output bloqueado",
+  unidentified: "Proyector no identificado",
+  disconnected: "Proyector desconectado",
+};
+
+const OUTPUT_TONE: Record<OutputWindowStatus, StatusTone> = {
+  closed: "neutral",
+  open: "online",
+  blocked: "offline",
+  unidentified: "sync",
+  disconnected: "offline",
+};
+
 /**
- * Barra de show: identifica el snapshot en operación y ofrece las dos únicas
- * recargas posibles, siempre explícitas (ADR-023).
+ * Barra de show: identifica el snapshot en operación, informa el estado de la
+ * ventana de salida y ofrece las dos únicas recargas posibles, siempre
+ * explícitas (ADR-023).
  */
 export function LiveShowBar({
   showName,
   itemCount,
   outdated,
   activeProjectName,
+  outputStatus,
+  outputMessage,
   onReload,
   onLoadActiveProject,
+  onOpenOutput,
 }: LiveShowBarProps) {
   return (
     <div className="flex shrink-0 flex-col gap-2">
@@ -34,17 +60,20 @@ export function LiveShowBar({
           {itemCount} elementos
         </span>
         {outdated ? <StatusBadge tone="sync">Contenido actualizado</StatusBadge> : null}
+        <StatusBadge tone={OUTPUT_TONE[outputStatus]}>{OUTPUT_LABEL[outputStatus]}</StatusBadge>
         <Button variant="outline" size="sm" className="ml-auto" onClick={onReload}>
           <RefreshCw />Recargar presentación
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => window.open("/output/main", "_blank", "noopener")}
-        >
+        <Button variant="outline" size="sm" onClick={onOpenOutput}>
           <ExternalLink />Abrir Output
         </Button>
       </div>
+
+      {outputMessage ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          {outputMessage}
+        </p>
+      ) : null}
 
       {activeProjectName ? (
         <div
