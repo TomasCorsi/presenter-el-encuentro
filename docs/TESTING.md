@@ -320,3 +320,28 @@ global en ambas resoluciones.
 - Verificación en navegador con la NVI real importada: selector de traducción en
   Live, pasaje al aire desde el dock, quitar el item al aire sin cortar la salida,
   clic desde Black vuelve a contenido, 1366×768 y 1920×1080 sin scroll global.
+
+## Fase 9.3 — Output sobre proyector
+
+Automatizado: `tests/services/window-management.test.ts` (emparejado exacto, por
+geometría, ambiguo y ausente; sugerencia automática con dos pantallas; preferencia
+local incluida la lectura de datos corruptos) y
+`tests/features/open-output-window.test.ts` (geometría del popup, reutilización de
+`audience-main`, popup bloqueado, modo alternativo sin geometría, navegador que
+prohíbe mover la ventana).
+
+La API de pantallas múltiples no se puede ejercitar de verdad en un entorno
+automatizado. Checklist manual en Windows con Chrome o Edge:
+
+1. Un solo monitor: «Detectar pantallas» lista una; no hay sugerencia automática.
+2. Notebook + proyector: se propone la pantalla no principal y se pide confirmar.
+3. Tres monitores: no hay propuesta; el operador elige.
+4. Permiso aceptado y permiso rechazado: en el rechazo se explica cómo habilitarlo.
+5. Navegador sin la API: modo alternativo con la instrucción de mover la ventana.
+6. Popup bloqueado: mensaje explícito para permitir ventanas emergentes.
+7. Pantalla guardada ausente: «Proyector desconectado», sin abrir en la principal.
+8. Proyector desconectado con la salida abierta: Program y la ventana no cambian.
+9. Reabrir «Abrir Output»: reutiliza la misma ventana, no duplica.
+10. Tecla F y doble clic en `/output/main`: entran en pantalla completa; Escape sale.
+11. `/output/main?mode=test&n=2`: número, resolución y cierre, sin tocar Program.
+12. Output y Program sincronizados tras todo lo anterior.
