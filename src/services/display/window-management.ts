@@ -138,8 +138,10 @@ function sameExact(a: ScreenInfo, b: ScreenInfo): boolean {
  * 4. Varias candidatas → ambigua: se pide elegir de nuevo.
  */
 export function matchScreen(fingerprint: ScreenFingerprint, screens: ScreenInfo[]): ScreenMatch {
-  const exact = screens.findIndex((info) => sameExact(info, fingerprint));
-  if (exact !== -1) return { status: "exact", index: exact };
+  // Dos pantallas indistinguibles no se resuelven a la primera: se pregunta.
+  const exact = indexesOf(screens, (info) => sameExact(info, fingerprint));
+  if (exact.length === 1) return { status: "exact", index: exact[0]! };
+  if (exact.length > 1) return { status: "ambiguous", index: null };
 
   if (fingerprint.label !== "") {
     const labelled = indexesOf(
