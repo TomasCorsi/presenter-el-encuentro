@@ -184,13 +184,14 @@ export function suggestAudienceScreen(screens: ScreenInfo[]): number | null {
  * limpieza de TODOS los listeners registrados.
  */
 export function subscribeScreenChanges(details: ScreenDetails, onChange: () => void): () => void {
-  const targets: EventTarget[] = [details, ...details.screens];
-  const events = new Map<EventTarget, string>([[details, "screenschange"]]);
-  for (const screen of details.screens) events.set(screen, "change");
+  const bindings: Array<{ target: EventTarget; event: string }> = [
+    { target: details, event: "screenschange" },
+    ...details.screens.map((screen) => ({ target: screen as EventTarget, event: "change" })),
+  ];
 
-  for (const target of targets) target.addEventListener(events.get(target)!, onChange);
+  for (const { target, event } of bindings) target.addEventListener(event, onChange);
 
   return () => {
-    for (const target of targets) target.removeEventListener(events.get(target)!, onChange);
+    for (const { target, event } of bindings) target.removeEventListener(event, onChange);
   };
 }

@@ -10,8 +10,8 @@ import { useOutputSnapshot } from "@/features/output/use-output-snapshot";
 import { cn } from "@/lib/utils";
 
 interface OutputSearch {
-  mode?: "test";
-  n?: string;
+  mode: "test" | undefined;
+  n: string | undefined;
 }
 
 export const Route = createFileRoute("/output/main")({
