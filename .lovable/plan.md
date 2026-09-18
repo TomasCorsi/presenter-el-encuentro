@@ -1,89 +1,124 @@
-# Fase 9.2 — Correcciones de Live, Bible Dock y Rundown
+# Fase 9.3 — Output sobre proyector (segunda pantalla)
 
-Tres frentes: la pestaña Bible de la consola, poder quitar elementos del rundown (desde Projects y desde Live) y quitar el monitor Preview para agrandar Program.
+Objetivo: detectar las pantallas del equipo, configurar una como proyector y abrir la salida
+directamente sobre ella, sin romper nada de lo que ya funciona.
 
----
+No se toca el motor de presentación, el protocolo de sincronización, Live, Preview ni Program.
+Sin dependencias nuevas: solo API nativa del navegador (Window Management).
 
-## 1. Bible dentro de Live
+## 1. Servicio de pantallas
 
-### Diagnóstico (parcialmente confirmado por lectura del código)
+Nuevo `src/services/display/window-management.ts`, único lugar que habla con la API del navegador:
 
-La pestaña Bible de la consola YA usa el mismo contexto que la pantalla Bible (`useBible`), así que no hay almacenamiento paralelo. Lo que sí está mal, y se ve en el código:
+- Detección de capacidades sin asumir soporte: existencia de `window.getScreenDetails`,
+  `window.screen.isExtended`, contexto seguro (HTTPS o localhost) y estado del permiso
+  `window-management` vía `navigator.permissions.query`, cuando exista.
+- `requestScreenDetails()`: llama a `getScreenDetails()`. Se invoca **solo** desde el clic en
+  «Detectar pantallas», para que el navegador muestre su pedido de permiso en un gesto de usuario.
+- Normaliza cada pantalla a un objeto propio: etiqueta, ancho/alto, `availWidth/availHeight`,
+  `availLeft/availTop`, `devicePixelRatio`, `isPrimary`.
+- `fingerprintScreen(screen)`: firma estable con label + medidas + posición + dpr + primary.
+- `matchScreen(fingerprint, screens)`: coincidencia exacta y, si falla, coincidencia por medidas +
+  posición (la etiqueta puede cambiar entre sesiones).
+- Suscripción a cambios (`screenschange` en `ScreenDetails`, `change` en cada pantalla) con función
+  de limpieza.
 
-1. **La lista de libros se pide sin manejo de error.** En la pantalla Bible la carga de libros atrapa el fallo; en la consola no. Si esa lectura falla o tarda, la lista de libros queda vacía y entonces *toda* referencia se declara no reconocida: parece "no carga la Biblia" aunque la Biblia esté instalada.
-2. **La traducción guardada nunca se valida ni se corrige.** La consola recuerda una traducción en la preferencia local, pero si esa traducción ya no existe usa la primera disponible sin volver a guardar la preferencia, y el selector puede quedar mostrando algo distinto de lo que realmente se consulta.
-3. **Con una sola Biblia no se autoselecciona de verdad**: se usa por descarte, no queda registrada.
-4. **El error de referencia aparece demasiado pronto**: escribir "Juan" ya muestra "No se reconoce la referencia".
+Sin API disponible: devuelve `{ supported: false }` y todo lo demás degrada al comportamiento actual.
 
-La causa exacta del caso del usuario (Biblia instalada que no aparece) se confirma como primer paso, reproduciendo en el navegador con una Biblia real importada y mirando la consola del navegador. Si el fallo real resulta ser otro, se corrige ese y se mantienen igualmente las mejoras 2–4.
+## 2. Preferencia guardada
 
-### Corrección
+Nuevo `src/services/display/display-preference.ts` (localStorage, mismo patrón que las demás
+preferencias locales del puesto): clave `broadcast-control.display.audience`, valor = fingerprint del
+proyector. Es preferencia local del equipo, nunca del Project. Lectura tolerante a datos corruptos.
 
-- Un único hook `useBibleVersionSelection` que resuelve la traducción efectiva: si hay una sola la elige y la persiste; si hay varias usa la última elegida; si la elegida ya no existe cae a la primera y reescribe la preferencia; si no hay ninguna devuelve `null`.
-- Sin Biblias instaladas: estado vacío explícito ("No hay Biblias instaladas / Impórtala desde Bible") y sin selector visible.
-- Carga de libros con manejo de error y estado propio ("No se pudo leer esta traducción").
-- Mensajes de la búsqueda en tres estados: neutro mientras la referencia está incompleta ("Escribe una referencia, por ejemplo Juan 3:16"), error solo cuando hay libro + capítulo reconocibles pero inválidos, y resultado cuando el pasaje existe.
-- Sincronización: la pantalla Bible y la consola comparten el mismo proveedor, así que importar o eliminar ya se refleja. Se añade una revalidación ligera de *metadata* al volver a la consola (al montar Live y al recuperar el foco de la ventana): solo la lista de traducciones, nunca el texto.
+Hook `src/features/display/use-audience-screen.ts`: reúne capacidades, pantallas detectadas,
+pantalla configurada, resolución de la coincidencia y acciones (detectar, guardar, olvidar).
 
----
+## 3. Settings → Outputs
 
-## 2. Quitar elementos del rundown
+`src/routes/_app.settings.tsx` deja de ser estado vacío y gana la sección **Pantalla del proyector**:
 
-En `/projects/$projectId` la acción de quitar ya existe (subir, bajar, preset, eliminar con confirmación ligera) y la regla de dominio ya renormaliza el orden. Se revisa y se cubre con pruebas: quitar una canción o un pasaje no borra la canción ni la Biblia ni el texto guardado, el orden queda 0..n-1 y la fecha de modificación cambia.
+- Estado: configurada / no configurada; cantidad de pantallas detectadas.
+- Tabla compacta por pantalla: etiqueta, resolución, posición, marca de principal, marca de proyector.
+- Selector para asignar la pantalla de audiencia.
+- Botones: «Detectar pantallas», «Identificar», «Probar salida», «Olvidar configuración».
+- Exactamente dos pantallas: se propone la no principal como proyector y se pide confirmación
+  explícita antes de guardar. Más de dos: el usuario elige.
+- Sin soporte, sin contexto seguro o permiso denegado: explicación en texto claro y el modo alternativo.
 
-**Nuevo: quitar desde Live.** Cada línea del rundown de la consola gana una acción secundaria "Quitar del rundown" (icono con etiqueta accesible, visible al pasar el cursor o con el teclado). Al usarla:
+«Identificar» abre brevemente en cada pantalla una ventana con un número grande y la cierra sola.
+«Probar salida» abre la salida en el proyector con una tarjeta de prueba y permite cerrarla.
 
-- se guarda el cambio en el proyecto;
-- se quita ese elemento del show en curso de forma incremental (no se reconstruye el resto ni se incorporan cambios externos pendientes);
-- si el elemento quitado no estaba al aire, Program no se toca.
+`/outputs` (hoy placeholder) enlaza a esta sección para que el operador la encuentre.
 
-Reordenar (subir/bajar) se mantiene como está en Projects y se refleja en la consola mediante la misma actualización incremental, sin recarga completa. Sin arrastrar y soltar.
+## 4. Abrir Output sobre el proyector
 
-### Caso clave: se quita el elemento que está al aire
+Nuevo `src/features/output/open-output-window.ts`, usado por el botón «Abrir Output» de
+`live-show-bar.tsx`:
 
-La salida no se corta ni se pone en negro. La slide que está al aire se conserva como una *copia congelada* dentro del estado de la consola: el elemento desaparece del rundown, la salida sigue mostrando exactamente lo mismo, y no queda ninguna referencia interna apuntando a algo inexistente. En cuanto el operador manda otro contenido (clic en una slide, TAKE, siguiente/anterior), la copia congelada se descarta y Program vuelve a funcionar normalmente. Clear y Black siguen funcionando sobre esa copia.
+1. Consulta pantallas; busca la configurada por fingerprint.
+2. Si aparece: `window.open("/output/main", "audience-main", "popup=yes,left=…,top=…,width=…,height=…")`
+   con los valores `availLeft/availTop/availWidth/availHeight` de esa pantalla.
+3. Nombre fijo `audience-main`: reabrir reutiliza y enfoca la misma ventana, nunca duplica.
+4. `focus()` sobre la ventana y estado «Output abierto» en la barra de show.
+5. Si la pantalla guardada no aparece: **no** se abre en la principal; se muestra
+   «Proyector desconectado» con acceso a volver a detectar.
+6. Popup bloqueado (`window.open` devuelve nulo): «El navegador bloqueó la salida. Permití ventanas
+   emergentes para este sitio y volvé a intentarlo.»
 
----
+Sin configuración o sin soporte: se abre una ventana nueva como hoy, con el aviso
+«Mové esta ventana al proyector y presioná F para pantalla completa.»
 
-## 3. Live sin monitor Preview
+La barra de show pasa a mostrar el estado de la salida: abierta, cerrada, proyector desconectado.
+Se escuchan los cambios de pantallas mientras Live está abierto; si el proyector desaparece, el estado
+cambia pero Program y la ventana existente no se tocan.
 
-- Se elimina el panel visual de Preview. La columna derecha queda solo con Program, en 16:9 y más grande (la columna pasa de ~22 % a ~30 % del ancho, con la rejilla de slides manteniendo la prioridad).
-- Preview sigue existiendo como estado interno: TAKE, siguiente/anterior y los atajos no cambian.
-- En la rejilla se siguen distinguiendo los dos estados: la slide al aire y la slide seleccionada. Como un clic manda al aire, casi siempre coinciden; con teclado o TAKE pueden diferir.
-- Los controles (Anterior, Siguiente, TAKE, Clear, Black, Buscar) siguen arriba y siempre visibles. La biblioteca Songs | Bible sigue abajo.
+## 5. Pantalla completa en /output/main
 
----
+- Se mantiene el overlay discreto; el botón pasa a llamarse «Iniciar salida».
+- Tres vías: botón, tecla `F` y doble clic (ya existente).
+- `requestFullscreen({ navigationUI: "hide", screen })` cuando la opción `screen` sea aceptada por el
+  navegador; si no, `requestFullscreen({ navigationUI: "hide" })`, y si eso falla, la llamada simple.
+- Nunca fullscreen automático al cargar.
+- En fullscreen: sin botón, sin cursor, sin mensajes; fondo negro inicial. Al salir con Escape los
+  controles vuelven.
 
-## Detalles técnicos
+## 6. Pruebas
 
-**Dominio / estado**
-- `presentation.ts`: `PresentationState` gana `detachedProgramSlide?: Slide | null` (copia congelada del aire).
-- `presentation-engine.ts`: nuevo `removePresentationItem(state, itemId)` — quita el item, renormaliza el runtime sin reconstruir los demás; si el item contenía la slide de Program, la copia a `detachedProgramSlide` y pone `programSlideId = null`; si contenía la selección, reubica Preview al vecino más cercano.
-- `presentation-program.ts` / `presentation-live.ts`: `take` y `goLive` limpian `detachedProgramSlide`.
-- `presentation-selectors.ts`: `getProgramSlide` y `getProgramOutput` devuelven la copia congelada cuando no hay `programSlideId`; `getProgramItem` devuelve `null` en ese caso.
-- `presentation-store.ts`: expone `removePresentationItem(itemId)`.
-- `live-session.ts`: `removeFromLiveSession` (simétrico a `appendToLiveSession`: quita el item, adopta la firma nueva, conserva el desfase externo previo) y `reorderLiveSession` para subir/bajar sin recarga.
+Unitarias (`bun test`), con un doble de la API de pantallas:
 
-**Bible**
-- Nuevo `src/features/bible/use-bible-version-selection.ts` (selección/fallback/persistencia).
-- `library-bible-tab.tsx`: estados neutro/error/resultado, manejo de error en la carga de libros, estado vacío sin selector.
-- `bible-context.tsx`: expone `refreshVersions()` para la revalidación de metadata.
+- Capacidades: API ausente, contexto no seguro, permiso concedido / denegado / pendiente.
+- Fingerprint: estable, coincide tras cambio de etiqueta, no coincide con otra pantalla.
+- Selección automática con dos pantallas; elección manual con tres; una sola pantalla.
+- Preferencia: guardar, leer, olvidar, dato corrupto.
+- Apertura: rectángulo correcto, reutilización por nombre, popup bloqueado, pantalla guardada ausente
+  (no abre en la principal).
+- Fullscreen: usa `screen` cuando se acepta, degrada cuando no.
 
-**UI**
-- `live-monitors.tsx` → solo Program (se renombra a `live-program-monitor.tsx`).
-- `_app.live.tsx`: nueva grilla `[rundown | slides | program]`, handler de quitar, revalidación de traducciones.
-- `live-rundown.tsx`: acción "Quitar del rundown".
-- `rundown-row.tsx` / `_app.projects.$projectId.tsx`: revisión de las acciones existentes.
+Verificación en navegador: `/live` y `/output/main` sin errores de consola, salida y Program
+sincronizados, reapertura sin duplicar ventanas, `F` y doble clic. La API de pantallas múltiples no se
+puede ejercitar de verdad en el entorno de pruebas automatizado: el camino con proyector real queda
+para tu verificación en Windows, y lo dejo documentado.
 
-**Pruebas nuevas (bun test)**
-- Bible: lista de traducciones, autoselección con una, selector con varias, persistencia, fallback tras borrado, estado vacío, referencia parcial sin error, referencia válida, rango válido.
-- Rundown: quitar canción y pasaje, la fuente original permanece, orden normalizado, `updatedAt` cambia, Live refleja la baja, Program intacto al quitar otro elemento, quitar el elemento al aire no corta la salida y no deja referencias inválidas.
-- Live sin Preview visual: TAKE y navegación siguen funcionando, selección visible en la rejilla.
-- Verificación en navegador: 1920×1080 y 1366×768, sin scroll global, consola limpia, salida sin regresiones.
+## 7. Archivos
 
-**Riesgos de regresión**
-- La copia congelada de Program es el punto más delicado: podría quedarse pegada si algún comando no la limpia. Se limpia en un único lugar (los comandos que cambian contenido de Program) y se cubre con pruebas.
-- Quitar un elemento mientras cambia la selección puede dejar Preview en un item inexistente: la reubicación al vecino se prueba explícitamente.
-- La baja incremental no debe "limpiar" un aviso de cambios externos pendientes, igual que el alta de la fase anterior.
+Nuevos: `src/services/display/window-management.ts`, `src/services/display/display-preference.ts`,
+`src/features/display/use-audience-screen.ts`, `src/features/display/components/audience-screen-settings.tsx`,
+`src/features/output/open-output-window.ts`, `src/features/output/use-fullscreen.ts`,
+`tests/services/window-management.test.ts`, `tests/features/audience-screen.test.ts`,
+`tests/features/open-output-window.test.ts`.
 
-**Fuera de alcance:** Media, arrastrar y soltar, contenido temporal, nube, Stage, Remote, búsqueda de texto en la Biblia, editar canciones desde Live.
+Modificados: `src/routes/_app.settings.tsx`, `src/routes/_app.outputs.tsx`,
+`src/features/live/components/live-show-bar.tsx`, `src/routes/_app.live.tsx`,
+`src/routes/output.main.tsx`, `src/features/output/components/output-overlay.tsx`,
+docs (`DECISIONS` con un ADR nuevo sobre la salida en segunda pantalla, `ARCHITECTURE`, `TESTING`,
+`ROADMAP`, `roadmap.md`).
+
+## 8. Riesgos
+
+- El permiso de gestión de ventanas solo se concede en contexto seguro y tras gesto del usuario: toda
+  la ruta de detección arranca en un clic.
+- Las etiquetas de pantalla pueden venir vacías sin permiso concedido: el fingerprint no depende solo
+  de la etiqueta.
+- Firefox y Safari no implementan la API: el camino alternativo es el comportamiento actual, intacto.
+- Renderizado en servidor: todo el acceso a `window` ocurre tras el montaje en cliente.
