@@ -1,4 +1,4 @@
-import type { PresentationItem, PresentationState } from "./presentation";
+import type { PresentationItem, PresentationState, Slide } from "./presentation";
 import { EMPTY_PRESENTATION_RUNTIME, buildPresentationRuntime } from "./presentation-runtime";
 
 /**
@@ -19,6 +19,7 @@ export function createInitialPresentationState(): PresentationState {
     previewSlideId: null,
     programSlideId: null,
     programMode: "content",
+    detachedProgramSlide: null,
   };
 }
 
@@ -78,6 +79,8 @@ export function loadPresentation(
     previewSlideId: null,
     programSlideId: null,
     programMode: "content",
+    // Un show nuevo nunca hereda la salida congelada del anterior.
+    detachedProgramSlide: null,
   };
 
   return restorePreview(base, state);
@@ -102,6 +105,9 @@ export function reloadPresentation(
     previewSlideId: null,
     programSlideId: programSurvives ? state.programSlideId : null,
     programMode: programSurvives ? state.programMode : "content",
+    // Una recarga explícita reconstruye el show completo: la salida congelada
+    // de un item eliminado deja de tener sentido.
+    detachedProgramSlide: null,
   };
 
   return restorePreview(base, state);
@@ -127,6 +133,58 @@ export function appendPresentationItem(
   const base: PresentationState = { ...state, runtime: buildPresentationRuntime(items) };
 
   return base.previewItemId ? base : selectItem(base, item.id);
+}
+
+/**
+ * Baja INCREMENTAL de un item (ADR-045).
+ *
+ * Quita el item del runtime sin reconstruir el contenido de los demás.
+ *
+ * - Si el item quitado contenía la slide al aire, esa slide se copia COMPLETA
+ *   en `detachedProgramSlide` y `programSlideId` pasa a `null`: la salida no
+ *   cambia y no queda ninguna referencia al item eliminado.
+ * - Si contenía la selección de Preview, esta se reubica al vecino más
+ *   cercano (item siguiente y, si no existe, el anterior).
+ * - `programMode` nunca se toca: Clear y Black siguen operando igual.
+ */
+export function removePresentationItem(
+  state: PresentationState,
+  itemId: string,
+): PresentationState {
+  const index = state.runtime.itemIndexById.get(itemId);
+  if (index === undefined) return state;
+
+  const removed = state.runtime.items[index];
+  const programSlide = state.programSlideId
+    ? (removed?.slides.find((slide) => slide.id === state.programSlideId) ?? null)
+    : null;
+
+  const items = state.runtime.items
+    .filter((item) => item.id !== itemId)
+    .map((item, position) => ({ ...item, order: position }));
+
+  const base: PresentationState = {
+    ...state,
+    runtime: buildPresentationRuntime(items),
+    programSlideId: programSlide ? null : state.programSlideId,
+    detachedProgramSlide: programSlide ? cloneSlide(programSlide) : state.detachedProgramSlide,
+  };
+
+  if (state.previewItemId !== itemId) return base;
+
+  // Preview estaba dentro del item eliminado: al vecino más cercano.
+  const neighbour = items[index] ?? items[index - 1] ?? null;
+  if (!neighbour) return { ...base, previewItemId: null, previewSlideId: null };
+  return selectItem({ ...base, previewItemId: null, previewSlideId: null }, neighbour.id);
+}
+
+/** Copia renderizable e independiente de la slide (lines, estilo, metadata). */
+function cloneSlide(slide: Slide): Slide {
+  return {
+    ...slide,
+    content: { ...slide.content, lines: [...slide.content.lines] },
+    ...(slide.style ? { style: { ...slide.style } } : {}),
+  };
 }
 
 export function reset(): PresentationState {

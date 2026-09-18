@@ -33,7 +33,10 @@ export function getPreviewSlide(state: PresentationState): Slide | null {
   return slideById(state, state.previewSlideId);
 }
 
-/** El item de Program se DERIVA del runtime: nunca se almacena. */
+/**
+ * El item de Program se DERIVA del runtime: nunca se almacena. Con la salida
+ * congelada de un item eliminado no hay item: devuelve `null` (ADR-045).
+ */
 export function getProgramItem(state: PresentationState): PresentationItem | null {
   if (!state.programSlideId) return null;
   const location = state.runtime.slideLocationById.get(state.programSlideId);
@@ -41,8 +44,12 @@ export function getProgramItem(state: PresentationState): PresentationItem | nul
   return state.runtime.items[location.itemIndex] ?? null;
 }
 
+/**
+ * Slide al aire. Cuando el item que la contenía se quitó del rundown, Program
+ * sigue mostrando la copia congelada (ADR-045).
+ */
 export function getProgramSlide(state: PresentationState): Slide | null {
-  return slideById(state, state.programSlideId);
+  return slideById(state, state.programSlideId) ?? state.detachedProgramSlide;
 }
 
 export interface ProgramOutput {
@@ -60,6 +67,11 @@ export function getProgramOutput(state: PresentationState): ProgramOutput {
 
 export function isSlideInProgram(state: PresentationState, slideId: string): boolean {
   return state.programSlideId === slideId;
+}
+
+/** ¿La salida actual proviene de un item que ya no está en el rundown? */
+export function isProgramDetached(state: PresentationState): boolean {
+  return state.programSlideId === null && state.detachedProgramSlide !== null;
 }
 
 export function isItemInProgram(state: PresentationState, itemId: string): boolean {

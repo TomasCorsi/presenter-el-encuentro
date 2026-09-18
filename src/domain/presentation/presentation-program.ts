@@ -15,10 +15,21 @@ import type { PresentationState, ProgramMode } from "./presentation";
  */
 export function take(state: PresentationState): PresentationState {
   if (!state.previewSlideId) return state;
-  if (state.programSlideId === state.previewSlideId && state.programMode === "content") {
+  if (
+    state.programSlideId === state.previewSlideId
+    && state.programMode === "content"
+    && state.detachedProgramSlide === null
+  ) {
     return state;
   }
-  return { ...state, programSlideId: state.previewSlideId, programMode: "content" };
+  // Un contenido nuevo al aire descarta siempre la salida congelada de un
+  // item eliminado y vuelve a `content`, venga de Clear o de Black (ADR-045).
+  return {
+    ...state,
+    programSlideId: state.previewSlideId,
+    programMode: "content",
+    detachedProgramSlide: null,
+  };
 }
 
 /** Cambia el modo de salida sin tocar el contenido de Program. */

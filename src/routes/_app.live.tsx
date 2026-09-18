@@ -10,14 +10,14 @@ import type { Project } from "@/domain/projects/project";
 import type { Song } from "@/domain/songs/song";
 import {
   getPreviewItem,
-  getPreviewSlide,
   getProgramItem,
   getProgramSlide,
+  isProgramDetached,
   getNextSlide,
   getPreviousSlide,
 } from "@/domain/presentation/presentation-selectors";
 import { LiveLibraryDock, type LibraryTab } from "@/features/live/components/live-library-dock";
-import { LiveMonitors } from "@/features/live/components/live-monitors";
+import { LiveProgramMonitor } from "@/features/live/components/live-program-monitor";
 import { LiveOperationBar } from "@/features/live/components/live-operation-bar";
 import { LiveRundown } from "@/features/live/components/live-rundown";
 import { LiveShowBar } from "@/features/live/components/live-show-bar";
@@ -27,10 +27,12 @@ import {
   createLiveSession,
   isLiveSessionOutdated,
   reloadLiveSession,
+  removeFromLiveSession,
   type LiveSession,
 } from "@/features/live/live-session";
 import { LiveSlideGrid } from "@/features/live/components/live-slide-grid";
 import { useLiveKeyboard } from "@/features/live/use-live-keyboard";
+import { useBible } from "@/features/bible/bible-context";
 import { useOutputPublisher } from "@/features/output/use-output-publisher";
 import {
   usePresentationState,
@@ -42,7 +44,7 @@ import { useSongs } from "@/features/songs/songs-context";
 
 const TITLE = "Live — Consola de operación en vivo";
 const DESCRIPTION =
-  "Consola de operación en directo: rundown, slides, program, preview, controles fijos y biblioteca de Songs y Bible.";
+  "Consola de operación en directo: rundown, slides, program, controles fijos y biblioteca de Songs y Bible.";
 
 /** Preferencia LOCAL del puesto de trabajo; no forma parte del Project. */
 const LIBRARY_PREFERENCE_KEY = "broadcast-control.live.library";
@@ -87,7 +89,10 @@ export const Route = createFileRoute("/_app/live")({
 });
 
 function LiveConsole() {
-  const { projects, activeProject, hasLoaded, addSongToProject, addPassageToProject } = useProjects();
+  const {
+    projects, activeProject, hasLoaded, addSongToProject, addPassageToProject, removeRundownItem,
+  } = useProjects();
+  const { refreshVersions } = useBible();
   const { songs, hasLoaded: songsLoaded } = useSongs();
   const { presets, hasLoaded: presetsLoaded } = usePresets();
   const store = usePresentationStore();
@@ -104,6 +109,15 @@ function LiveConsole() {
   useEffect(() => {
     setLibrary(readLibraryPreference());
   }, []);
+
+  // Al volver a la consola se revalida SOLO la metadata de traducciones: una
+  // Biblia importada o eliminada en otra pantalla se refleja sin recargar texto.
+  useEffect(() => {
+    void refreshVersions();
+    const onFocus = () => void refreshVersions();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refreshVersions]);
 
   const updateLibrary = useCallback((patch: Partial<LibraryPreference>) => {
     setLibrary((current) => {
@@ -212,6 +226,45 @@ function LiveConsole() {
     [addPassageToProject, appendFromLibrary, showProject],
   );
 
+  /**
+   * Baja desde Live: persiste en el Project y quita SOLO ese item del runtime.
+   * Si el item estaba al aire, la salida queda congelada (ADR-045).
+   */
+  const handleRemoveItem = useCallback(
+    (itemId: string) => {
+      if (!showProject) return;
+      const wasOutdated = outdatedRef.current;
+      const title = state.runtime.items.find((item) => item.id === itemId)?.title ?? "El elemento";
+      setBusy(true);
+      setStatus(null);
+      void (async () => {
+        try {
+          // El Project persistido trae el orden renormalizado y el updatedAt
+          // nuevo: con él la firma coincide y no aparece un falso aviso.
+          const project = await removeRundownItem(showProject.id, itemId);
+          setSession((current) =>
+            current
+              ? removeFromLiveSession(current, {
+                  project,
+                  songs,
+                  presets,
+                  itemId,
+                  wasOutdated,
+                })
+              : current,
+          );
+          store.removePresentationItem(itemId);
+          setStatus(`${title} se quitó del rundown.`);
+        } catch (error) {
+          setStatus(error instanceof Error ? error.message : "No se pudo quitar el elemento.");
+        } finally {
+          setBusy(false);
+        }
+      })();
+    },
+    [presets, removeRundownItem, showProject, songs, state.runtime.items, store],
+  );
+
   const canTake = state.previewSlideId !== null;
   const onPrevious = useCallback(() => store.previous(), [store]);
   const onNext = useCallback(() => store.next(), [store]);
@@ -305,7 +358,7 @@ function LiveConsole() {
         columna de monitores se compriman en 1366×768 sin sacrificar la rejilla
         de slides, que es la zona con prioridad visual.
       */}
-      <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[clamp(170px,15vw,260px)_minmax(0,1fr)_clamp(230px,22vw,340px)]">
+      <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[clamp(170px,14vw,240px)_minmax(0,1fr)_clamp(320px,30vw,520px)]">
         <section
           aria-labelledby="live-rundown-title"
           className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-border"
@@ -327,6 +380,8 @@ function LiveConsole() {
                 previewItemId={state.previewItemId}
                 programItemId={programItem?.id ?? null}
                 onSelect={(itemId) => store.selectItem(itemId)}
+                onRemove={handleRemoveItem}
+                canRemove={Boolean(showProject) && !busy}
               />
             )}
           </div>
@@ -359,12 +414,11 @@ function LiveConsole() {
         </section>
 
         <div className="min-h-0 min-w-0 overflow-y-auto">
-          <LiveMonitors
-            previewSlide={getPreviewSlide(state)}
-            previewItem={previewItem}
+          <LiveProgramMonitor
             programSlide={getProgramSlide(state)}
             programItem={programItem}
             programMode={state.programMode}
+            detached={isProgramDetached(state)}
           />
         </div>
       </div>

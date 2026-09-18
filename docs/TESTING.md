@@ -305,3 +305,18 @@ Program; "Rundown" agrega el item sin tocar Program ni Preview; `/` enfoca el
 buscador del dock; escribir "black cosa" no dispara B ni C; Esc devuelve el
 foco; B, C y Enter funcionan fuera del input; controles visibles y sin scroll
 global en ambas resoluciones.
+
+
+## Fase 9.2
+
+- `tests/domain/presentation-remove.test.ts` — baja incremental, orden renormalizado,
+  Program intacto al quitar otro item, snapshot congelado (líneas, `secondaryText`,
+  estilo), equivalencia del `OutputSnapshot`, Clear/Black sobre la salida congelada,
+  `goLive`/`take` la limpian y vuelven a `content` desde Clear y Black.
+- `tests/features/bible-dock.test.ts` — selección y fallback de traducción, estado
+  vacío y estados de la entrada de referencia (incompleta, inválida, válida, rango).
+- `tests/features/live-session-remove.test.ts` — la baja adopta la firma nueva y
+  conserva un desfase externo pendiente.
+- Verificación en navegador con la NVI real importada: selector de traducción en
+  Live, pasaje al aire desde el dock, quitar el item al aire sin cortar la salida,
+  clic desde Black vuelve a contenido, 1366×768 y 1920×1080 sin scroll global.

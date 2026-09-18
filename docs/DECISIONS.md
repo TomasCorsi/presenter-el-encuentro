@@ -836,3 +836,38 @@ permanece.
 "Al aire" hace lo mismo y además aplica `goLive` sobre la primera slide nueva.
 No existen items temporales: lo que se ve en el show está siempre en el
 Project.
+
+
+## ADR-045 — La salida sobrevive a quitar el item que está al aire
+
+**Contexto.** En Live se puede quitar una aparición del rundown durante la
+reunión, incluso la que se está proyectando. Cortar la salida a negro en ese
+momento es inaceptable.
+
+**Decisión.** `PresentationState` gana `detachedProgramSlide: Slide | null`.
+Al quitar el item que contiene la slide al aire, esa slide se copia COMPLETA
+(líneas, `secondaryText`, estilo resuelto) en `detachedProgramSlide` y
+`programSlideId` pasa a `null`: no queda ninguna referencia al item eliminado.
+`getProgramSlide` cae en esa copia, así que el `OutputSnapshot` sigue siendo
+visualmente idéntico y la salida no parpadea. Clear y Black siguen operando
+sobre ella. `take` y `goLive` la limpian y devuelven Program a una slide del
+runtime; ambos fuerzan `programMode = "content"` incluso desde Clear o Black.
+`programSlideId` y `detachedProgramSlide` nunca están activos a la vez.
+
+**Consecuencias.** `getProgramItem` devuelve `null` con la salida congelada:
+la UI muestra "Fuera del rundown". La baja es incremental (`removePresentationItem`,
+`removeFromLiveSession`): no reconstruye el show ni limpia un aviso de cambios
+externos pendientes, y adopta el Project ya persistido para que la firma coincida.
+
+## ADR-046 — El Library Dock no tiene estado de Biblias propio
+
+**Contexto.** La pestaña Bible de Live debe mostrar exactamente las traducciones
+instaladas, sin duplicar almacenamiento ni tocar IndexedDB.
+
+**Decisión.** El dock consume `BibleContext` (el mismo proveedor que `/bible`) y
+`resolveBibleVersionSelection` concentra la regla de selección: una traducción se
+autoselecciona y se persiste; con varias manda la última elegida localmente; si la
+elegida ya no existe se cae a la primera y se reescribe la preferencia; sin ninguna
+no hay selector, solo un estado vacío. `classifyReferenceInput` distingue entrada
+incompleta (mensaje neutro) de referencia formada pero inválida (error). Al montar
+Live y al recuperar el foco se revalida SOLO la metadata de traducciones.

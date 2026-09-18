@@ -94,6 +94,7 @@ export type ProgramMode = "content" | "clear" | "black";
  * 2. `previewSlideId` es `null` cuando el item seleccionado no tiene slides.
  * 3. Si `previewSlideId !== null`, pertenece siempre a `previewItemId`.
  * 4. Program guarda un único id; su item se deriva del runtime (ADR-022).
+ * 5. `detachedProgramSlide` y `programSlideId` nunca están activos a la vez.
  */
 export interface PresentationState {
   runtime: PresentationRuntime;
@@ -101,5 +102,13 @@ export interface PresentationState {
   previewSlideId: string | null;
   programSlideId: string | null;
   programMode: ProgramMode;
+  /**
+   * Copia COMPLETA y renderizable de la slide que estaba al aire cuando su
+   * item se quitó del rundown (ADR-045). Mientras existe, Program sigue
+   * mostrando exactamente la misma salida sin depender del runtime. Cualquier
+   * cambio explícito de contenido (`take`, `goLive`, carga o recarga del show)
+   * la descarta.
+   */
+  detachedProgramSlide: Slide | null;
 }
 

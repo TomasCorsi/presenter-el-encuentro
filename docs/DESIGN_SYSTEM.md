@@ -289,3 +289,11 @@ Amplía las reglas de la Fase 8.2 con la capa operativa:
   campo de la pestaña activa del dock; no hay un quick search paralelo.
 - **Sin Project activo** el dock sigue buscando, pero las acciones quedan
   deshabilitadas con una explicación compacta de una línea.
+
+
+## Consola Live (Fase 9.2)
+
+Tres columnas: rundown `clamp(170px,14vw,240px)`, rejilla de slides flexible y
+Program `clamp(320px,30vw,520px)`. No hay monitor de Preview: la selección se
+distingue en la rejilla. Controles siempre arriba, Library Dock abajo. La acción
+"Quitar del rundown" de cada línea aparece al pasar el cursor o al tabular.

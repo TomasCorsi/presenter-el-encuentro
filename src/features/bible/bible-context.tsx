@@ -33,6 +33,8 @@ interface BibleContextValue extends BibleState {
   removeBible(versionId: string): Promise<void>;
   getBooks(versionId: string): Promise<BibleBookMeta[]>;
   getChapter(versionId: string, bookUsfm: string, chapter: string): Promise<BibleChapter | null>;
+  /** Revalida SOLO la metadata de traducciones instaladas; nunca el texto. */
+  refreshVersions(): Promise<void>;
   clearError(): void;
 }
 
@@ -114,6 +116,7 @@ export function BibleProvider({ children }: { children: ReactNode }) {
           throw error;
         }
       },
+      refreshVersions: refresh,
       getBooks: (versionId) => requireService().getBooks(versionId),
       getChapter: (versionId, bookUsfm, chapter) =>
         requireService().getChapter(versionId, bookUsfm, chapter),
