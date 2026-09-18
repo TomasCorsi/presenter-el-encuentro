@@ -6,7 +6,7 @@
 export {};
 
 declare global {
-  interface ScreenDetailed extends Screen {
+  interface ScreenDetailed extends Screen, EventTarget {
     readonly availLeft: number;
     readonly availTop: number;
     readonly left: number;
