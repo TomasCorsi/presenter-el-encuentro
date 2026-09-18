@@ -127,7 +127,9 @@ function ProjectDetailPage() {
             songs={songs}
             presets={presets}
             onMove={(itemId, direction) => moveRundownItem(project.id, itemId, direction)}
-            onRemove={(itemId) => removeRundownItem(project.id, itemId)}
+            onRemove={async (itemId) => {
+              await removeRundownItem(project.id, itemId);
+            }}
             onSetPreset={(itemId, presetId) => setRundownItemPreset(project.id, itemId, presetId)}
           />
         </section>
