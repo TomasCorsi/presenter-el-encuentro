@@ -156,3 +156,25 @@ export function verseRange(
   const end = Math.max(anchorIndex, focusIndex);
   return verses.slice(start, end + 1).map((verse) => verse.number);
 }
+
+/**
+ * Estado de la ENTRADA de búsqueda, para no gritar "referencia inválida"
+ * mientras el operador todavía está escribiendo (Fase 9.2).
+ *
+ * - `empty`: no hay nada escrito.
+ * - `incomplete`: falta el capítulo (`Juan`, `1 Cor`) → mensaje neutro.
+ * - `invalid`: hay libro y capítulo, pero no se reconocen → error real.
+ * - `valid`: la referencia se puede resolver.
+ */
+export type ReferenceInputState = "empty" | "incomplete" | "invalid" | "valid";
+
+export function classifyReferenceInput(
+  query: string,
+  books: readonly BibleBookMeta[],
+): ReferenceInputState {
+  const cleaned = query.replace(/\s+/g, " ").trim();
+  if (!cleaned) return "empty";
+  // Sin libro seguido de número de capítulo la referencia aún no está formada.
+  if (!/^.+?\s*\d+\s*(?::\s*\d+\s*(?:-\s*\d*\s*)?)?$/.test(cleaned)) return "incomplete";
+  return parseBibleReference(cleaned, books) ? "valid" : "invalid";
+}

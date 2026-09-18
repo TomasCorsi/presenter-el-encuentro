@@ -81,3 +81,28 @@ export function appendToLiveSession(
     staleExternal: session.staleExternal || wasOutdated,
   };
 }
+
+export interface RemoveFromLiveSessionInput extends LiveSessionSources {
+  /** Id del PresentationItem (coincide con el RundownItem que lo originó). */
+  itemId: string;
+  /** ¿La sesión ya estaba desfasada ANTES de esta baja? */
+  wasOutdated: boolean;
+}
+
+/**
+ * Baja controlada desde Live: quita SOLO ese item del snapshot y adopta la
+ * firma nueva, conservando el desfase externo pendiente (ADR-045).
+ */
+export function removeFromLiveSession(
+  session: LiveSession,
+  { project, songs, presets, itemId, wasOutdated }: RemoveFromLiveSessionInput,
+): LiveSession {
+  return {
+    snapshot: {
+      ...session.snapshot,
+      items: session.snapshot.items.filter((item) => item.id !== itemId),
+      signature: presentationSignature(project, songs, presets),
+    },
+    staleExternal: session.staleExternal || wasOutdated,
+  };
+}

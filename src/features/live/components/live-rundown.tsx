@@ -1,3 +1,5 @@
+import { X } from "lucide-react";
+
 import type { PresentationItem } from "@/domain/presentation/presentation";
 import { cn } from "@/lib/utils";
 
@@ -6,10 +8,24 @@ export interface LiveRundownProps {
   previewItemId: string | null;
   programItemId: string | null;
   onSelect(itemId: string): void;
+  /** Quita la aparición del Project y del show en curso (ADR-045). */
+  onRemove(itemId: string): void;
+  /** Sin proyecto del show no se puede persistir la baja. */
+  canRemove: boolean;
 }
 
-/** Rundown de solo lectura y densidad broadcast: Live nunca edita la secuencia. */
-export function LiveRundown({ items, previewItemId, programItemId, onSelect }: LiveRundownProps) {
+/**
+ * Rundown de la consola: seleccionar un elemento cambia la selección, NUNCA
+ * Program. La única edición permitida es quitar la aparición del rundown.
+ */
+export function LiveRundown({
+  items,
+  previewItemId,
+  programItemId,
+  onSelect,
+  onRemove,
+  canRemove,
+}: LiveRundownProps) {
   return (
     <ul className="flex flex-col gap-px bg-border" aria-label="Rundown del show">
       {items.map((item, index) => {
@@ -21,19 +37,24 @@ export function LiveRundown({ items, previewItemId, programItemId, onSelect }: L
           .join(" y ");
 
         return (
-          <li key={item.id}>
+          <li
+            key={item.id}
+            className={cn(
+              "group flex items-stretch border-l-2 bg-card transition-colors",
+              isProgram ? "border-l-live"
+              : isPreview ? "border-l-primary"
+              : "border-l-transparent",
+              isPreview && "bg-muted",
+            )}
+          >
             <button
               type="button"
               onClick={() => onSelect(item.id)}
               aria-current={isPreview ? "true" : undefined}
               aria-label={`${index + 1}. ${item.title}${states ? `, ${states}` : ""}`}
               className={cn(
-                "flex w-full items-center gap-2 border-l-2 bg-card px-2 py-1.5 text-left transition-colors",
+                "flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left transition-colors",
                 "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                isProgram ? "border-l-live"
-                : isPreview ? "border-l-primary"
-                : "border-l-transparent",
-                isPreview && "bg-muted",
               )}
             >
               <span className="w-5 shrink-0 font-mono text-[10px] text-muted-foreground">
@@ -58,6 +79,23 @@ export function LiveRundown({ items, previewItemId, programItemId, onSelect }: L
                 </span>
               ) : null}
             </button>
+
+            {canRemove ? (
+              <button
+                type="button"
+                onClick={() => onRemove(item.id)}
+                aria-label={`Quitar ${item.title} del rundown`}
+                title="Quitar del rundown"
+                className={cn(
+                  "shrink-0 px-1.5 text-muted-foreground opacity-0 transition-opacity",
+                  "hover:text-destructive focus-visible:opacity-100 focus-visible:outline-none",
+                  "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                  "group-hover:opacity-100",
+                )}
+              >
+                <X className="size-3.5" aria-hidden="true" />
+              </button>
+            ) : null}
           </li>
         );
       })}
