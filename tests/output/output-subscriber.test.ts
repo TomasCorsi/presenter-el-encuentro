@@ -9,7 +9,12 @@ import {
 } from "@/services/output-sync/output-transport";
 
 function snapshot(sessionId: string, sequence: number, lines = ["A"]): OutputSnapshot {
-  return { sessionId, sequence, mode: "content", slide: { id: "s:0", lines } };
+  return {
+    sessionId,
+    sequence,
+    mode: "content",
+    slide: { id: "s:0", content: { kind: "text", lines }, style: { background: { type: "solid", color: "#000000" }, fontFamily: "Inter", fontSize: 48, fontWeight: 600, color: "#FFFFFF", textAlign: "center", verticalAlign: "middle", lineHeight: 1.2, padding: 48 } },
+  };
 }
 
 /** Reloj y timers manuales para controlar heartbeat y timeout. */
