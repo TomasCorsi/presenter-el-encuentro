@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/select";
 import { passageCaption, type BiblePassage } from "@/domain/bible/bible";
 import { passageToPresentationItem } from "@/domain/presentation/passage-to-presentation";
+import { slideTextLines } from "@/domain/presentation/presentation";
 import type { Project } from "@/domain/projects/project";
 import { SlideRenderer } from "@/features/presentation/components/slide-renderer";
 
