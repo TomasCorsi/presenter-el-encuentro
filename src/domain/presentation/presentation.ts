@@ -12,7 +12,27 @@ export interface SlideTextContent {
   lines: string[];
 }
 
-export type SlideContent = SlideTextContent;
+/**
+ * Media como contenido presentable (Fase 10): la slide guarda solo la
+ * REFERENCIA (`mediaId`). Los bytes nunca cruzan el modelo; cada ventana
+ * resuelve la URL local a partir del id.
+ */
+export interface SlideImageContent {
+  kind: "image";
+  mediaId: string;
+}
+
+export interface SlideVideoContent {
+  kind: "video";
+  mediaId: string;
+}
+
+export type SlideContent = SlideTextContent | SlideImageContent | SlideVideoContent;
+
+/** Líneas de texto de una slide; vacío para contenido no textual. */
+export function slideTextLines(content: SlideContent): readonly string[] {
+  return content.kind === "text" ? content.lines : [];
+}
 
 export interface Slide {
   /** `${itemId}:${sectionId}:${chunkIndex}` para contenido derivado. */

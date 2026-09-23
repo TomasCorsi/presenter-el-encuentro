@@ -1,7 +1,10 @@
+import type { VideoPlaybackState } from "@/domain/output/video-playback";
 import type { ProgramMode } from "@/domain/presentation/presentation";
 import { DEFAULT_PRESET_STYLE, type PresetStyle } from "@/domain/presets/preset";
 import { normalizePresetStyle, presetStylesEqual } from "@/domain/presets/preset-rules";
 import type { ProgramOutput } from "@/domain/presentation/presentation-selectors";
+
+import { isVideoPlayback } from "./video-playback";
 
 /**
  * Protocolo Output Sync (ADR-028).
@@ -11,16 +14,25 @@ import type { ProgramOutput } from "@/domain/presentation/presentation-selectors
  * validación defensiva de todo lo que llega por el canal.
  */
 
+/** Contenido de la slide al aire. Media viaja como REFERENCIA (mediaId). */
+export type OutputSlideContent =
+  | { kind: "text"; lines: string[] }
+  | { kind: "image"; mediaId: string }
+  | { kind: "video"; mediaId: string };
+
 /**
  * Contenido Y apariencia RESUELTOS: Output nunca reconstruye nada ni consulta
  * repositories. El estilo llega congelado desde el snapshot de Live (ADR-036).
+ * Un `mediaId` NUNCA lleva bytes: Output resuelve su propia URL local.
  */
 export interface OutputSlide {
   id: string;
-  lines: string[];
+  content: OutputSlideContent;
   /** Línea secundaria proyectable (referencia bíblica, atribución…). */
   secondaryText?: string | undefined;
   style: PresetStyle;
+  /** Solo slides de video: estado de reproducción autoritativo de Live. */
+  playback?: VideoPlaybackState | undefined;
 }
 
 /** Estado completo que Output necesita para pintar Program. */
@@ -43,24 +55,35 @@ export const OUTPUT_CHANNEL_NAME = "broadcast-control.output.v1";
 export const HEARTBEAT_INTERVAL_MS = 2000;
 export const LIVENESS_TIMEOUT_MS = 5000;
 
-/** Deriva el snapshot a publicar a partir de la salida de Program. */
+/**
+ * Deriva el snapshot a publicar a partir de la salida de Program.
+ * `playback` es el estado de video de Live; solo se adjunta a slides de
+ * video (en una slide de texto o imagen se ignora).
+ */
 export function toOutputSnapshot(
   output: ProgramOutput,
+  playback: VideoPlaybackState | null,
   sessionId: string,
   sequence: number,
 ): OutputSnapshot {
+  const slide = output.slide;
   return {
     sessionId,
     sequence,
     mode: output.mode,
-    slide: output.slide
+    slide: slide
       ? {
-          id: output.slide.id,
-          lines: [...output.slide.content.lines],
-          secondaryText: output.slide.secondaryText,
+          id: slide.id,
+          content:
+            slide.content.kind === "text"
+              ? { kind: "text" as const, lines: [...slide.content.lines] }
+              : { kind: slide.content.kind, mediaId: slide.content.mediaId },
+          secondaryText: slide.secondaryText,
           // El publisher NO resuelve Presets: solo copia el estilo ya
           // congelado en el runtime, con el Default como red de seguridad.
-          style: output.slide.style ?? DEFAULT_PRESET_STYLE,
+          style: slide.style ?? DEFAULT_PRESET_STYLE,
+          playback:
+            slide.content.kind === "video" && playback ? { ...playback } : undefined,
         }
       : null,
   };
@@ -70,25 +93,55 @@ function linesEqual(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((line, index) => line === b[index]);
 }
 
+function contentsEqual(a: OutputSlideContent, b: OutputSlideContent): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === "text" && b.kind === "text") return linesEqual(a.lines, b.lines);
+  if (a.kind === "text" || b.kind === "text") return false;
+  return a.mediaId === b.mediaId;
+}
+
 /**
- * Compara TODO lo que Output pinta: modo, id, líneas y estilo. Mismo
- * `slide.id` con `lines` o con `style` distintos cuenta como cambio, así que
- * recargar la presentación tras editar la Song o el Preset produce un
- * `update`.
+ * Compara TODO lo que Output pinta: modo, id, contenido, estilo y estado de
+ * reproducción. De la reproducción basta la revisión: cada cambio de Live la
+ * incrementa, así que una revisión distinta implica un snapshot distinto.
  */
 export function snapshotsEqual(a: OutputSnapshot, b: OutputSnapshot): boolean {
   if (a.mode !== b.mode) return false;
   if (a.slide === null || b.slide === null) return a.slide === b.slide;
   return (
     a.slide.id === b.slide.id &&
-    linesEqual(a.slide.lines, b.slide.lines) &&
+    contentsEqual(a.slide.content, b.slide.content) &&
     (a.slide.secondaryText ?? null) === (b.slide.secondaryText ?? null) &&
-    presetStylesEqual(a.slide.style, b.slide.style)
+    presetStylesEqual(a.slide.style, b.slide.style) &&
+    (a.slide.playback?.revision ?? null) === (b.slide.playback?.revision ?? null)
   );
 }
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+/**
+ * Contenido nuevo (`content`) o heredado (`lines`, versiones anteriores del
+ * protocolo): una ventana Output vieja o nueva nunca queda sin validar.
+ */
+function parseContent(content: unknown, legacyLines: unknown): OutputSlideContent | null {
+  if (typeof content === "object" && content !== null) {
+    const candidate = content as Record<string, unknown>;
+    if (candidate["kind"] === "text" && isStringArray(candidate["lines"])) {
+      return { kind: "text", lines: candidate["lines"] };
+    }
+    if (
+      (candidate["kind"] === "image" || candidate["kind"] === "video") &&
+      typeof candidate["mediaId"] === "string" &&
+      candidate["mediaId"] !== ""
+    ) {
+      return { kind: candidate["kind"], mediaId: candidate["mediaId"] };
+    }
+    return null;
+  }
+  if (isStringArray(legacyLines)) return { kind: "text", lines: legacyLines };
+  return null;
 }
 
 function parseSnapshot(value: unknown): OutputSnapshot | null {
@@ -105,7 +158,8 @@ function parseSnapshot(value: unknown): OutputSnapshot | null {
   if (slide !== null) {
     if (typeof slide !== "object" || slide === null) return null;
     const s = slide as Record<string, unknown>;
-    if (typeof s["id"] !== "string" || !isStringArray(s["lines"])) return null;
+    if (typeof s["id"] !== "string") return null;
+    if (parseContent(s["content"], s["lines"]) === null) return null;
   }
 
   return {
@@ -117,7 +171,10 @@ function parseSnapshot(value: unknown): OutputSnapshot | null {
         ? null
         : {
             id: (slide as { id: string }).id,
-            lines: (slide as { lines: string[] }).lines,
+            content: parseContent(
+              (slide as { content?: unknown }).content,
+              (slide as { lines?: unknown }).lines,
+            ) as OutputSlideContent,
             // Texto secundario opcional: cualquier otra forma se ignora.
             secondaryText:
               typeof (slide as { secondaryText?: unknown }).secondaryText === "string"
@@ -126,6 +183,9 @@ function parseSnapshot(value: unknown): OutputSnapshot | null {
             // Un estilo ausente o inválido cae al Default campo a campo: la
             // salida nunca queda indefinida.
             style: normalizePresetStyle((slide as { style?: unknown }).style),
+            playback: isVideoPlayback((slide as { playback?: unknown }).playback)
+              ? (slide as { playback: VideoPlaybackState }).playback
+              : undefined,
           },
   };
 }
