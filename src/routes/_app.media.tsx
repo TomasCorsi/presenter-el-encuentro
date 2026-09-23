@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, CloudUpload, Film, HardDrive, Image as ImageIcon, Loader2, Trash2, Upload, X } from "lucide-react";
-import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { toast } from "sonner";
 
 import { Page, PageHeader } from "@/components/layout/page";
@@ -36,6 +36,10 @@ function MediaPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
+  // El tipo de almacenamiento depende del navegador: solo tras montar (SSR no
+  // tiene OPFS/IndexedDB y mostraría un texto distinto).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const videoImportable = service.canImport({ mimeType: "video/mp4" });
 
@@ -119,9 +123,11 @@ function MediaPage() {
       {/* Estado de almacenamiento */}
       <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
         <HardDrive className="h-3.5 w-3.5" />
-        {storageKind === "opfs"
-          ? "Almacenamiento OPFS: imágenes y videos, persistente mientras el navegador lo permita."
-          : "Almacenamiento limitado del navegador: solo imágenes. La persistencia no está garantizada."}
+        {mounted
+          ? storageKind === "opfs"
+            ? "Almacenamiento OPFS: imágenes y videos, persistente mientras el navegador lo permita."
+            : "Almacenamiento limitado del navegador: solo imágenes. La persistencia no está garantizada."
+          : "Comprobando el almacenamiento del navegador…"}
       </p>
 
       {/* Biblioteca */}
@@ -145,7 +151,7 @@ function MediaPage() {
         )}
       </div>
 
-      {!videoImportable ? (
+      {mounted && !videoImportable ? (
         <p className="mt-4 inline-flex items-center gap-1.5 text-xs text-amber-500">
           <X className="h-3.5 w-3.5" />
           Este navegador no ofrece OPFS: los videos (MP4/WEBM) no se pueden importar aquí.
