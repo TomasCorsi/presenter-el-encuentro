@@ -25,6 +25,7 @@ interface ProjectsContextValue extends ProjectsState {
   /** Devuelve el Project ya guardado: Live necesita el RundownItem nuevo. */
   addSongToProject(projectId: string, song: { id: string; title: string }): Promise<Project>;
   addPassageToProject(projectId: string, passage: BiblePassage): Promise<Project>;
+  addMediaToProject(projectId: string, media: { id: string; name: string }): Promise<Project>;
   removeRundownItem(projectId: string, itemId: string): Promise<Project>;
   moveRundownItem(projectId: string, itemId: string, direction: "up" | "down"): Promise<void>;
   setRundownItemPreset(projectId: string, itemId: string, presetId: string | undefined): Promise<void>;
@@ -130,6 +131,10 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     addPassageToProject: async (projectId, passage) => {
       if (!service) throw new Error("El almacenamiento local no está disponible.");
       return run(() => service.addPassage(projectId, passage));
+    },
+    addMediaToProject: async (projectId, media) => {
+      if (!service) throw new Error("El almacenamiento local no está disponible.");
+      return run(() => service.addMedia(projectId, media));
     },
     removeRundownItem: async (projectId, itemId) => {
       if (!service) throw new Error("El almacenamiento local no está disponible.");

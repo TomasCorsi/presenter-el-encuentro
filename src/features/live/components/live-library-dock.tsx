@@ -3,13 +3,15 @@ import type { RefObject } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { BiblePassage } from "@/domain/bible/bible";
+import type { MediaAsset } from "@/domain/media/media";
 import type { Song } from "@/domain/songs/song";
 import { cn } from "@/lib/utils";
 
 import { LibraryBibleTab } from "./library-bible-tab";
+import { LibraryMediaTab } from "./library-media-tab";
 import { LibrarySongsTab } from "./library-songs-tab";
 
-export type LibraryTab = "songs" | "bible";
+export type LibraryTab = "songs" | "bible" | "media";
 
 export interface LiveLibraryDockProps {
   open: boolean;
@@ -20,17 +22,21 @@ export interface LiveLibraryDockProps {
   songs: readonly Song[];
   bibleVersionId: string | null;
   onBibleVersionChange(versionId: string): void;
+  mediaAssets: readonly MediaAsset[];
+  mediaLoading: boolean;
   /** Sin proyecto activo se puede buscar, pero no agregar. */
   canAdd: boolean;
   busy: boolean;
   status: string | null;
   onAddSong(song: Song, mode: "rundown" | "live"): void;
   onAddPassage(passage: BiblePassage, mode: "rundown" | "live"): void;
+  onAddMedia(asset: MediaAsset, mode: "rundown" | "live"): void;
 }
 
 const TABS: ReadonlyArray<{ id: LibraryTab; label: string }> = [
   { id: "songs", label: "Songs" },
   { id: "bible", label: "Bible" },
+  { id: "media", label: "Media" },
 ];
 
 /**
@@ -47,11 +53,14 @@ export function LiveLibraryDock({
   songs,
   bibleVersionId,
   onBibleVersionChange,
+  mediaAssets,
+  mediaLoading,
   canAdd,
   busy,
   status,
   onAddSong,
   onAddPassage,
+  onAddMedia,
 }: LiveLibraryDockProps) {
   return (
     <section
@@ -119,7 +128,7 @@ export function LiveLibraryDock({
               busy={busy}
               onAdd={onAddSong}
             />
-          ) : (
+          ) : tab === "bible" ? (
             <LibraryBibleTab
               inputRef={inputRef}
               canAdd={canAdd}
@@ -127,6 +136,15 @@ export function LiveLibraryDock({
               versionId={bibleVersionId}
               onVersionChange={onBibleVersionChange}
               onAdd={onAddPassage}
+            />
+          ) : (
+            <LibraryMediaTab
+              assets={mediaAssets}
+              isLoading={mediaLoading}
+              inputRef={inputRef}
+              canAdd={canAdd}
+              busy={busy}
+              onAdd={onAddMedia}
             />
           )}
         </div>

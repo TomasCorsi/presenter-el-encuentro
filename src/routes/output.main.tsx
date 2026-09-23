@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect } from "react";
 
+import { MediaProvider } from "@/features/media/media-context";
 import { OutputOverlay } from "@/features/output/components/output-overlay";
 import { OutputSurface } from "@/features/output/components/output-surface";
 import { OutputTestScreen } from "@/features/output/components/output-test-screen";
@@ -40,7 +41,13 @@ export const Route = createFileRoute("/output/main")({
 function OutputMainPage() {
   const { mode, n } = Route.useSearch();
   if (mode === "test") return <OutputTestScreen screenNumber={n ?? null} />;
-  return <OutputLiveScreen />;
+  // MediaProvider propio: Output es una ventana independiente y resuelve los
+  // archivos desde el almacenamiento local de ESTE dispositivo.
+  return (
+    <MediaProvider>
+      <OutputLiveScreen />
+    </MediaProvider>
+  );
 }
 
 function OutputLiveScreen() {

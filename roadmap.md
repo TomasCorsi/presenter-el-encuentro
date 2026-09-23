@@ -27,17 +27,17 @@
 - [x] Tests unitarios + verificación en navegador
 - [x] Documentación (DECISIONS, ARCHITECTURE, TESTING con checklist Windows, ROADMAP)
 
+## Fase 10 — Media (completada)
+
+- [x] Formatos: PNG, JPEG, WEBP, MP4, WEBM (sin GIF)
+- [x] MediaRepository (metadata IndexedDB) / MediaFileStorage (OPFS, streaming) / MediaService coordinador
+- [x] Importación compensable y eliminación bloqueada si el archivo está en uso
+- [x] Respaldo IndexedDB solo para imágenes; persist/persisted/estimate
+- [x] SlideContent: text | image | video
+- [x] VideoPlaybackState autoritativo (state, offsetSeconds, changedAtEpochMs, loop, revision)
+- [x] /media, pestaña Media en Library Dock, Program y Output
+- [x] Tests (265), typecheck, build, E2E en navegador (importar → proyecto activo → Al aire → Output)
+
 ## Siguiente
 
-- Fase 10 — Media (no empezar hasta indicación del usuario)
-
-## Fase 10 — Media (plan aprobado, pendiente de la 3.ª corrección final)
-
-- [ ] Formatos: PNG, JPEG, WEBP, MP4, WEBM (sin GIF)
-- [ ] MediaRepository (metadata IndexedDB) / MediaFileStorage (OPFS, streaming) / MediaService coordinador
-- [ ] Importación compensable y eliminación bloqueada si el archivo está en uso
-- [ ] Respaldo IndexedDB solo para imágenes; persist/persisted/estimate
-- [ ] SlideContent: text | image | video
-- [ ] VideoPlaybackState autoritativo (state, offsetSeconds, changedAtEpochMs, loop, revision)
-- [ ] /media, pestaña Media en Library Dock, Program y Output
-- [ ] Tests, verificación en navegador, docs
+- Fase 11 — Pendiente de indicación del usuario

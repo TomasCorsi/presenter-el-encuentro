@@ -8,6 +8,7 @@ import { createInMemoryMediaRepository } from "@/services/media/in-memory-media-
 import { createInMemoryMediaStorage } from "@/services/media/in-memory-media-storage";
 import { createMediaUrlCache, type MediaUrlCache } from "@/services/media/media-url-cache";
 import { createBrowserOpfsMediaStorage, isOpfsAvailable } from "@/services/media/opfs-media-storage";
+import { createLocalStorageProjectRepository } from "@/services/projects/local-storage-project-repository";
 import type { MediaFileStorage } from "@/services/media/media-file-storage";
 import type { MediaRepository } from "@/services/media/media-repository";
 import { requestStoragePersistenceOnce } from "@/services/media/storage-persistence";
@@ -32,7 +33,8 @@ const MediaContext = createContext<MediaContextValue | null>(null);
 
 export interface MediaProviderProps {
   children: ReactNode;
-  projectRepository: Pick<ProjectRepository, "list">;
+  /** Referencias de Projects para el bloqueo de eliminación en uso. */
+  projectRepository?: Pick<ProjectRepository, "list"> | undefined;
   /** Inyección para tests. En navegador se derivan del entorno. */
   repository?: MediaRepository;
   fileStorage?: MediaFileStorage;
@@ -68,9 +70,15 @@ export function MediaProvider({
     };
   }, [repository, fileStorage]);
 
+  const resolvedProjects = useMemo<Pick<ProjectRepository, "list">>(() => {
+    if (projectRepository) return projectRepository;
+    if (typeof window === "undefined") return { list: async () => [] };
+    return createLocalStorageProjectRepository(window.localStorage);
+  }, [projectRepository]);
+
   const service = useMemo(
-    () => new MediaService(resolved.repository, resolved.fileStorage, projectRepository),
-    [resolved, projectRepository],
+    () => new MediaService(resolved.repository, resolved.fileStorage, resolvedProjects),
+    [resolved, resolvedProjects],
   );
 
   const urlCacheRef = useRef<MediaUrlCache | null>(null);

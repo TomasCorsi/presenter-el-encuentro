@@ -32,7 +32,7 @@ export function createOutputPublisher(
   let lastPublished: OutputSnapshot | null = null;
 
   function publish(type: "snapshot" | "update", output: ProgramOutput): void {
-    const snapshot = toOutputSnapshot(output, getPlayback(), sessionId, sequence++);
+    const snapshot = toOutputSnapshot(output, sessionId, sequence++, getPlayback());
     lastPublished = snapshot;
     const message: OutputMessage = { type, snapshot };
     transport.publish(message);
@@ -52,7 +52,7 @@ export function createOutputPublisher(
   return {
     sync(output) {
       currentOutput = output;
-      const snapshot = toOutputSnapshot(output, getPlayback(), sessionId, sequence);
+      const snapshot = toOutputSnapshot(output, sessionId, sequence, getPlayback());
       if (lastPublished && snapshotsEqual(lastPublished, snapshot)) return;
       publish("update", output);
     },

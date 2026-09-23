@@ -6,6 +6,15 @@ import { Page } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { BiblePassage } from "@/domain/bible/bible";
+import type { MediaAsset } from "@/domain/media/media";
+import {
+  createInitialPlayback,
+  pausePlayback,
+  playPlayback,
+  restartPlayback,
+  togglePlaybackLoop,
+  type VideoPlaybackState,
+} from "@/domain/output/video-playback";
 import type { Project } from "@/domain/projects/project";
 import type { Song } from "@/domain/songs/song";
 import {
@@ -31,8 +40,13 @@ import {
   type LiveSession,
 } from "@/features/live/live-session";
 import { LiveSlideGrid } from "@/features/live/components/live-slide-grid";
+import {
+  LiveVideoControls,
+  type VideoPlaybackCommand,
+} from "@/features/live/components/live-video-controls";
 import { useLiveKeyboard } from "@/features/live/use-live-keyboard";
 import { useBible } from "@/features/bible/bible-context";
+import { useMedia } from "@/features/media/media-context";
 import { useOutputPublisher } from "@/features/output/use-output-publisher";
 import { useOutputWindow } from "@/features/output/use-output-window";
 import {
@@ -66,7 +80,7 @@ function readLibraryPreference(): LibraryPreference {
     const parsed = JSON.parse(raw) as Partial<LibraryPreference>;
     return {
       open: typeof parsed.open === "boolean" ? parsed.open : DEFAULT_LIBRARY.open,
-      tab: parsed.tab === "bible" ? "bible" : "songs",
+      tab: parsed.tab === "bible" || parsed.tab === "media" ? parsed.tab : "songs",
       versionId: typeof parsed.versionId === "string" ? parsed.versionId : null,
     };
   } catch {
@@ -91,14 +105,18 @@ export const Route = createFileRoute("/_app/live")({
 
 function LiveConsole() {
   const {
-    projects, activeProject, hasLoaded, addSongToProject, addPassageToProject, removeRundownItem,
+    projects, activeProject, hasLoaded, addSongToProject, addPassageToProject, addMediaToProject,
+    removeRundownItem,
   } = useProjects();
   const { refreshVersions } = useBible();
   const { songs, hasLoaded: songsLoaded } = useSongs();
   const { presets, hasLoaded: presetsLoaded } = usePresets();
+  const { assets: mediaAssets, isLoading: mediaLoading } = useMedia();
   const store = usePresentationStore();
   const state = usePresentationState();
   const [session, setSession] = useState<LiveSession | null>(null);
+  /** Reproducción del video al aire: Live es la única autoridad. */
+  const [playback, setPlayback] = useState<VideoPlaybackState | null>(null);
 
   // Preferencias locales del dock: se leen tras el montaje para no romper SSR.
   const [library, setLibrary] = useState<LibraryPreference>(DEFAULT_LIBRARY);
@@ -131,22 +149,34 @@ function LiveConsole() {
   }, []);
 
   // Live es la autoridad del protocolo Output Sync: publica Program a
-  // `/output/main` (ADR-027/028).
-  useOutputPublisher();
+  // `/output/main` (ADR-027/028), incluido el estado de reproducción.
+  useOutputPublisher(playback);
   const outputWindow = useOutputWindow();
 
   // Carga inicial del show: un único snapshot explícito por sesión.
   useEffect(() => {
-    if (session || !hasLoaded || !songsLoaded || !presetsLoaded || !activeProject) return;
-    const next = createLiveSession({ project: activeProject, songs, presets });
+    if (session || !hasLoaded || !songsLoaded || !presetsLoaded || mediaLoading || !activeProject) return;
+    const next = createLiveSession({ project: activeProject, songs, presets, media: mediaAssets });
     setSession(next);
     store.loadPresentation(next.snapshot.items);
-  }, [activeProject, hasLoaded, presets, presetsLoaded, session, songs, songsLoaded, store]);
+  }, [activeProject, hasLoaded, mediaAssets, mediaLoading, presets, presetsLoaded, session, songs, songsLoaded, store]);
+
+  // La reproducción es del video AL AIRE: entra reproduciendo desde el
+  // inicio y se detiene al cambiar de slide o salir de `content`.
+  const programSlideNow = getProgramSlide(state);
+  const programVideoId =
+    state.programMode === "content" && programSlideNow?.content.kind === "video"
+      ? programSlideNow.id
+      : null;
+  useEffect(() => {
+    setPlayback(programVideoId ? createInitialPlayback(Date.now()) : null);
+  }, [programVideoId]);
 
   const snapshot = session?.snapshot ?? null;
   const showProject = projects.find((project) => project.id === snapshot?.projectId) ?? null;
   const outdated = Boolean(
-    session && showProject && isLiveSessionOutdated(session, { project: showProject, songs, presets }),
+    session && showProject &&
+    isLiveSessionOutdated(session, { project: showProject, songs, presets, media: mediaAssets }),
   );
   // El handler necesita saber si YA había desfase antes de su propia alta.
   const outdatedRef = useRef(false);
@@ -157,17 +187,17 @@ function LiveConsole() {
 
   const reload = useCallback(() => {
     if (!showProject) return;
-    const next = reloadLiveSession({ project: showProject, songs, presets });
+    const next = reloadLiveSession({ project: showProject, songs, presets, media: mediaAssets });
     setSession(next);
     store.reloadPresentation(next.snapshot.items);
-  }, [presets, showProject, songs, store]);
+  }, [mediaAssets, presets, showProject, songs, store]);
 
   const loadActiveProject = useCallback(() => {
     if (!activeProject) return;
-    const next = createLiveSession({ project: activeProject, songs, presets });
+    const next = createLiveSession({ project: activeProject, songs, presets, media: mediaAssets });
     setSession(next);
     store.loadPresentation(next.snapshot.items);
-  }, [activeProject, presets, songs, store]);
+  }, [activeProject, mediaAssets, presets, songs, store]);
 
   /**
    * Alta desde la biblioteca: persiste en el Project y añade SOLO ese item al
@@ -184,7 +214,7 @@ function LiveConsole() {
         const rundownItem = [...project.rundown].sort((a, b) => a.order - b.order).at(-1);
         if (!rundownItem) return;
 
-        const sources = { project, songs, presets };
+        const sources = { project, songs, presets, media: mediaAssets };
         const item = buildAppendedItem(sources, rundownItem.id);
         if (!item) {
           setStatus("No se pudo preparar el contenido para el show.");
@@ -205,7 +235,7 @@ function LiveConsole() {
         setBusy(false);
       }
     },
-    [presets, songs, store],
+    [mediaAssets, presets, songs, store],
   );
 
   const handleAddSong = useCallback(
@@ -226,6 +256,16 @@ function LiveConsole() {
       );
     },
     [addPassageToProject, appendFromLibrary, showProject],
+  );
+
+  const handleAddMedia = useCallback(
+    (asset: MediaAsset, mode: "rundown" | "live") => {
+      if (!showProject) return;
+      void appendFromLibrary(mode, asset.name, () =>
+        addMediaToProject(showProject.id, { id: asset.id, name: asset.name }),
+      );
+    },
+    [addMediaToProject, appendFromLibrary, showProject],
   );
 
   /**
@@ -250,6 +290,7 @@ function LiveConsole() {
                   project,
                   songs,
                   presets,
+                  media: mediaAssets,
                   itemId,
                   wasOutdated,
                 })
@@ -264,8 +305,21 @@ function LiveConsole() {
         }
       })();
     },
-    [presets, removeRundownItem, showProject, songs, state.runtime.items, store],
+    [mediaAssets, presets, removeRundownItem, showProject, songs, state.runtime.items, store],
   );
+
+  /** Comandos del video al aire: actualizan el estado autoritativo de Live. */
+  const handlePlaybackCommand = useCallback((command: VideoPlaybackCommand) => {
+    setPlayback((current) => {
+      if (!current) return current;
+      const now = Date.now();
+      if (command === "toggle-play") {
+        return current.state === "playing" ? pausePlayback(current, now) : playPlayback(current, now);
+      }
+      if (command === "restart") return restartPlayback(current, now);
+      return togglePlaybackLoop(current);
+    });
+  }, []);
 
   const canTake = state.previewSlideId !== null;
   const onPrevious = useCallback(() => store.previous(), [store]);
@@ -424,6 +478,8 @@ function LiveConsole() {
             programItem={programItem}
             programMode={state.programMode}
             detached={isProgramDetached(state)}
+            playback={playback}
+            onPlaybackCommand={handlePlaybackCommand}
           />
         </div>
       </div>
@@ -437,11 +493,14 @@ function LiveConsole() {
         songs={songs}
         bibleVersionId={library.versionId}
         onBibleVersionChange={(versionId) => updateLibrary({ versionId })}
+        mediaAssets={mediaAssets}
+        mediaLoading={mediaLoading}
         canAdd={Boolean(showProject)}
         busy={busy}
         status={status}
         onAddSong={handleAddSong}
         onAddPassage={handleAddPassage}
+        onAddMedia={handleAddMedia}
       />
     </Page>
   );

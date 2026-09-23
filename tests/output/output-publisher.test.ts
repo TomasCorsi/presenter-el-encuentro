@@ -29,11 +29,11 @@ describe("createOutputPublisher", () => {
 
     const updates = received.filter(
       (m) => (m as { type?: string }).type === "update",
-    ) as { snapshot: { sequence: number; slide: { lines: string[] } } }[];
+    ) as { snapshot: { sequence: number; slide: { content: { kind: "text"; lines: string[] } } } }[];
     expect(updates).toHaveLength(2);
     expect(updates[0]!.snapshot.sequence).toBe(0);
     expect(updates[1]!.snapshot.sequence).toBe(1);
-    expect(updates[1]!.snapshot.slide.lines).toEqual(["B"]);
+    expect(updates[1]!.snapshot.slide.content.lines).toEqual(["B"]);
   });
 
   it("responde hello con un snapshot completo", () => {

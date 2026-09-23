@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import type { OutputSnapshot } from "@/domain/output/output-snapshot";
+import { DEFAULT_PRESET_STYLE } from "@/domain/presets/preset";
 import { createOutputSubscriber } from "@/services/output-sync/output-subscriber";
 import {
   createMemoryBus,
@@ -9,7 +10,17 @@ import {
 } from "@/services/output-sync/output-transport";
 
 function snapshot(sessionId: string, sequence: number, lines = ["A"]): OutputSnapshot {
-  return { sessionId, sequence, mode: "content", slide: { id: "s:0", lines } };
+  return {
+    sessionId,
+    sequence,
+    mode: "content",
+    slide: { id: "s:0", content: { kind: "text", lines }, style: DEFAULT_PRESET_STYLE },
+  };
+}
+
+function contentLines(state: OutputSnapshot | null): string[] | undefined {
+  const content = state?.slide?.content;
+  return content?.kind === "text" ? content.lines : undefined;
 }
 
 /** Reloj y timers manuales para controlar heartbeat y timeout. */
@@ -64,7 +75,7 @@ describe("createOutputSubscriber", () => {
     live.publish({ type: "update", snapshot: snapshot("live-a", 3, ["Viejo"]) });
     expect(subscriber.getState().snapshot?.sequence).toBe(5);
     live.publish({ type: "update", snapshot: snapshot("live-a", 6, ["Nuevo"]) });
-    expect(subscriber.getState().snapshot?.slide?.lines).toEqual(["Nuevo"]);
+    expect(contentLines(subscriber.getState().snapshot)).toEqual(["Nuevo"]);
   });
 
   it("vinculado a Live A ignora Live B; tras bye de A puede adoptar B", () => {
@@ -95,7 +106,7 @@ describe("createOutputSubscriber", () => {
     // Reconexión: una nueva sesión emite y Output la adopta.
     live.publish({ type: "snapshot", snapshot: snapshot("live-c", 0, ["Vuelve"]) });
     expect(subscriber.getState().connection).toBe("connected");
-    expect(subscriber.getState().snapshot?.slide?.lines).toEqual(["Vuelve"]);
+    expect(contentLines(subscriber.getState().snapshot)).toEqual(["Vuelve"]);
   });
 
   it("ignora bye de otra sesión", () => {
