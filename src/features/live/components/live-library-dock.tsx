@@ -128,7 +128,7 @@ export function LiveLibraryDock({
               busy={busy}
               onAdd={onAddSong}
             />
-          ) : (
+          ) : tab === "bible" ? (
             <LibraryBibleTab
               inputRef={inputRef}
               canAdd={canAdd}
@@ -136,6 +136,15 @@ export function LiveLibraryDock({
               versionId={bibleVersionId}
               onVersionChange={onBibleVersionChange}
               onAdd={onAddPassage}
+            />
+          ) : (
+            <LibraryMediaTab
+              assets={mediaAssets}
+              isLoading={mediaLoading}
+              inputRef={inputRef}
+              canAdd={canAdd}
+              busy={busy}
+              onAdd={onAddMedia}
             />
           )}
         </div>
