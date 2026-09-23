@@ -38,6 +38,36 @@ export function addSongToRundown(
   ];
 }
 
+export interface AddMediaToRundownInput {
+  mediaId: string;
+  name: string;
+}
+
+/**
+ * Agrega un archivo de Media al final del rundown. El item guarda solo la
+ * REFERENCIA (`sourceId = mediaId`): los bytes nunca se copian al Project,
+ * así que eliminar el archivo de la biblioteca queda bloqueado mientras
+ * exista esta referencia (Fase 10).
+ */
+export function addMediaToRundown(
+  items: readonly RundownItem[],
+  input: AddMediaToRundownInput,
+  dependencies: RundownItemFactoryDependencies,
+): RundownItem[] {
+  const normalized = normalizeRundown(items);
+
+  return [
+    ...normalized,
+    {
+      id: dependencies.createId(),
+      type: "media",
+      sourceId: input.mediaId,
+      title: input.name,
+      order: normalized.length,
+    },
+  ];
+}
+
 /**
  * Agrega un pasaje bíblico al final del rundown. El pasaje se guarda COMPLETO
  * dentro del item: desinstalar la traducción no afecta al project (ADR-042).

@@ -182,7 +182,10 @@ export function removePresentationItem(
 function cloneSlide(slide: Slide): Slide {
   return {
     ...slide,
-    content: { ...slide.content, lines: [...slide.content.lines] },
+    content:
+      slide.content.kind === "text"
+        ? { kind: "text" as const, lines: [...slide.content.lines] }
+        : { ...slide.content },
     ...(slide.style ? { style: { ...slide.style } } : {}),
   };
 }

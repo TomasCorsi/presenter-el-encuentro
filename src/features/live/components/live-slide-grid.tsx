@@ -1,4 +1,5 @@
-import type { PresentationItem } from "@/domain/presentation/presentation";
+import type { PresentationItem, Slide } from "@/domain/presentation/presentation";
+import { slideTextLines } from "@/domain/presentation/presentation";
 import { cn } from "@/lib/utils";
 
 export interface LiveSlideGridProps {
@@ -9,8 +10,11 @@ export interface LiveSlideGridProps {
   onGoLive(slideId: string): void;
 }
 
-function excerpt(lines: string[]): string {
-  return lines.join(" · ").slice(0, 140);
+function excerpt(slide: Slide): string {
+  if (slide.content.kind !== "text") {
+    return slide.content.kind === "image" ? "Imagen" : "Video";
+  }
+  return slideTextLines(slide.content).join(" · ").slice(0, 140);
 }
 
 /**
@@ -70,7 +74,7 @@ export function LiveSlideGrid({ item, previewSlideId, programSlideId, onGoLive }
               </span>
 
               <span className="block min-h-16 flex-1 px-2.5 py-2 text-xs leading-5 text-foreground">
-                <span className="line-clamp-4">{excerpt(slide.content.lines)}</span>
+                <span className="line-clamp-4">{excerpt(slide)}</span>
               </span>
 
               {isPreview || isProgram ? (
