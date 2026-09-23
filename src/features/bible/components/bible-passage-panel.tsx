@@ -62,7 +62,7 @@ export function BiblePassagePanel({ passage, projects, defaultProjectId, onAdd }
           slides.map((slide) => (
             <div key={slide.id} className="aspect-video overflow-hidden rounded-sm border border-border">
               <SlideRenderer
-                lines={slide.content.lines}
+                lines={slideTextLines(slide.content) as string[]}
                 style={slide.style}
                 secondaryText={slide.secondaryText}
               />
