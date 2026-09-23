@@ -62,9 +62,9 @@ export const LIVENESS_TIMEOUT_MS = 5000;
  */
 export function toOutputSnapshot(
   output: ProgramOutput,
-  playback: VideoPlaybackState | null,
   sessionId: string,
   sequence: number,
+  playback: VideoPlaybackState | null = null,
 ): OutputSnapshot {
   const slide = output.slide;
   return {
