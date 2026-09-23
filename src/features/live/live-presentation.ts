@@ -44,7 +44,7 @@ export function presentationSignature(
       const source =
         item.type === "media" ? (mediaById.get(item.sourceId)?.updatedAt ?? "missing")
         : item.type === "song" ? (songsById.get(item.sourceId)?.updatedAt ?? "missing")
-        : item.updatedAt ?? "frozen";
+        : "frozen";
       const preset = resolvePreset(item.presetId, presets);
       return [item.id, item.sourceId, source, preset.id, preset.updatedAt].join("@");
     });

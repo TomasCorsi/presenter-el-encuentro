@@ -1,3 +1,4 @@
+import type { MediaAsset } from "@/domain/media/media";
 import type { PresentationItem } from "@/domain/presentation/presentation";
 import { projectToPresentation } from "@/domain/presentation/project-to-presentation";
 import { resolvePresentationStyles } from "@/domain/presentation/resolve-presentation-styles";
@@ -28,10 +29,12 @@ export interface LiveSessionSources {
   project: Project;
   songs: readonly Song[];
   presets: readonly Preset[];
+  /** Metadata de la biblioteca Media (nunca los bytes). */
+  media: readonly MediaAsset[];
 }
 
-export function createLiveSession({ project, songs, presets }: LiveSessionSources): LiveSession {
-  return { snapshot: buildLiveSnapshot(project, songs, presets), staleExternal: false };
+export function createLiveSession({ project, songs, presets, media }: LiveSessionSources): LiveSession {
+  return { snapshot: buildLiveSnapshot(project, songs, presets, media), staleExternal: false };
 }
 
 /** Recarga explícita del operador: incorpora TODOS los cambios de las fuentes. */
@@ -41,10 +44,10 @@ export function reloadLiveSession(sources: LiveSessionSources): LiveSession {
 
 export function isLiveSessionOutdated(
   session: LiveSession,
-  { project, songs, presets }: LiveSessionSources,
+  { project, songs, presets, media }: LiveSessionSources,
 ): boolean {
   if (session.staleExternal) return true;
-  return presentationSignature(project, songs, presets) !== session.snapshot.signature;
+  return presentationSignature(project, songs, presets, media) !== session.snapshot.signature;
 }
 
 /**
@@ -52,13 +55,13 @@ export function isLiveSessionOutdated(
  * ya resuelto. No toca el resto del show.
  */
 export function buildAppendedItem(
-  { project, songs, presets }: LiveSessionSources,
+  { project, songs, presets, media }: LiveSessionSources,
   rundownItemId: string,
 ): PresentationItem | null {
   const rundownItem = project.rundown.find((item) => item.id === rundownItemId);
   if (!rundownItem) return null;
 
-  const items = projectToPresentation({ ...project, rundown: [rundownItem] }, songs);
+  const items = projectToPresentation({ ...project, rundown: [rundownItem] }, songs, media);
   return resolvePresentationStyles(items, presets)[0] ?? null;
 }
 
@@ -70,13 +73,13 @@ export interface AppendToLiveSessionInput extends LiveSessionSources {
 
 export function appendToLiveSession(
   session: LiveSession,
-  { project, songs, presets, item, wasOutdated }: AppendToLiveSessionInput,
+  { project, songs, presets, media, item, wasOutdated }: AppendToLiveSessionInput,
 ): LiveSession {
   return {
     snapshot: {
       ...session.snapshot,
       items: [...session.snapshot.items, item],
-      signature: presentationSignature(project, songs, presets),
+      signature: presentationSignature(project, songs, presets, media),
     },
     staleExternal: session.staleExternal || wasOutdated,
   };
@@ -95,13 +98,13 @@ export interface RemoveFromLiveSessionInput extends LiveSessionSources {
  */
 export function removeFromLiveSession(
   session: LiveSession,
-  { project, songs, presets, itemId, wasOutdated }: RemoveFromLiveSessionInput,
+  { project, songs, presets, media, itemId, wasOutdated }: RemoveFromLiveSessionInput,
 ): LiveSession {
   return {
     snapshot: {
       ...session.snapshot,
       items: session.snapshot.items.filter((item) => item.id !== itemId),
-      signature: presentationSignature(project, songs, presets),
+      signature: presentationSignature(project, songs, presets, media),
     },
     staleExternal: session.staleExternal || wasOutdated,
   };
