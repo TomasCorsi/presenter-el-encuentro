@@ -1,8 +1,10 @@
 import { isBiblePassage } from "@/domain/bible/bible";
+import type { MediaAsset } from "@/domain/media/media";
 import type { Project } from "@/domain/projects/project";
 import type { RundownItem } from "@/domain/projects/rundown";
 import type { Song } from "@/domain/songs/song";
 
+import { mediaToPresentationItem } from "./media-to-presentation";
 import { passageToPresentationItem } from "./passage-to-presentation";
 import type { PresentationItem } from "./presentation";
 import { songToPresentationItem } from "./song-to-presentation";
@@ -25,17 +27,17 @@ function toPlaceholderItem(item: RundownItem, order: number): PresentationItem {
 }
 
 /**
- * Transformación pura Project Rundown + biblioteca → PresentationItem[].
- * NO conoce los Presets: propaga `presetId` sin resolverlo. La resolución del
- * estilo ocurre en el snapshot de Live (ADR-038).
- * `PresentationItem.id` es la identidad de instancia del RundownItem, así que
- * la misma Song puede repetirse sin colisiones de IDs de slide.
+ * La metadata de Media llega como parámetro (sin consultar storage): un item
+ * cuyo asset falta produce un placeholder que conserva su posición, nunca un
+ * error ni una referencia inventada.
  */
 export function projectToPresentation(
   project: Project,
   songs: readonly Song[],
+  media: readonly MediaAsset[] = [],
 ): PresentationItem[] {
   const songsById = new Map(songs.map((song) => [song.id, song]));
+  const mediaById = new Map(media.map((asset) => [asset.id, asset]));
 
   return [...project.rundown]
     .sort((a, b) => a.order - b.order)
@@ -49,6 +51,15 @@ export function projectToPresentation(
 
         return {
           ...passageToPresentationItem(passage, { itemId: item.id, order }),
+          presetId: item.presetId,
+        };
+      }
+
+      if (item.type === "media") {
+        const asset = mediaById.get(item.sourceId);
+        if (!asset) return toPlaceholderItem(item, order);
+        return {
+          ...mediaToPresentationItem(asset, { itemId: item.id, order }),
           presetId: item.presetId,
         };
       }
