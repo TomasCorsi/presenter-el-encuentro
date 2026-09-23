@@ -42,7 +42,7 @@ export function validateMediaFile(file: MediaFileDescriptor): string | null {
 function normalize(text: string): string {
   return text
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
 }
