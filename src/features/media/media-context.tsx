@@ -1,15 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { MediaAsset } from "@/domain/media/media";
-import type { ProjectService } from "@/features/projects/project-service";
-import {
-  createIndexedDbBlobMediaStorage,
-} from "@/services/media/indexeddb-blob-media-storage";
+import type { ProjectRepository } from "@/services/projects/project-repository";
+import { createIndexedDbBlobMediaStorage } from "@/services/media/indexeddb-blob-media-storage";
 import { createIndexedDbMediaRepository } from "@/services/media/indexeddb-media-repository";
 import { createInMemoryMediaRepository } from "@/services/media/in-memory-media-repository";
 import { createInMemoryMediaStorage } from "@/services/media/in-memory-media-storage";
 import { createMediaUrlCache, type MediaUrlCache } from "@/services/media/media-url-cache";
-import { isOpfsAvailable, createOpfsMediaStorage } from "@/services/media/opfs-media-storage";
+import { createBrowserOpfsMediaStorage, isOpfsAvailable } from "@/services/media/opfs-media-storage";
 import type { MediaFileStorage } from "@/services/media/media-file-storage";
 import type { MediaRepository } from "@/services/media/media-repository";
 import { requestStoragePersistenceOnce } from "@/services/media/storage-persistence";
@@ -34,7 +32,7 @@ const MediaContext = createContext<MediaContextValue | null>(null);
 
 export interface MediaProviderProps {
   children: ReactNode;
-  projectService: ProjectService;
+  projectRepository: Pick<ProjectRepository, "list">;
   /** Inyección para tests. En navegador se derivan del entorno. */
   repository?: MediaRepository;
   fileStorage?: MediaFileStorage;
@@ -49,7 +47,7 @@ export interface MediaProviderProps {
  */
 export function MediaProvider({
   children,
-  projectService,
+  projectRepository,
   repository,
   fileStorage,
   initialAssets,
@@ -62,28 +60,17 @@ export function MediaProvider({
         fileStorage: createInMemoryMediaStorage(),
       };
     }
-    const repo = createIndexedDbMediaRepository(indexedDB);
-    const storage = isOpfsAvailable()
-      ? createOpfsMediaStorage(
-          () => navigator.storage.getDirectory() as unknown as Parameters<
-            typeof createOpfsMediaStorage
-          >[0] extends never
-            ? never
-            : never,
-        )
-      : createIndexedDbBlobMediaStorage(indexedDB);
-    return { repository: repo, fileStorage: storage };
+    return {
+      repository: createIndexedDbMediaRepository(indexedDB),
+      fileStorage: isOpfsAvailable()
+        ? createBrowserOpfsMediaStorage()
+        : createIndexedDbBlobMediaStorage(indexedDB),
+    };
   }, [repository, fileStorage]);
 
   const service = useMemo(
-    () =>
-      new MediaService(
-        resolved.repository,
-        resolved.fileStorage,
-        projectService,
-        MEDIA_WORKSPACE_ID,
-      ),
-    [resolved, projectService],
+    () => new MediaService(resolved.repository, resolved.fileStorage, projectRepository),
+    [resolved, projectRepository],
   );
 
   const urlCacheRef = useRef<MediaUrlCache | null>(null);

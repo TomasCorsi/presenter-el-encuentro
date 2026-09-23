@@ -1,8 +1,8 @@
 import type { MediaAsset } from "@/domain/media/media";
-import { mediaKindForMime, validateMediaFile } from "@/domain/media/media-rules";
+import { findMediaUsage, mediaKindForMime, validateMediaFile } from "@/domain/media/media-rules";
 import type { MediaFileStorage } from "@/services/media/media-file-storage";
 import type { MediaRepository } from "@/services/media/media-repository";
-import type { ProjectService } from "@/features/projects/project-service";
+import type { ProjectRepository } from "@/services/projects/project-repository";
 
 import { readVisualMediaInfo } from "./read-media-info";
 
@@ -23,8 +23,8 @@ export class MediaService {
   constructor(
     private readonly repository: MediaRepository,
     private readonly fileStorage: MediaFileStorage,
-    private readonly projectService: Pick<ProjectService, "getAll">,
-    private readonly workspaceId: string,
+    private readonly projects: Pick<ProjectRepository, "list">,
+    private readonly workspaceId: string = "local-media",
     private readonly now: () => Date = () => new Date(),
     private readonly newId: () => string = () => crypto.randomUUID(),
   ) {}
@@ -131,13 +131,10 @@ export class MediaService {
    * MediaInUseError SIN tocar nada. Sin uso: bytes primero, metadata después.
    */
   async delete(id: string): Promise<void> {
-    const usage = this.projectService.getAll().reduce(
-      (total, project) =>
-        total +
-        project.rundown.filter((item) => item.type === "media" && item.sourceId === id).length,
-      0,
-    );
-    if (usage > 0) throw new MediaInUseError(id, usage);
+    const usage = findMediaUsage(await this.projects.list(), id);
+    if (usage.occurrences > 0) {
+      throw new MediaInUseError(id, usage.occurrences, usage.projectNames);
+    }
     await this.fileStorage.delete(id);
     await this.repository.delete(id);
   }
@@ -148,11 +145,12 @@ export class MediaInUseError extends Error {
   constructor(
     readonly mediaId: string,
     readonly occurrences: number,
+    readonly projectNames: readonly string[],
   ) {
     super(
       occurrences === 1
-        ? "Este archivo se usa en 1 elemento del rundown de un proyecto. Quítalo de los proyectos para poder eliminarlo."
-        : `Este archivo se usa en ${occurrences} elementos del rundown. Quítalo de los proyectos para poder eliminarlo.`,
+        ? `Este archivo se usa en un elemento de «${projectNames[0] ?? "un proyecto"}». Quítalo del proyecto para poder eliminarlo.`
+        : `Este archivo se usa en ${occurrences} elementos (${projectNames.join(", ")}). Quítalo de los proyectos para poder eliminarlo.`,
     );
     this.name = "MediaInUseError";
   }

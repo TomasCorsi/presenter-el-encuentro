@@ -34,6 +34,13 @@ function isNotFound(error: unknown): boolean {
 const supportsMove =
   typeof FileSystemFileHandle !== "undefined" && "move" in FileSystemFileHandle.prototype;
 
+/** Storage OPFS del navegador. Lanza si OPFS no está disponible. */
+export function createBrowserOpfsMediaStorage(): MediaFileStorage {
+  return createOpfsMediaStorage(
+    () => navigator.storage.getDirectory() as unknown as Promise<DirectoryHandle>,
+  );
+}
+
 export function createOpfsMediaStorage(
   getRoot: () => Promise<DirectoryHandle>,
 ): MediaFileStorage {

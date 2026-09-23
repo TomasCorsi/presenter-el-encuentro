@@ -12,8 +12,8 @@ import type { MediaKind } from "@/domain/media/media";
 export interface VisualMediaInfo {
   width: number;
   height: number;
-  durationSeconds?: number;
-  thumbnailDataUrl?: string;
+  durationSeconds?: number | undefined;
+  thumbnailDataUrl?: string | undefined;
 }
 
 const LOAD_TIMEOUT_MS = 10_000;
