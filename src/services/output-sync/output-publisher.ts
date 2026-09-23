@@ -1,3 +1,4 @@
+import type { VideoPlaybackState } from "@/domain/output/video-playback";
 import type { ProgramOutput } from "@/domain/presentation/presentation-selectors";
 import {
   parseOutputMessage,
@@ -24,12 +25,14 @@ export interface OutputPublisher {
 export function createOutputPublisher(
   transport: OutputTransport,
   sessionId: string,
+  /** Estado de reproducción de video vigente en Live (si hay uno al aire). */
+  getPlayback: () => VideoPlaybackState | null = () => null,
 ): OutputPublisher {
   let sequence = 0;
   let lastPublished: OutputSnapshot | null = null;
 
   function publish(type: "snapshot" | "update", output: ProgramOutput): void {
-    const snapshot = toOutputSnapshot(output, sessionId, sequence++);
+    const snapshot = toOutputSnapshot(output, getPlayback(), sessionId, sequence++);
     lastPublished = snapshot;
     const message: OutputMessage = { type, snapshot };
     transport.publish(message);
@@ -49,7 +52,7 @@ export function createOutputPublisher(
   return {
     sync(output) {
       currentOutput = output;
-      const snapshot = toOutputSnapshot(output, sessionId, sequence);
+      const snapshot = toOutputSnapshot(output, getPlayback(), sessionId, sequence);
       if (lastPublished && snapshotsEqual(lastPublished, snapshot)) return;
       publish("update", output);
     },
