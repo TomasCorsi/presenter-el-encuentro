@@ -69,7 +69,7 @@ describe("createOutputSubscriber", () => {
     live.publish({ type: "update", snapshot: snapshot("live-a", 3, ["Viejo"]) });
     expect(subscriber.getState().snapshot?.sequence).toBe(5);
     live.publish({ type: "update", snapshot: snapshot("live-a", 6, ["Nuevo"]) });
-    expect(subscriber.getState().snapshot?.slide?.lines).toEqual(["Nuevo"]);
+    expect(contentLines(subscriber.getState().snapshot)).toEqual(["Nuevo"]);
   });
 
   it("vinculado a Live A ignora Live B; tras bye de A puede adoptar B", () => {
@@ -100,7 +100,7 @@ describe("createOutputSubscriber", () => {
     // Reconexión: una nueva sesión emite y Output la adopta.
     live.publish({ type: "snapshot", snapshot: snapshot("live-c", 0, ["Vuelve"]) });
     expect(subscriber.getState().connection).toBe("connected");
-    expect(subscriber.getState().snapshot?.slide?.lines).toEqual(["Vuelve"]);
+    expect(contentLines(subscriber.getState().snapshot)).toEqual(["Vuelve"]);
   });
 
   it("ignora bye de otra sesión", () => {
