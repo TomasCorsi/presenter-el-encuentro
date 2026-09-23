@@ -30,3 +30,14 @@
 ## Siguiente
 
 - Fase 10 — Media (no empezar hasta indicación del usuario)
+
+## Fase 10 — Media (plan aprobado, pendiente de la 3.ª corrección final)
+
+- [ ] Formatos: PNG, JPEG, WEBP, MP4, WEBM (sin GIF)
+- [ ] MediaRepository (metadata IndexedDB) / MediaFileStorage (OPFS, streaming) / MediaService coordinador
+- [ ] Importación compensable y eliminación bloqueada si el archivo está en uso
+- [ ] Respaldo IndexedDB solo para imágenes; persist/persisted/estimate
+- [ ] SlideContent: text | image | video
+- [ ] VideoPlaybackState autoritativo (state, offsetSeconds, changedAtEpochMs, loop, revision)
+- [ ] /media, pestaña Media en Library Dock, Program y Output
+- [ ] Tests, verificación en navegador, docs
