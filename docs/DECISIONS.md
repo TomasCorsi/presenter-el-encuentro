@@ -901,3 +901,15 @@ presioná F». El pantalla completa nunca es automático (los navegadores lo
 bloquean): botón «Iniciar salida», tecla F o doble clic, con `screen` cuando el
 navegador lo admite y sin él como respaldo. Si el proyector se desconecta, Live
 lo informa y no toca Program ni mueve la ventana ya abierta.
+
+## ADR-048 — Media es contenido referencial, nunca estilo de Preset
+
+Los archivos de Media (imágenes y videos) se referencian por `mediaId` desde RundownItems; `PresetStyle` no se amplía y los fondos de preset siguen siendo solo `solid`. Eliminar un asset en uso lanza `MediaInUseError` con cantidad de elementos y proyectos afectados.
+
+## ADR-049 — Capas de almacenamiento separadas
+
+`MediaRepository` solo metadata (IndexedDB), `MediaFileStorage` solo bytes (OPFS con streaming `file.stream().pipeTo()` y archivo temporal `.part`, o IndexedDB Blob limitado a imágenes), `MediaService` coordina con importación compensable: bytes primero, metadata después; si la metadata falla, se borran los bytes. Los videos sin OPFS se rechazan con mensaje claro. `navigator.storage.persist()` se solicita una vez y nunca bloquea; la persistencia no es absoluta y se documenta.
+
+## ADR-050 — VideoPlaybackState autoritativo y sincronizable
+
+`VideoPlaybackState { state, offsetSeconds, changedAtEpochMs, loop, revision }` vive en Live y se publica a Output con cada snapshot. Output aplica play/pause/offset con tolerancia de deriva de 0,35 s y vigilancia cada 1 s; el video corre `muted` y sin controles nativos.

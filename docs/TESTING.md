@@ -345,3 +345,7 @@ automatizado. Checklist manual en Windows con Chrome o Edge:
 10. Tecla F y doble clic en `/output/main`: entran en pantalla completa; Escape sale.
 11. `/output/main?mode=test&n=2`: número, resolución y cierre, sin tocar Program.
 12. Output y Program sincronizados tras todo lo anterior.
+
+## Fase 10 — Media
+
+`tests/media/media-rules.test.ts` y `media-service.test.ts` (importación compensable, `MediaInUseError`, rename). `MediaService` acepta `readInfo` inyectable: los tests usan `async () => null` para evitar el hang de `readVisualMediaInfo` (evento de carga DOM ausente en suite completa). E2E Playwright en `/tmp/browser/fase10/`: importar PNG → proyecto activo → dock Media → Al aire → `/output/main` renderiza la imagen.

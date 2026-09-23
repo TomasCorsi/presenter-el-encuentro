@@ -391,3 +391,7 @@ Bible no conoce Live ni Output. Live nunca consulta IndexedDB. Output no
 conoce Bible: recibe slides con `lines`, `secondaryText` y estilo resuelto.
 `BibleService` y `BibleProvider` viven en `src/features/bible`; el repositorio
 IndexedDB se instancia solo en cliente, después del montaje.
+
+## Fase 10 — Cadena de Media
+
+`src/domain/media/` (tipos y reglas puras) → `src/services/media/` (repositorio, storages, caché de URLs por ventana, persistencia) → `src/features/media/media-service.ts` (coordinador) → `media-context.tsx` (`MediaProvider`, `useMedia`, `useMediaUrl`) montado en `_app.tsx` y `output.main.tsx`. `SlideContent` es unión discriminada `text | image | video`; `MediaSlideSurface` renderiza image/video en Live y Output. La firma de presentación incorpora los assets por `updatedAt` para baja incremental en Live.
