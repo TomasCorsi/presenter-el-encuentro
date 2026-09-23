@@ -27,6 +27,8 @@ export class MediaService {
     private readonly workspaceId: string = "local-media",
     private readonly now: () => Date = () => new Date(),
     private readonly newId: () => string = () => crypto.randomUUID(),
+    /** Lectura de metadata visual (no bloqueante). Inyectable para tests. */
+    private readonly readInfo: typeof readVisualMediaInfo = readVisualMediaInfo,
   ) {}
 
   async list(): Promise<MediaAsset[]> {
@@ -87,7 +89,7 @@ export class MediaService {
     }
 
     // 2. Metadata visual (no bloqueante).
-    const info = await readVisualMediaInfo(file, kind ?? "image");
+    const info = await this.readInfo(file, kind ?? "image");
 
     // 3. Metadata después; si falla, compensación: borrar los bytes.
     const timestamp = this.now().toISOString();

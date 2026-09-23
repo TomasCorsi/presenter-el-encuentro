@@ -6,10 +6,20 @@ import { MediaInUseError, MediaService } from "@/features/media/media-service";
 import { createInMemoryMediaRepository } from "@/services/media/in-memory-media-repository";
 import { createInMemoryMediaStorage } from "@/services/media/in-memory-media-storage";
 
+const noInfo = async () => null;
+
 function makeService(projects: Project[] = []) {
   const repository = createInMemoryMediaRepository();
   const storage = createInMemoryMediaStorage();
-  const service = new MediaService(repository, storage, { list: async () => projects });
+  const service = new MediaService(
+    repository,
+    storage,
+    { list: async () => projects },
+    "local-media",
+    () => new Date(),
+    () => crypto.randomUUID(),
+    noInfo,
+  );
   return { repository, storage, service };
 }
 
@@ -70,6 +80,10 @@ describe("MediaService.delete", () => {
       createInMemoryMediaRepository(),
       createInMemoryMediaStorage(),
       { list: async () => [projectUsing(imported!.id)] },
+      "local-media",
+      () => new Date(),
+      () => crypto.randomUUID(),
+      noInfo,
     );
     // El repositorio del servicio "inUse" es otro, pero la regla de uso se
     // evalúa antes de tocar nada: basta verificar el bloqueo.
