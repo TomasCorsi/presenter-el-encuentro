@@ -7,13 +7,9 @@ import { Page, PageHeader } from "@/components/layout/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import {
-  MEDIA_ACCEPT_ATTRIBUTE,
-  formatMediaSize,
-  type MediaAsset,
-} from "@/domain/media/media";
-import { MediaInUseError } from "@/features/media/media-service";
+import { MEDIA_ACCEPT_ATTRIBUTE, type MediaAsset } from "@/domain/media/media";
 import { useMedia, useMediaUrl } from "@/features/media/media-context";
+import { MediaInUseError } from "@/features/media/media-service";
 import { cn } from "@/lib/utils";
 
 const TITLE = "Media — Plataforma de presentación en vivo";
@@ -34,22 +30,38 @@ export const Route = createFileRoute("/_app/media")({
   component: MediaPage,
 });
 
+function formatBytes(sizeBytes: number): string {
+  if (sizeBytes < 1024) return `${sizeBytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let value = sizeBytes;
+  let unit = "B";
+  for (const next of units) {
+    if (value < 1024) break;
+    value /= 1024;
+    unit = next;
+  }
+  return `${value.toFixed(value >= 100 || unit === "B" ? 0 : 1)} ${unit}`;
+}
+
 function MediaPage() {
-  const {
-    assets, isLoading, storage, persistence, quota, canImport, importFiles, remove,
-  } = useMedia();
+  const { service, storageKind, assets, isLoading, refresh } = useMedia();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
+
+  const videoImportable = service.canImport({ mimeType: "video/mp4" });
 
   const runImport = async (files: Iterable<File>) => {
     const list = [...files];
     if (list.length === 0) return;
     setBusy(true);
-    const result = await importFiles(list);
+    const result = await service.importFiles(list);
     setBusy(false);
-    for (const failure of result.failures) toast.error(`${failure.name}: ${failure.reason}`);
-    if (result.imported.length > 0) toast.success(`${result.imported.length} archivo(s) importados`);
+    for (const error of result.errors) toast.error(error);
+    if (result.imported.length > 0) {
+      toast.success(`${result.imported.length} archivo(s) importados`);
+    }
+    await refresh();
   };
 
   const onDrop = (event: DragEvent) => {
@@ -60,19 +72,13 @@ function MediaPage() {
 
   const onDelete = async (asset: MediaAsset) => {
     try {
-      await remove(asset.id);
-      toast.success(`"${asset.name}" eliminado`);
+      await service.delete(asset.id);
+      toast.success(`«${asset.name}» eliminado`);
     } catch (error) {
-      if (error instanceof MediaInUseError) {
-        const projects = error.projectNames.slice(0, 3).join(", ");
-        toast.error(
-          `"${asset.name}" está en uso en ${error.occurrences} elemento(s)` +
-          (projects ? ` de: ${projects}` : "") + ". Quítalo del proyecto primero.",
-        );
-      } else {
-        toast.error("No se pudo eliminar el archivo");
-      }
+      if (error instanceof MediaInUseError) toast.error(error.message);
+      else toast.error("No se pudo eliminar el archivo");
     }
+    await refresh();
   };
 
   return (
@@ -119,32 +125,16 @@ function MediaPage() {
       >
         <CloudUpload className="h-6 w-6 text-muted-foreground" />
         <p className="text-sm font-medium">Arrastra archivos o haz clic para importar</p>
-        <p className="text-xs text-muted-foreground">PNG · JPEG · WEBP · MP4 · WEBM — máx. 20 GB por archivo</p>
+        <p className="text-xs text-muted-foreground">PNG · JPEG · WEBP · MP4 · WEBM</p>
       </div>
 
       {/* Estado de almacenamiento */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
-          <HardDrive className="h-3.5 w-3.5" />
-          {storage === "opfs"
-            ? "Almacenamiento OPFS (imágenes y video)"
-            : "Almacenamiento limitado del navegador (solo imágenes)"}
-        </span>
-        {persistence === "granted" ? (
-          <span className="inline-flex items-center gap-1 text-emerald-500">
-            <Check className="h-3.5 w-3.5" /> Persistente
-          </span>
-        ) : persistence === "denied" ? (
-          <span className="inline-flex items-center gap-1 text-amber-500">
-            <X className="h-3.5 w-3.5" /> El navegador puede liberar espacio bajo presión
-          </span>
-        ) : null}
-        {quota ? (
-          <span>
-            {formatMediaSize(quota.usage)} usados de {formatMediaSize(quota.quota)}
-          </span>
-        ) : null}
-      </div>
+      <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        <HardDrive className="h-3.5 w-3.5" />
+        {storageKind === "opfs"
+          ? "Almacenamiento OPFS: imágenes y videos, persistente mientras el navegador lo permita."
+          : "Almacenamiento limitado del navegador: solo imágenes. La persistencia no está garantizada."}
+      </p>
 
       {/* Biblioteca */}
       <div className="mt-5">
@@ -167,8 +157,9 @@ function MediaPage() {
         )}
       </div>
 
-      {!canImport("video") ? (
-        <p className="mt-4 text-xs text-amber-500">
+      {!videoImportable ? (
+        <p className="mt-4 inline-flex items-center gap-1.5 text-xs text-amber-500">
+          <X className="h-3.5 w-3.5" />
           Este navegador no ofrece OPFS: los videos (MP4/WEBM) no se pueden importar aquí.
         </p>
       ) : null}
@@ -183,10 +174,12 @@ function MediaCard({ asset, onDelete }: { asset: MediaAsset; onDelete: () => voi
   return (
     <li className="group overflow-hidden rounded-lg border border-border bg-card">
       <div className="relative aspect-video bg-muted">
-        {isVideo ? (
-          <video src={url ?? undefined} muted preload="metadata" className="h-full w-full object-cover" />
-        ) : url ? (
+        {isVideo && url ? (
+          <video src={url} muted preload="metadata" className="h-full w-full object-cover" />
+        ) : !isVideo && url ? (
           <img src={url} alt={asset.name} className="h-full w-full object-cover" loading="lazy" />
+        ) : asset.thumbnailDataUrl ? (
+          <img src={asset.thumbnailDataUrl} alt={asset.name} className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             {isVideo ? <Film className="h-6 w-6" /> : <ImageIcon className="h-6 w-6" />}
@@ -202,14 +195,19 @@ function MediaCard({ asset, onDelete }: { asset: MediaAsset; onDelete: () => voi
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
+        {isVideo ? (
+          <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded bg-background/80 px-1.5 py-0.5 text-[10px] font-medium">
+            <Check className="hidden" />
+            {asset.durationSeconds ? `${Math.round(asset.durationSeconds)}s` : "Video"}
+          </span>
+        ) : null}
       </div>
       <div className="flex items-center gap-2 px-2.5 py-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-medium" title={asset.name}>{asset.name}</p>
           <p className="text-[11px] text-muted-foreground">
-            {formatMediaSize(asset.size)}
+            {formatBytes(asset.sizeBytes)}
             {asset.width && asset.height ? ` · ${asset.width}×${asset.height}` : ""}
-            {isVideo && asset.durationSeconds ? ` · ${Math.round(asset.durationSeconds)}s` : ""}
           </p>
         </div>
         <Badge variant="outline" className="text-[10px] uppercase">
