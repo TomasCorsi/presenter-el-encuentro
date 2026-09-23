@@ -2,7 +2,7 @@ import type { CreateProjectInput, Project, ProjectFactoryDependencies } from "@/
 import { createProject, duplicateProject, renameProject, sortProjectsByUpdatedAt } from "@/domain/projects/project-rules";
 import type { RundownItem } from "@/domain/projects/rundown";
 import type { BiblePassage } from "@/domain/bible/bible";
-import { addPassageToRundown, addSongToRundown, moveRundownItem, removeRundownItem, setRundownItemPreset } from "@/domain/projects/rundown-rules";
+import { addMediaToRundown, addPassageToRundown, addSongToRundown, moveRundownItem, removeRundownItem, setRundownItemPreset } from "@/domain/projects/rundown-rules";
 import type { ProjectRepository } from "@/services/projects/project-repository";
 
 export interface ProjectsSnapshot {
@@ -56,6 +56,13 @@ export class ProjectService {
   async addPassage(projectId: string, passage: BiblePassage): Promise<Project> {
     return this.saveRundown(projectId, (rundown) =>
       addPassageToRundown(rundown, passage, this.dependencies),
+    );
+  }
+
+  /** Agrega una referencia a un archivo de Media (Fase 10; solo referencia). */
+  async addMedia(projectId: string, media: { id: string; name: string }): Promise<Project> {
+    return this.saveRundown(projectId, (rundown) =>
+      addMediaToRundown(rundown, { mediaId: media.id, name: media.name }, this.dependencies),
     );
   }
 
