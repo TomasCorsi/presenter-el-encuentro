@@ -1,81 +1,134 @@
 # Fase 10 — Media (imágenes y videos locales, offline)
 
-Nota: el mensaje llegó cortado en la definición de `MediaFileStorage`. El plan cubre los puntos 1 y 2 recibidos y propone el resto; si había más requisitos (formatos, límites, controles de video), se incorporan antes de ejecutar.
+Media se implementa como CONTENIDO PRESENTABLE. Presets no cambian: background sigue siendo solo `solid`.
 
 ## Qué va a poder hacer el operador
 
 - Importar imágenes (JPG, PNG, WebP, GIF) y videos (MP4, WebM) desde la computadora en `/media`.
 - La app guarda su propia copia: mover o borrar el original, cerrar el navegador o reiniciar la PC no rompe nada. Sin Internet.
 - Ver la biblioteca en `/media` con miniatura, nombre, tipo, tamaño, resolución y duración; renombrar y eliminar.
-- Buscar Media desde el Library Dock de Live (nueva pestaña Media) y usar "+ Rundown" o "Al aire", igual que Songs y Bible.
-- Un clic en la slide de Media la envía al aire (misma regla que el resto). Clear y Black funcionan igual.
-- Los videos se reproducen en Program (silenciado, como monitor) y en Output (con sonido). Controles en Live: reproducir/pausar, reiniciar, bucle.
-- Espacio usado visible en `/media` (estimación del navegador) y aviso claro si no hay espacio.
+- Eliminar solo si el archivo no se usa: si está en uso, se bloquea con "Este archivo está utilizado por X elementos en Y proyectos."
+- Buscar Media desde el Library Dock de Live (pestaña Media) con "+ Rundown" o "Al aire", igual que Songs y Bible.
+- Un clic en la slide de Media la envía al aire. Clear y Black funcionan igual.
+- Videos en Program (silenciado, como monitor) y en Output (con sonido). Controles en Live: reproducir/pausar, reiniciar, bucle.
+- En `/media`: espacio usado/disponible y estado de "almacenamiento persistente" (concedido / no concedido / no soportado).
 
 ## Arquitectura
 
 ```text
-Archivo  ->  validar (tipo, tamaño, lectura de dimensiones/duración)
-         ->  MediaFileStorage.save(id, blob)      (archivo físico: OPFS)
-         ->  MediaRepository.put(meta)            (metadata: IndexedDB)
-         ->  MediaService / MediaProvider (React)
-         ->  RundownItem { type: "media", sourceId: mediaId, title }
-         ->  PresentationItem con 1 slide { content: { kind: "media", mediaId, mediaType } }
-         ->  Live (snapshot)  ->  OutputSnapshot lleva mediaId, nunca bytes
-         ->  /output/main resuelve mediaId -> URL local en SU propia ventana
+Archivo -> MediaService.importMedia
+             1 validar tipo/tamaño
+             2 leer metadata (URL temporal sobre el File, luego revoke)
+             3 comprobar espacio (storage.estimate) y elegir storage permitido
+             4 MediaFileStorage.save(id, file)  -- streaming
+             5 MediaFileStorage.exists(id) + tamaño coincide
+             6 MediaRepository.put(meta)
+             7 completar
+           compensación: si falla 5 o 6 -> MediaFileStorage.delete(id)
+        -> RundownItem { type: "media", sourceId: mediaId, title }
+        -> PresentationItem con 1 slide { kind: "image" | "video", mediaId }
+        -> Live (snapshot)  -> OutputSnapshot lleva mediaId, nunca bytes
+        -> /output/main resuelve mediaId -> URL local en SU propia ventana
 ```
 
-Decisiones clave:
-1. **Archivo separado de la metadata.** Metadata en IndexedDB (`broadcast-control.media`, store `assets`). Bytes en OPFS (`media/<id>`). Nada en localStorage, base64 ni dentro del Project.
-2. **Abstracción de almacenamiento** para el futuro `.exe`:
-   ```ts
-   interface MediaFileStorage {
-     save(id: string, file: Blob): Promise<void>;
-     get(id: string): Promise<Blob | null>;
-     delete(id: string): Promise<void>;
-     exists(id: string): Promise<boolean>;
-     getUrl(id: string): Promise<MediaUrlHandle | null>; // { url, release() }
-     estimate?(): Promise<{ usage: number; quota: number } | null>;
-   }
-   ```
-   Implementaciones: `OpfsMediaStorage` (producción), `IndexedDbBlobMediaStorage` (respaldo si OPFS no existe, p. ej. Safari antiguo), `InMemoryMediaStorage` (tests). Un futuro `NativeFileSystemMediaStorage` devuelve `file://`/`asset://` en `getUrl`. UI, dominio, Project, Live y Output solo conocen la interfaz.
-3. **URLs por ventana.** Un `blob:` no cruza ventanas, así que Output no recibe URLs: recibe `mediaId` y pide su propia URL al storage (mismo origen, mismo OPFS). Un caché con conteo de referencias libera las URLs al dejar de usarse.
-4. **Media es referencia, no copia** (a diferencia de Bible, ADR-042): el Project guarda `sourceId`. Si el archivo se elimina de la biblioteca, el item queda como "Contenido faltante" (ADR-020) y Output muestra fondo base, nunca un error. Eliminar un archivo usado muestra advertencia con los Projects que lo usan.
-5. **Snapshot de Live**: al cargar/agregar, el item Media congela `mediaId`, tipo y metadata mínima; no lee bytes. Alta incremental reutiliza `appendToLiveSession`; quitar el item al aire reutiliza `detachedProgramSlide` (la copia conserva `mediaId`, así Output no parpadea).
-6. **Reproducción de video**: estado `playback { state: "playing"|"paused", startedAt, offset, loop }` viaja en el OutputSnapshot solo para slides de video. Output reproduce con sonido; Program en Live, silenciado. Sincronía "suficiente" (recalcula posición al recibir cambios), no frame-perfect.
-7. **Presets (futuro)**: `PresetStyle.background` ya es unión discriminada; se deja preparado `{ type: "media"; mediaId }` en el tipo del dominio pero sin UI ni uso en esta fase.
+### Capas estrictamente separadas
+- **MediaRepository**: solo metadata en IndexedDB (`broadcast-control.media`, store `assets`). No conoce bytes.
+- **MediaFileStorage**: solo bytes. No conoce metadata ni Projects.
+- **MediaService**: único coordinador de operaciones que tocan ambas capas (importar, eliminar, reparar). La UI solo habla con MediaService (vía MediaProvider).
+
+```ts
+interface MediaFileStorage {
+  readonly kind: "opfs" | "indexeddb-blob" | "memory"; // futuro: "native"
+  save(id: string, file: Blob): Promise<void>;
+  get(id: string): Promise<Blob | null>;
+  delete(id: string): Promise<void>;
+  exists(id: string): Promise<boolean>;
+  getUrl(id: string): Promise<MediaUrlHandle | null>; // { url, release() }
+}
+```
+Implementaciones: `OpfsMediaStorage` (principal), `IndexedDbBlobMediaStorage` (respaldo limitado), `InMemoryMediaStorage` (tests). Un futuro `NativeFileSystemMediaStorage` (.exe) solo implementa la interfaz; UI, dominio, Project, Live y Output no conocen OPFS.
+
+### Importación compensable (sin transacción única)
+OPFS e IndexedDB no comparten transacción. Reglas:
+- Falla antes de guardar el archivo -> no se crea metadata.
+- Falla después de escribir el archivo pero antes de la metadata -> se borra el archivo (compensación). Si la compensación también falla, se informa el error (no se oculta) y queda registrado como huérfano reparable.
+- Escritura OPFS en archivo temporal (`<id>.part`) y renombrado/confirmación al final cuando el navegador lo permita, para no dejar archivos a medias con nombre válido.
+
+### Eliminación
+`MediaService.deleteMedia(id)`:
+1. calcular uso en todos los Projects; si > 0 -> error de dominio `MediaInUse { items, projects }`, nada se borra;
+2. `MediaRepository.delete(id)` primero (el asset deja de ser visible/usable);
+3. `MediaFileStorage.delete(id)`; si falla, el error se muestra al usuario y el archivo queda como huérfano (bytes sin metadata, inofensivo para la app).
+Orden elegido: nunca queda metadata apuntando a un archivo inexistente.
+
+### Reparación defensiva mínima
+Al montar MediaProvider: listar metadata y verificar `exists` de forma perezosa; un asset sin archivo se marca "Archivo no disponible" (no se borra solo). No se construye un sistema de limpieza de huérfanos en esta fase; se documenta como mejora futura.
+
+### Archivos grandes: sin cargar en memoria
+- Escritura: `file.stream().pipeTo(await handle.createWritable())`. Nunca `file.arrayBuffer()`.
+- Metadata: `URL.createObjectURL(file)` en un `<video>`/`<img>` temporal (`preload="metadata"`) para duración, dimensiones y miniatura (un frame a canvas, miniatura pequeña JPEG guardada en metadata), luego `revokeObjectURL`.
+- Reproducción: `getUrl` usa `File` de OPFS (`getFile()`), que el navegador lee bajo demanda.
+- Si OPFS no tiene `createWritable` en el contexto principal, se considera OPFS no disponible para videos.
+
+### Respaldo IndexedDB limitado
+- Imágenes: permitidas en IndexedDB Blob si no hay OPFS.
+- Videos: si no hay OPFS con escritura en streaming, se rechaza con mensaje claro ("Este navegador no permite guardar videos localmente. Usá Chrome o Edge actualizados.").
+- Justificación: guardar un Blob en IndexedDB suele requerir materializarlo y no garantiza escritura en streaming; el criterio es la capacidad (streaming), no un número arbitrario. Además, toda importación verifica `estimate()` (quota - usage) contra el tamaño del archivo con margen.
+
+### Persistencia del almacenamiento
+- Al primer uso/importación de Media: `navigator.storage.persisted()`; si es false, `navigator.storage.persist()`.
+- No bloquea la importación si se deniega; el estado se muestra en `/media`.
+- `navigator.storage.estimate()` para usage/quota.
+- Todo detrás de un pequeño servicio `storage-persistence.ts` con feature detection.
+
+### Contenido de slide
+```ts
+type SlideContent =
+  | { kind: "text"; lines: string[] }
+  | { kind: "image"; mediaId: string }
+  | { kind: "video"; mediaId: string };
+```
+Los consumidores (renderer, grilla, Output, snapshot) hacen `switch` exhaustivo sobre `kind`.
+
+### Live y Output
+- Snapshot de Live: el item Media congela `mediaId`, tipo y título; no lee bytes. Alta incremental con `appendToLiveSession`; quitar el item al aire reutiliza `detachedProgramSlide` (conserva `mediaId`; Output no parpadea).
+- Media es referencia (no copia como Bible). Como no se permite eliminar media en uso, no se crean Projects rotos; si aun así falta el archivo (datos del sitio borrados), el item se muestra como "Contenido faltante" y Output pinta fondo base.
+- Un `blob:` no cruza ventanas: Output recibe `mediaId` y pide su propia URL al storage; caché con conteo de referencias libera las URLs.
+- Video: `playback { state: "playing"|"paused", startedAt, offset, loop }` viaja en el OutputSnapshot solo para slides de video; sincronía suficiente, no frame-perfect.
 
 ## Archivos
 
 Nuevos:
-- `src/domain/media/media.ts` (MediaAsset, tipos permitidos, límites), `media-rules.ts` (validación, búsqueda, uso en Projects).
-- `src/services/media/media-file-storage.ts` (interfaz), `opfs-media-storage.ts`, `indexeddb-blob-media-storage.ts`, `in-memory-media-storage.ts`, `media-repository.ts` + `indexeddb-media-repository.ts`, `media-url-cache.ts`.
-- `src/features/media/media-service.ts`, `media-context.tsx` (MediaProvider en `_app.tsx`), `read-media-info.ts` (dimensiones/duración/miniatura vía `<img>`/`<video>`, solo cliente), componentes `media-import-button`, `media-grid`, `media-card`, `media-thumbnail`.
+- `src/domain/media/media.ts` (MediaAsset, tipos, políticas), `media-rules.ts` (validación, búsqueda, `findMediaUsage`).
+- `src/services/media/media-file-storage.ts`, `opfs-media-storage.ts`, `indexeddb-blob-media-storage.ts`, `in-memory-media-storage.ts`, `media-repository.ts`, `indexeddb-media-repository.ts`, `in-memory-media-repository.ts`, `media-url-cache.ts`, `storage-persistence.ts`.
+- `src/features/media/media-service.ts`, `media-context.tsx` (MediaProvider en `_app.tsx`), `read-media-info.ts`, componentes `media-import-button`, `media-grid`, `media-card`, `media-thumbnail`, `media-storage-status`.
 - `src/features/live/components/library-media-tab.tsx`, `live-video-controls.tsx`.
-- `src/features/presentation/components/media-renderer.tsx` (usado por SlideRenderer, Program y Output).
+- `src/features/presentation/components/media-renderer.tsx`.
 
 Modificados:
-- `src/routes/_app.media.tsx` (biblioteca real), `rundown-rules.ts` (`addMediaToRundown`), `projects-context.tsx` (`addMediaToProject`), `presentation.ts` (`SlideContent` gana `kind: "media"`), `project-to-presentation.ts` + nuevo `media-to-presentation.ts`, `live-session.ts` (fuente media), `live-library-dock.tsx` (pestaña Media), `_app.live.tsx`, `output-snapshot.ts` (slide media + playback, validación y comparación), `output-surface.tsx`, `slide-surface.tsx`, `live-slide-grid.tsx` (miniatura), `local-storage-project-repository.ts` (acepta items media).
-- Docs: DECISIONS (ADRs de almacenamiento, referencia vs copia, URLs por ventana, playback), DATA_MODEL, ARCHITECTURE, OFFLINE_STRATEGY, TESTING, ROADMAP, roadmap.md.
+- `src/routes/_app.media.tsx`, `rundown-rules.ts` (`addMediaToRundown`), `projects-context.tsx` (`addMediaToProject`), `presentation.ts` (unión SlideContent), `project-to-presentation.ts` + `media-to-presentation.ts`, `live-session.ts`, `live-library-dock.tsx`, `_app.live.tsx`, `output-snapshot.ts`, `output-surface.tsx`, `slide-renderer.tsx`, `slide-surface.tsx`, `live-slide-grid.tsx`, `local-storage-project-repository.ts`, consumidores de `content.lines` adaptados al switch.
+- Sin cambios en el dominio de Presets.
+- Docs: DECISIONS (almacenamiento separado, importación compensable, bloqueo de eliminación en uso, URLs por ventana, respaldo limitado, persistencia), DATA_MODEL, ARCHITECTURE, OFFLINE_STRATEGY (persist/persisted/estimate y límites reales de persistencia: sobrevive a cierres y reinicios; se pierde si se borran los datos del sitio; depende de políticas del navegador; persistent storage reduce el riesgo de eviction; mejora con app desktop), TESTING, ROADMAP, roadmap.md.
 
 ## Tests
 
-- Storage: contrato común corrido contra InMemory e IndexedDbBlob (save/get/exists/delete/getUrl/release).
-- Repository: put/list/delete; eliminar asset borra archivo y metadata sin huérfanos.
-- Validación: tipo no permitido, archivo vacío, tamaño excesivo, nombre saneado.
-- Rundown: agregar/quitar media, orden normalizado, eliminar asset no toca Projects, item faltante como placeholder.
-- Presentación: media -> 1 slide con mediaId; goLive/TAKE/Clear/Black con media; quitar item media al aire conserva la salida.
-- OutputSnapshot: serializa mediaId y playback, rechaza mensajes corruptos, igualdad.
-- Navegador: importar imagen y video reales, recargar la página y seguir viéndolos, agregar al rundown, al aire, Output muestra y reproduce, 1366×768 y 1920×1080 sin scroll global, consola limpia.
+- MediaFileStorage: contrato común contra InMemory e IndexedDbBlob (save/get/exists/delete/getUrl/release).
+- MediaRepository: put/get/list/delete solo de metadata.
+- MediaService importación: éxito; falla de validación no escribe nada; falla al guardar metadata borra el archivo; falla de compensación se reporta; video sin OPFS se rechaza; imagen sin OPFS usa IndexedDB; espacio insuficiente se rechaza.
+- MediaService eliminación: sin uso elimina metadata y archivo; con uso se bloquea con conteo de items y proyectos correctos; falla al borrar archivo se reporta.
+- Persistencia: persist se solicita una vez; denegado no bloquea; sin API -> "no soportado".
+- Rundown/presentación: agregar/quitar media, orden normalizado, media -> 1 slide `image`/`video`; goLive/TAKE/Clear/Black; quitar item al aire conserva la salida.
+- OutputSnapshot: serializa `image`/`video` + playback, rechaza mensajes corruptos, igualdad.
+- Navegador: importar imagen y un video razonablemente grande (cientos de MB) vigilando memoria, recargar y seguir viéndolos, rundown, al aire, Output reproduce, intento de eliminar media en uso bloqueado, 1366×768 y 1920×1080 sin scroll global, consola limpia.
 
 ## Riesgos
 
-- Cuota del navegador: videos grandes pueden agotarla; se valida antes de copiar y se limpia el archivo parcial si falla.
-- OPFS sin `createWritable` en algunos navegadores: se usa respaldo IndexedDB.
-- Fugas de memoria por URLs no liberadas: caché con conteo de referencias.
-- Autoplay con sonido en Output puede ser bloqueado hasta un gesto; "Iniciar salida" ya provee ese gesto.
-- SSR: OPFS, IndexedDB y `<video>` solo tras montaje.
+- Cuota del navegador con videos grandes: validación previa y compensación.
+- Soporte desigual de OPFS/`createWritable`: detección y mensaje claro.
+- Fugas de URLs: caché con conteo de referencias.
+- Autoplay con sonido en Output: "Iniciar salida" provee el gesto.
+- SSR: OPFS, IndexedDB, storage API y `<video>` solo tras montaje.
 
 ## Fuera de alcance
 
-Audio, logos, fondos de Preset en uso, presentaciones (PPT/PDF), recorte/edición, streaming, sincronización en la nube, Stage, drag & drop, `.exe`.
+Fondos de Preset (imagen/video), audio, logos, PPT/PDF, reemplazar media, eliminar de todos, localizar contenido faltante, limpieza automática de huérfanos, edición, nube, Stage, drag & drop, `.exe`.
