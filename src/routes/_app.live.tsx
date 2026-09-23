@@ -40,6 +40,10 @@ import {
   type LiveSession,
 } from "@/features/live/live-session";
 import { LiveSlideGrid } from "@/features/live/components/live-slide-grid";
+import {
+  LiveVideoControls,
+  type VideoPlaybackCommand,
+} from "@/features/live/components/live-video-controls";
 import { useLiveKeyboard } from "@/features/live/use-live-keyboard";
 import { useBible } from "@/features/bible/bible-context";
 import { useMedia } from "@/features/media/media-context";
@@ -304,6 +308,19 @@ function LiveConsole() {
     [mediaAssets, presets, removeRundownItem, showProject, songs, state.runtime.items, store],
   );
 
+  /** Comandos del video al aire: actualizan el estado autoritativo de Live. */
+  const handlePlaybackCommand = useCallback((command: VideoPlaybackCommand) => {
+    setPlayback((current) => {
+      if (!current) return current;
+      const now = Date.now();
+      if (command === "toggle-play") {
+        return current.state === "playing" ? pausePlayback(current, now) : playPlayback(current, now);
+      }
+      if (command === "restart") return restartPlayback(current, now);
+      return togglePlaybackLoop(current);
+    });
+  }, []);
+
   const canTake = state.previewSlideId !== null;
   const onPrevious = useCallback(() => store.previous(), [store]);
   const onNext = useCallback(() => store.next(), [store]);
@@ -461,6 +478,8 @@ function LiveConsole() {
             programItem={programItem}
             programMode={state.programMode}
             detached={isProgramDetached(state)}
+            playback={playback}
+            onPlaybackCommand={handlePlaybackCommand}
           />
         </div>
       </div>
@@ -474,11 +493,14 @@ function LiveConsole() {
         songs={songs}
         bibleVersionId={library.versionId}
         onBibleVersionChange={(versionId) => updateLibrary({ versionId })}
+        mediaAssets={mediaAssets}
+        mediaLoading={mediaLoading}
         canAdd={Boolean(showProject)}
         busy={busy}
         status={status}
         onAddSong={handleAddSong}
         onAddPassage={handleAddPassage}
+        onAddMedia={handleAddMedia}
       />
     </Page>
   );

@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { BibleProvider } from "@/features/bible/bible-context";
+import { MediaProvider } from "@/features/media/media-context";
 import { PresentationProvider } from "@/features/presentation/presentation-context";
 import { PresetsProvider } from "@/features/presets/presets-context";
 import { ProjectsProvider } from "@/features/projects/projects-context";
@@ -26,24 +27,26 @@ function AppShell() {
       <SongsProvider>
         <PresetsProvider>
           <BibleProvider>
-            {/* El motor de presentación también vive en el shell: montarlo en
-                la ruta /live lo remontaría y lo expondría a duplicados de
-                módulo al dividirse el bundle de la ruta. */}
-            <PresentationProvider>
-              <SidebarProvider>
-                {/* Altura fija de viewport: el scroll vive dentro de <main>,
-                    nunca en la ventana (la consola de Live no debe desplazarse). */}
-                <div className="flex h-screen w-full overflow-hidden bg-background">
-                  <AppSidebar />
-                  <SidebarInset className="flex min-w-0 flex-1 flex-col bg-background">
-                    <AppTopbar />
-                    <main className="min-w-0 flex-1 overflow-y-auto">
-                      <Outlet />
-                    </main>
-                  </SidebarInset>
-                </div>
-              </SidebarProvider>
-            </PresentationProvider>
+            <MediaProvider>
+              {/* El motor de presentación también vive en el shell: montarlo en
+                  la ruta /live lo remontaría y lo expondría a duplicados de
+                  módulo al dividirse el bundle de la ruta. */}
+              <PresentationProvider>
+                <SidebarProvider>
+                  {/* Altura fija de viewport: el scroll vive dentro de <main>,
+                      nunca en la ventana (la consola de Live no debe desplazarse). */}
+                  <div className="flex h-screen w-full overflow-hidden bg-background">
+                    <AppSidebar />
+                    <SidebarInset className="flex min-w-0 flex-1 flex-col bg-background">
+                      <AppTopbar />
+                      <main className="min-w-0 flex-1 overflow-y-auto">
+                        <Outlet />
+                      </main>
+                    </SidebarInset>
+                  </div>
+                </SidebarProvider>
+              </PresentationProvider>
+            </MediaProvider>
           </BibleProvider>
         </PresetsProvider>
       </SongsProvider>
