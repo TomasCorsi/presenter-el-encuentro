@@ -210,7 +210,7 @@ function LiveConsole() {
         const rundownItem = [...project.rundown].sort((a, b) => a.order - b.order).at(-1);
         if (!rundownItem) return;
 
-        const sources = { project, songs, presets };
+        const sources = { project, songs, presets, media: mediaAssets };
         const item = buildAppendedItem(sources, rundownItem.id);
         if (!item) {
           setStatus("No se pudo preparar el contenido para el show.");
@@ -231,7 +231,7 @@ function LiveConsole() {
         setBusy(false);
       }
     },
-    [presets, songs, store],
+    [mediaAssets, presets, songs, store],
   );
 
   const handleAddSong = useCallback(
@@ -252,6 +252,16 @@ function LiveConsole() {
       );
     },
     [addPassageToProject, appendFromLibrary, showProject],
+  );
+
+  const handleAddMedia = useCallback(
+    (asset: MediaAsset, mode: "rundown" | "live") => {
+      if (!showProject) return;
+      void appendFromLibrary(mode, asset.name, () =>
+        addMediaToProject(showProject.id, { id: asset.id, name: asset.name }),
+      );
+    },
+    [addMediaToProject, appendFromLibrary, showProject],
   );
 
   /**
@@ -276,6 +286,7 @@ function LiveConsole() {
                   project,
                   songs,
                   presets,
+                  media: mediaAssets,
                   itemId,
                   wasOutdated,
                 })
@@ -290,7 +301,7 @@ function LiveConsole() {
         }
       })();
     },
-    [presets, removeRundownItem, showProject, songs, state.runtime.items, store],
+    [mediaAssets, presets, removeRundownItem, showProject, songs, state.runtime.items, store],
   );
 
   const canTake = state.previewSlideId !== null;
