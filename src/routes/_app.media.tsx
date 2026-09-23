@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MEDIA_ACCEPT_ATTRIBUTE, type MediaAsset } from "@/domain/media/media";
+import { formatMediaSize } from "@/domain/media/media-rules";
 import { useMedia, useMediaUrl } from "@/features/media/media-context";
 import { MediaInUseError } from "@/features/media/media-service";
 import { cn } from "@/lib/utils";
@@ -29,19 +30,6 @@ export const Route = createFileRoute("/_app/media")({
   }),
   component: MediaPage,
 });
-
-function formatBytes(sizeBytes: number): string {
-  if (sizeBytes < 1024) return `${sizeBytes} B`;
-  const units = ["KB", "MB", "GB"];
-  let value = sizeBytes;
-  let unit = "B";
-  for (const next of units) {
-    if (value < 1024) break;
-    value /= 1024;
-    unit = next;
-  }
-  return `${value.toFixed(value >= 100 || unit === "B" ? 0 : 1)} ${unit}`;
-}
 
 function MediaPage() {
   const { service, storageKind, assets, isLoading, refresh } = useMedia();
@@ -206,7 +194,7 @@ function MediaCard({ asset, onDelete }: { asset: MediaAsset; onDelete: () => voi
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-medium" title={asset.name}>{asset.name}</p>
           <p className="text-[11px] text-muted-foreground">
-            {formatBytes(asset.sizeBytes)}
+            {formatMediaSize(asset.sizeBytes)}
             {asset.width && asset.height ? ` · ${asset.width}×${asset.height}` : ""}
           </p>
         </div>
