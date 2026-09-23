@@ -4,7 +4,7 @@ Media se implementa como CONTENIDO PRESENTABLE. Presets no cambian: background s
 
 ## Qué va a poder hacer el operador
 
-- Importar imágenes (JPG, PNG, WebP, GIF) y videos (MP4, WebM) desde la computadora en `/media`.
+- Importar imágenes (PNG, JPEG, WEBP; sin GIF en esta fase) y videos (MP4, WebM) desde la computadora en `/media`.
 - La app guarda su propia copia: mover o borrar el original, cerrar el navegador o reiniciar la PC no rompe nada. Sin Internet.
 - Ver la biblioteca en `/media` con miniatura, nombre, tipo, tamaño, resolución y duración; renombrar y eliminar.
 - Eliminar solo si el archivo no se usa: si está en uso, se bloquea con "Este archivo está utilizado por X elementos en Y proyectos."
@@ -94,7 +94,17 @@ Los consumidores (renderer, grilla, Output, snapshot) hacen `switch` exhaustivo 
 - Snapshot de Live: el item Media congela `mediaId`, tipo y título; no lee bytes. Alta incremental con `appendToLiveSession`; quitar el item al aire reutiliza `detachedProgramSlide` (conserva `mediaId`; Output no parpadea).
 - Media es referencia (no copia como Bible). Como no se permite eliminar media en uso, no se crean Projects rotos; si aun así falta el archivo (datos del sitio borrados), el item se muestra como "Contenido faltante" y Output pinta fondo base.
 - Un `blob:` no cruza ventanas: Output recibe `mediaId` y pide su propia URL al storage; caché con conteo de referencias libera las URLs.
-- Video: `playback { state: "playing"|"paused", startedAt, offset, loop }` viaja en el OutputSnapshot solo para slides de video; sincronía suficiente, no frame-perfect.
+- Video: Live es la autoridad. El OutputSnapshot lleva, solo para slides de video:
+  ```ts
+  interface VideoPlaybackState {
+    state: "playing" | "paused";
+    offsetSeconds: number;    // posición en el instante changedAtEpochMs
+    changedAtEpochMs: number; // Date.now() de Live al cambiar el estado
+    loop: boolean;
+    revision: number;         // incremental; Output ignora revisiones viejas
+  }
+  ```
+  Posición esperada = playing ? offsetSeconds + (now - changedAtEpochMs)/1000 : offsetSeconds (con módulo de duración si loop). Output recuperable: al abrir tarde o recargar, calcula la posición y salta ahí; corrige deriva solo si supera ~0,5 s.
 
 ## Archivos
 
