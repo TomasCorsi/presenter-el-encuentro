@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import type { OutputSnapshot } from "@/domain/output/output-snapshot";
+import { DEFAULT_PRESET_STYLE } from "@/domain/presets/preset";
 import { createOutputSubscriber } from "@/services/output-sync/output-subscriber";
 import {
   createMemoryBus,
@@ -13,8 +14,13 @@ function snapshot(sessionId: string, sequence: number, lines = ["A"]): OutputSna
     sessionId,
     sequence,
     mode: "content",
-    slide: { id: "s:0", content: { kind: "text", lines }, style: { background: { type: "solid", color: "#000000" }, fontFamily: "Inter", fontSize: 48, fontWeight: 600, color: "#FFFFFF", textAlign: "center", verticalAlign: "middle", lineHeight: 1.2, padding: 48 } },
+    slide: { id: "s:0", content: { kind: "text", lines }, style: DEFAULT_PRESET_STYLE },
   };
+}
+
+function contentLines(state: OutputSnapshot | null): string[] | undefined {
+  const content = state?.slide?.content;
+  return content?.kind === "text" ? content.lines : undefined;
 }
 
 /** Reloj y timers manuales para controlar heartbeat y timeout. */
