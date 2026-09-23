@@ -1,145 +1,81 @@
-# Fase 9.3 — Output sobre proyector (segunda pantalla)
+# Fase 10 — Media (imágenes y videos locales, offline)
 
-Objetivo: detectar las pantallas del equipo, configurar una como proyector y abrir la salida
-directamente sobre ella, sin romper nada de lo que ya funciona.
+Nota: el mensaje llegó cortado en la definición de `MediaFileStorage`. El plan cubre los puntos 1 y 2 recibidos y propone el resto; si había más requisitos (formatos, límites, controles de video), se incorporan antes de ejecutar.
 
-No se toca el motor de presentación, el protocolo de sincronización, Live, Preview ni Program.
-Sin dependencias nuevas: solo API nativa del navegador (Window Management).
+## Qué va a poder hacer el operador
 
-## 1. Servicio de pantallas
+- Importar imágenes (JPG, PNG, WebP, GIF) y videos (MP4, WebM) desde la computadora en `/media`.
+- La app guarda su propia copia: mover o borrar el original, cerrar el navegador o reiniciar la PC no rompe nada. Sin Internet.
+- Ver la biblioteca en `/media` con miniatura, nombre, tipo, tamaño, resolución y duración; renombrar y eliminar.
+- Buscar Media desde el Library Dock de Live (nueva pestaña Media) y usar "+ Rundown" o "Al aire", igual que Songs y Bible.
+- Un clic en la slide de Media la envía al aire (misma regla que el resto). Clear y Black funcionan igual.
+- Los videos se reproducen en Program (silenciado, como monitor) y en Output (con sonido). Controles en Live: reproducir/pausar, reiniciar, bucle.
+- Espacio usado visible en `/media` (estimación del navegador) y aviso claro si no hay espacio.
 
-Nuevo `src/services/display/window-management.ts`, único lugar que habla con la API del navegador:
+## Arquitectura
 
-- Detección de capacidades sin asumir soporte: existencia de `window.getScreenDetails`,
-  `window.screen.isExtended`, contexto seguro (HTTPS o localhost) y estado del permiso
-  `window-management` vía `navigator.permissions.query`, cuando exista.
-- `requestScreenDetails()`: llama a `getScreenDetails()`. Se invoca **solo** desde el clic en
-  «Detectar pantallas», para que el navegador muestre su pedido de permiso en un gesto de usuario.
-- Normaliza cada pantalla a un objeto propio: etiqueta, ancho/alto, `availWidth/availHeight`,
-  `availLeft/availTop`, `devicePixelRatio`, `isPrimary`.
-- `fingerprintScreen(screen)`: firma estable con label + medidas + posición + dpr + primary.
-- `matchScreen(fingerprint, screens)`: coincidencia exacta y, si falla, coincidencia por medidas +
-  posición (la etiqueta puede cambiar entre sesiones).
-- Suscripción a cambios (`screenschange` en `ScreenDetails`, `change` en cada pantalla) con función
-  de limpieza.
+```text
+Archivo  ->  validar (tipo, tamaño, lectura de dimensiones/duración)
+         ->  MediaFileStorage.save(id, blob)      (archivo físico: OPFS)
+         ->  MediaRepository.put(meta)            (metadata: IndexedDB)
+         ->  MediaService / MediaProvider (React)
+         ->  RundownItem { type: "media", sourceId: mediaId, title }
+         ->  PresentationItem con 1 slide { content: { kind: "media", mediaId, mediaType } }
+         ->  Live (snapshot)  ->  OutputSnapshot lleva mediaId, nunca bytes
+         ->  /output/main resuelve mediaId -> URL local en SU propia ventana
+```
 
-Sin API disponible: devuelve `{ supported: false }` y todo lo demás degrada al comportamiento actual.
+Decisiones clave:
+1. **Archivo separado de la metadata.** Metadata en IndexedDB (`broadcast-control.media`, store `assets`). Bytes en OPFS (`media/<id>`). Nada en localStorage, base64 ni dentro del Project.
+2. **Abstracción de almacenamiento** para el futuro `.exe`:
+   ```ts
+   interface MediaFileStorage {
+     save(id: string, file: Blob): Promise<void>;
+     get(id: string): Promise<Blob | null>;
+     delete(id: string): Promise<void>;
+     exists(id: string): Promise<boolean>;
+     getUrl(id: string): Promise<MediaUrlHandle | null>; // { url, release() }
+     estimate?(): Promise<{ usage: number; quota: number } | null>;
+   }
+   ```
+   Implementaciones: `OpfsMediaStorage` (producción), `IndexedDbBlobMediaStorage` (respaldo si OPFS no existe, p. ej. Safari antiguo), `InMemoryMediaStorage` (tests). Un futuro `NativeFileSystemMediaStorage` devuelve `file://`/`asset://` en `getUrl`. UI, dominio, Project, Live y Output solo conocen la interfaz.
+3. **URLs por ventana.** Un `blob:` no cruza ventanas, así que Output no recibe URLs: recibe `mediaId` y pide su propia URL al storage (mismo origen, mismo OPFS). Un caché con conteo de referencias libera las URLs al dejar de usarse.
+4. **Media es referencia, no copia** (a diferencia de Bible, ADR-042): el Project guarda `sourceId`. Si el archivo se elimina de la biblioteca, el item queda como "Contenido faltante" (ADR-020) y Output muestra fondo base, nunca un error. Eliminar un archivo usado muestra advertencia con los Projects que lo usan.
+5. **Snapshot de Live**: al cargar/agregar, el item Media congela `mediaId`, tipo y metadata mínima; no lee bytes. Alta incremental reutiliza `appendToLiveSession`; quitar el item al aire reutiliza `detachedProgramSlide` (la copia conserva `mediaId`, así Output no parpadea).
+6. **Reproducción de video**: estado `playback { state: "playing"|"paused", startedAt, offset, loop }` viaja en el OutputSnapshot solo para slides de video. Output reproduce con sonido; Program en Live, silenciado. Sincronía "suficiente" (recalcula posición al recibir cambios), no frame-perfect.
+7. **Presets (futuro)**: `PresetStyle.background` ya es unión discriminada; se deja preparado `{ type: "media"; mediaId }` en el tipo del dominio pero sin UI ni uso en esta fase.
 
-## 2. Preferencia guardada
+## Archivos
 
-Nuevo `src/services/display/display-preference.ts` (localStorage, mismo patrón que las demás
-preferencias locales del puesto): clave `broadcast-control.display.audience`, valor = fingerprint del
-proyector. Es preferencia local del equipo, nunca del Project. Lectura tolerante a datos corruptos.
+Nuevos:
+- `src/domain/media/media.ts` (MediaAsset, tipos permitidos, límites), `media-rules.ts` (validación, búsqueda, uso en Projects).
+- `src/services/media/media-file-storage.ts` (interfaz), `opfs-media-storage.ts`, `indexeddb-blob-media-storage.ts`, `in-memory-media-storage.ts`, `media-repository.ts` + `indexeddb-media-repository.ts`, `media-url-cache.ts`.
+- `src/features/media/media-service.ts`, `media-context.tsx` (MediaProvider en `_app.tsx`), `read-media-info.ts` (dimensiones/duración/miniatura vía `<img>`/`<video>`, solo cliente), componentes `media-import-button`, `media-grid`, `media-card`, `media-thumbnail`.
+- `src/features/live/components/library-media-tab.tsx`, `live-video-controls.tsx`.
+- `src/features/presentation/components/media-renderer.tsx` (usado por SlideRenderer, Program y Output).
 
-Hook `src/features/display/use-audience-screen.ts`: reúne capacidades, pantallas detectadas,
-pantalla configurada, resolución de la coincidencia y acciones (detectar, guardar, olvidar).
+Modificados:
+- `src/routes/_app.media.tsx` (biblioteca real), `rundown-rules.ts` (`addMediaToRundown`), `projects-context.tsx` (`addMediaToProject`), `presentation.ts` (`SlideContent` gana `kind: "media"`), `project-to-presentation.ts` + nuevo `media-to-presentation.ts`, `live-session.ts` (fuente media), `live-library-dock.tsx` (pestaña Media), `_app.live.tsx`, `output-snapshot.ts` (slide media + playback, validación y comparación), `output-surface.tsx`, `slide-surface.tsx`, `live-slide-grid.tsx` (miniatura), `local-storage-project-repository.ts` (acepta items media).
+- Docs: DECISIONS (ADRs de almacenamiento, referencia vs copia, URLs por ventana, playback), DATA_MODEL, ARCHITECTURE, OFFLINE_STRATEGY, TESTING, ROADMAP, roadmap.md.
 
-## 3. Settings → Outputs
+## Tests
 
-`src/routes/_app.settings.tsx` deja de ser estado vacío y gana la sección **Pantalla del proyector**:
+- Storage: contrato común corrido contra InMemory e IndexedDbBlob (save/get/exists/delete/getUrl/release).
+- Repository: put/list/delete; eliminar asset borra archivo y metadata sin huérfanos.
+- Validación: tipo no permitido, archivo vacío, tamaño excesivo, nombre saneado.
+- Rundown: agregar/quitar media, orden normalizado, eliminar asset no toca Projects, item faltante como placeholder.
+- Presentación: media -> 1 slide con mediaId; goLive/TAKE/Clear/Black con media; quitar item media al aire conserva la salida.
+- OutputSnapshot: serializa mediaId y playback, rechaza mensajes corruptos, igualdad.
+- Navegador: importar imagen y video reales, recargar la página y seguir viéndolos, agregar al rundown, al aire, Output muestra y reproduce, 1366×768 y 1920×1080 sin scroll global, consola limpia.
 
-- Estado: configurada / no configurada; cantidad de pantallas detectadas.
-- Tabla compacta por pantalla: etiqueta, resolución, posición, marca de principal, marca de proyector.
-- Selector para asignar la pantalla de audiencia.
-- Botones: «Detectar pantallas», «Identificar», «Probar salida», «Olvidar configuración».
-- Exactamente dos pantallas: se propone la no principal como proyector y se pide confirmación
-  explícita antes de guardar. Más de dos: el usuario elige.
-- Sin soporte, sin contexto seguro o permiso denegado: explicación en texto claro y el modo alternativo.
+## Riesgos
 
-«Identificar» abre brevemente en cada pantalla una ventana con un número grande y la cierra sola.
-«Probar salida» abre la salida en el proyector con una tarjeta de prueba y permite cerrarla.
+- Cuota del navegador: videos grandes pueden agotarla; se valida antes de copiar y se limpia el archivo parcial si falla.
+- OPFS sin `createWritable` en algunos navegadores: se usa respaldo IndexedDB.
+- Fugas de memoria por URLs no liberadas: caché con conteo de referencias.
+- Autoplay con sonido en Output puede ser bloqueado hasta un gesto; "Iniciar salida" ya provee ese gesto.
+- SSR: OPFS, IndexedDB y `<video>` solo tras montaje.
 
-`/outputs` (hoy placeholder) enlaza a esta sección para que el operador la encuentre.
+## Fuera de alcance
 
-## 4. Abrir Output sobre el proyector
-
-Nuevo `src/features/output/open-output-window.ts`, usado por el botón «Abrir Output» de
-`live-show-bar.tsx`:
-
-1. Consulta pantallas; busca la configurada por fingerprint.
-2. Si aparece: `window.open("/output/main", "audience-main", "popup=yes,left=…,top=…,width=…,height=…")`
-   con los valores `availLeft/availTop/availWidth/availHeight` de esa pantalla.
-3. Nombre fijo `audience-main`: reabrir reutiliza y enfoca la misma ventana, nunca duplica.
-4. `focus()` sobre la ventana y estado «Output abierto» en la barra de show.
-5. Si la pantalla guardada no aparece: **no** se abre en la principal; se muestra
-   «Proyector desconectado» con acceso a volver a detectar.
-6. Popup bloqueado (`window.open` devuelve nulo): «El navegador bloqueó la salida. Permití ventanas
-   emergentes para este sitio y volvé a intentarlo.»
-
-Sin configuración o sin soporte: se abre una ventana nueva como hoy, con el aviso
-«Mové esta ventana al proyector y presioná F para pantalla completa.»
-
-La barra de show pasa a mostrar el estado de la salida: abierta, cerrada, proyector desconectado.
-Se escuchan los cambios de pantallas mientras Live está abierto; si el proyector desaparece, el estado
-cambia pero Program y la ventana existente no se tocan.
-
-## 5. Pantalla completa en /output/main
-
-- Se mantiene el overlay discreto; el botón pasa a llamarse «Iniciar salida».
-- Tres vías: botón, tecla `F` y doble clic (ya existente).
-- `requestFullscreen({ navigationUI: "hide", screen })` cuando la opción `screen` sea aceptada por el
-  navegador; si no, `requestFullscreen({ navigationUI: "hide" })`, y si eso falla, la llamada simple.
-- Nunca fullscreen automático al cargar.
-- En fullscreen: sin botón, sin cursor, sin mensajes; fondo negro inicial. Al salir con Escape los
-  controles vuelven.
-
-## 6. Pruebas
-
-Unitarias (`bun test`), con un doble de la API de pantallas:
-
-- Capacidades: API ausente, contexto no seguro, permiso concedido / denegado / pendiente.
-- Fingerprint: estable, coincide tras cambio de etiqueta, no coincide con otra pantalla.
-- Selección automática con dos pantallas; elección manual con tres; una sola pantalla.
-- Preferencia: guardar, leer, olvidar, dato corrupto.
-- Apertura: rectángulo correcto, reutilización por nombre, popup bloqueado, pantalla guardada ausente
-  (no abre en la principal).
-- Fullscreen: usa `screen` cuando se acepta, degrada cuando no.
-
-Verificación en navegador: `/live` y `/output/main` sin errores de consola, salida y Program
-sincronizados, reapertura sin duplicar ventanas, `F` y doble clic. La API de pantallas múltiples no se
-puede ejercitar de verdad en el entorno de pruebas automatizado: el camino con proyector real queda
-para tu verificación en Windows, y lo dejo documentado.
-
-## 7. Archivos
-
-Nuevos: `src/services/display/window-management.ts`, `src/services/display/display-preference.ts`,
-`src/features/display/use-audience-screen.ts`, `src/features/display/components/audience-screen-settings.tsx`,
-`src/features/output/open-output-window.ts`, `src/features/output/use-fullscreen.ts`,
-`tests/services/window-management.test.ts`, `tests/features/audience-screen.test.ts`,
-`tests/features/open-output-window.test.ts`.
-
-Modificados: `src/routes/_app.settings.tsx`, `src/routes/_app.outputs.tsx`,
-`src/features/live/components/live-show-bar.tsx`, `src/routes/_app.live.tsx`,
-`src/routes/output.main.tsx`, `src/features/output/components/output-overlay.tsx`,
-docs (`DECISIONS` con un ADR nuevo sobre la salida en segunda pantalla, `ARCHITECTURE`, `TESTING`,
-`ROADMAP`, `roadmap.md`).
-
-## 8. Riesgos
-
-- El permiso de gestión de ventanas solo se concede en contexto seguro y tras gesto del usuario: toda
-  la ruta de detección arranca en un clic.
-- Las etiquetas de pantalla pueden venir vacías sin permiso concedido: el fingerprint no depende solo
-  de la etiqueta.
-- Firefox y Safari no implementan la API: el camino alternativo es el comportamiento actual, intacto.
-- Renderizado en servidor: todo el acceso a `window` ocurre tras el montaje en cliente.
-
-## 9. Precisiones aprobadas
-
-1. La referencia nativa de cada pantalla se conserva en memoria durante la sesión; solo se persiste el
-   modelo normalizado. En la salida, «Iniciar salida» vuelve a pedir las pantallas si el permiso ya está
-   concedido y usa `currentScreen` para el fullscreen; si no se puede, fullscreen sin `screen`.
-2. Al reutilizar la ventana `audience-main` se comprueba `closed` y se aplican `moveTo`, `resizeTo` y
-   `focus()`, cada uno tolerante a excepciones del navegador.
-3. El estado «Output abierto» se mantiene veraz con una comprobación periódica moderada de `closed`;
-   timers y listeners se limpian al desmontar Live.
-4. «Identificar» actúa sobre una pantalla por vez, informa si el navegador bloqueó la ventana, ofrece
-   cierre manual además del automático y nunca deja ventanas abiertas.
-5. La prueba usa `/output/main?mode=test`: patrón, número de pantalla y resolución, botón de cierre; no
-   se suscribe al canal de sincronización ni toca Program.
-6. Coincidencia conservadora: exacta; label + resolución + posición; resolución + posición solo si hay
-   una única candidata no principal; ambigua → «Proyector no identificado» y no se abre la salida.
-7. Declaraciones de tipos locales mínimas para la API de gestión de ventanas, sin `any` general ni
-   dependencias nuevas.
-8. `window.isSecureContext` como comprobación principal.
-9. Todos los listeners (`screenschange`, `change` por pantalla, cierre de la salida) con limpieza.
-10. Checklist de verificación manual en Windows documentada en `docs/TESTING.md`.
+Audio, logos, fondos de Preset en uso, presentaciones (PPT/PDF), recorte/edición, streaming, sincronización en la nube, Stage, drag & drop, `.exe`.
