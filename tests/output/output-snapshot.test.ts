@@ -5,15 +5,25 @@ import {
   snapshotsEqual,
   toOutputSnapshot,
   type OutputSnapshot,
+  type OutputSlide,
 } from "@/domain/output/output-snapshot";
+import { createInitialPlayback } from "@/domain/output/video-playback";
 import { DEFAULT_PRESET_STYLE } from "@/domain/presets/preset";
+
+function textSlide(
+  lines: string[],
+  style = DEFAULT_PRESET_STYLE,
+  id = "song:1:slide:0",
+): OutputSlide {
+  return { id, content: { kind: "text", lines: [...lines] }, style };
+}
 
 function snapshot(overrides: Partial<OutputSnapshot> = {}): OutputSnapshot {
   return {
     sessionId: "session-a",
     sequence: 0,
     mode: "content",
-    slide: { id: "song:1:slide:0", lines: ["Línea uno", "Línea dos"], style: DEFAULT_PRESET_STYLE },
+    slide: textSlide(["Línea uno", "Línea dos"]),
     ...overrides,
   };
 }
@@ -37,12 +47,59 @@ describe("toOutputSnapshot", () => {
       sessionId: "s1",
       sequence: 7,
       mode: "content",
-      slide: { id: "song:1:slide:0", lines: ["Hola", "Mundo"], style: DEFAULT_PRESET_STYLE },
+      slide: {
+        id: "song:1:slide:0",
+        content: { kind: "text", lines: ["Hola", "Mundo"] },
+        secondaryText: undefined,
+        style: DEFAULT_PRESET_STYLE,
+        playback: undefined,
+      },
     });
   });
 
   it("slide null cuando no hay Program", () => {
     expect(toOutputSnapshot({ mode: "clear", slide: null }, "s1", 0).slide).toBeNull();
+  });
+
+  it("una slide de video viaja como referencia y adjunta el playback", () => {
+    const playback = createInitialPlayback(1000);
+    const result = toOutputSnapshot(
+      {
+        mode: "content",
+        slide: {
+          id: "media:m1:media:0",
+          itemId: "media:m1",
+          order: 0,
+          content: { kind: "video", mediaId: "m1" },
+          style: DEFAULT_PRESET_STYLE,
+        },
+      },
+      "s1",
+      1,
+      playback,
+    );
+    expect(result.slide?.content).toEqual({ kind: "video", mediaId: "m1" });
+    expect(result.slide?.playback).toEqual(playback);
+  });
+
+  it("el playback se ignora en slides que no son de video", () => {
+    const playback = createInitialPlayback(1000);
+    const result = toOutputSnapshot(
+      {
+        mode: "content",
+        slide: {
+          id: "song:1:slide:0",
+          itemId: "song:1",
+          order: 0,
+          content: { kind: "text", lines: ["Hola"] },
+          style: DEFAULT_PRESET_STYLE,
+        },
+      },
+      "s1",
+      1,
+      playback,
+    );
+    expect(result.slide?.playback).toBeUndefined();
   });
 });
 
@@ -53,20 +110,25 @@ describe("snapshotsEqual", () => {
 
   it("mismo slide.id con líneas distintas → distintos (editar Song + recargar)", () => {
     const a = snapshot();
-    const b = snapshot({
-      slide: { id: "song:1:slide:0", lines: ["Letra nueva"], style: DEFAULT_PRESET_STYLE },
-    });
+    const b = snapshot({ slide: textSlide(["Letra nueva"]) });
     expect(snapshotsEqual(a, b)).toBe(false);
   });
 
   it("mismo id y mismas líneas con estilo distinto → distintos (editar Preset + recargar)", () => {
     const a = snapshot();
     const b = snapshot({
-      slide: {
-        id: "song:1:slide:0",
-        lines: ["Línea uno", "Línea dos"],
-        style: { ...DEFAULT_PRESET_STYLE, fontSize: 12 },
-      },
+      slide: textSlide(["Línea uno", "Línea dos"], { ...DEFAULT_PRESET_STYLE, fontSize: 12 }),
+    });
+    expect(snapshotsEqual(a, b)).toBe(false);
+  });
+
+  it("revisión de reproducción distinta → distintos", () => {
+    const slide = textSlide(["Línea"]);
+    const a = snapshot({
+      slide: { ...slide, playback: createInitialPlayback(1000) },
+    });
+    const b = snapshot({
+      slide: { ...slide, playback: { ...createInitialPlayback(1000), revision: 2 } },
     });
     expect(snapshotsEqual(a, b)).toBe(false);
   });
@@ -97,6 +159,20 @@ describe("parseOutputMessage", () => {
     });
   });
 
+  it("tolera la forma heredada con `lines` (ventanas Output viejas)", () => {
+    const legacy = {
+      sessionId: "s1",
+      sequence: 3,
+      mode: "content",
+      slide: { id: "a", lines: ["una", "dos"], style: DEFAULT_PRESET_STYLE },
+    };
+    const parsed = parseOutputMessage({ type: "snapshot", snapshot: legacy });
+    expect(parsed?.type).toBe("snapshot");
+    if (parsed?.type === "snapshot") {
+      expect(parsed.snapshot.slide?.content).toEqual({ kind: "text", lines: ["una", "dos"] });
+    }
+  });
+
   it("rechaza mensajes inválidos sin lanzar", () => {
     expect(parseOutputMessage(null)).toBeNull();
     expect(parseOutputMessage("hello")).toBeNull();
@@ -112,7 +188,7 @@ describe("parseOutputMessage", () => {
       parseOutputMessage({
         type: "update",
         snapshot: snapshot({
-          slide: { id: "a", lines: ["ok", 3] as never, style: DEFAULT_PRESET_STYLE },
+          slide: { id: "a", lines: ["ok", 3] as never, style: DEFAULT_PRESET_STYLE } as never,
         }),
       }),
     ).toBeNull();
