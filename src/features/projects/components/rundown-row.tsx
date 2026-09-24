@@ -24,9 +24,11 @@ export interface RundownRowProps {
   /** Biblioteca de presets disponible para esta aparición. */
   presets: readonly Preset[];
   onSetPreset(presetId: string | undefined): Promise<void>;
+  /** Media al aire: quitar bloqueado (Fase 10). */
+  removeBlocked?: boolean;
 }
 
-export function RundownRow({ item, position, sourceTitle, sourceAuthor, isFirst, isLast, onMove, onRemove, presets, onSetPreset }: RundownRowProps) {
+export function RundownRow({ item, position, sourceTitle, sourceAuthor, isFirst, isLast, onMove, onRemove, presets, onSetPreset, removeBlocked = false }: RundownRowProps) {
   const [removeOpen, setRemoveOpen] = useState(false);
   const missing = sourceTitle === undefined;
   const title = sourceTitle ?? item.title;
@@ -75,7 +77,10 @@ export function RundownRow({ item, position, sourceTitle, sourceAuthor, isFirst,
           <ChevronDown aria-hidden="true" />
         </Button>
         <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive"
-          aria-label={`Quitar ${title} del rundown`} onClick={() => setRemoveOpen(true)}>
+          disabled={removeBlocked}
+          title={removeBlocked ? "Cambia primero el contenido que está al aire." : undefined}
+          aria-label={removeBlocked ? `Quitar ${title} del rundown: Cambia primero el contenido que está al aire.` : `Quitar ${title} del rundown`}
+          onClick={() => setRemoveOpen(true)}>
           <Trash2 aria-hidden="true" />
         </Button>
       </div>

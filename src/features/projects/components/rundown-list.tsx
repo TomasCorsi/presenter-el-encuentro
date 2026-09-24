@@ -13,10 +13,12 @@ export interface RundownListProps {
   presets: readonly Preset[];
   onMove(itemId: string, direction: "up" | "down"): Promise<void>;
   onRemove(itemId: string): Promise<void>;
+  /** Media al aire: quitar bloqueado (Fase 10). */
+  isRemoveBlocked?: (itemId: string) => boolean;
   onSetPreset(itemId: string, presetId: string | undefined): Promise<void>;
 }
 
-export function RundownList({ items, songs, presets, onMove, onRemove, onSetPreset }: RundownListProps) {
+export function RundownList({ items, songs, presets, onMove, onRemove, onSetPreset, isRemoveBlocked }: RundownListProps) {
   if (items.length === 0) {
     return (
       <EmptyState
@@ -56,6 +58,7 @@ export function RundownList({ items, songs, presets, onMove, onRemove, onSetPres
             onSetPreset={(presetId) => onSetPreset(item.id, presetId)}
             onMove={(direction) => onMove(item.id, direction)}
             onRemove={() => onRemove(item.id)}
+            removeBlocked={isRemoveBlocked?.(item.id) ?? false}
           />
         );
       })}

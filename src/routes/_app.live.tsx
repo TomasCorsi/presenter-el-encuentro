@@ -2,6 +2,10 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { Radio } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import {
+  isMediaRemovalBlocked,
+  MEDIA_ON_AIR_REMOVAL_MESSAGE,
+} from "@/domain/presentation/presentation-program";
 import { Page } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";

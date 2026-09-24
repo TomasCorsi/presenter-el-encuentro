@@ -11,6 +11,8 @@ import { SongPickerPanel } from "@/features/projects/components/song-picker-pane
 import { usePresets } from "@/features/presets/presets-context";
 import { useProjects } from "@/features/projects/projects-context";
 import { useSongs } from "@/features/songs/songs-context";
+import { usePresentationState } from "@/features/presentation/presentation-context";
+import { isMediaRemovalBlocked, MEDIA_ON_AIR_REMOVAL_MESSAGE } from "@/domain/presentation/presentation-program";
 
 const TITLE = "Detalle del proyecto — Plataforma de presentación en vivo";
 const DESCRIPTION = "Preparación del rundown: secuencia ordenada de contenido para el evento.";
@@ -35,6 +37,7 @@ function formatDate(value: string): string {
 
 function ProjectDetailPage() {
   const { projectId } = Route.useParams();
+  const presentationState = usePresentationState();
   const {
     projects, activeProjectId, hasLoaded, error, clearError,
     setActiveProject, addSongToProject, removeRundownItem, moveRundownItem, setRundownItemPreset,
@@ -127,7 +130,12 @@ function ProjectDetailPage() {
             songs={songs}
             presets={presets}
             onMove={(itemId, direction) => moveRundownItem(project.id, itemId, direction)}
+            isRemoveBlocked={(itemId) =>
+              project.id === activeProjectId && isMediaRemovalBlocked(presentationState, itemId)}
             onRemove={async (itemId) => {
+              if (project.id === activeProjectId && isMediaRemovalBlocked(presentationState, itemId)) {
+                throw new Error(MEDIA_ON_AIR_REMOVAL_MESSAGE);
+              }
               await removeRundownItem(project.id, itemId);
             }}
             onSetPreset={(itemId, presetId) => setRundownItemPreset(project.id, itemId, presetId)}
