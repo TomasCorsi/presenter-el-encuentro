@@ -275,6 +275,11 @@ function LiveConsole() {
   const handleRemoveItem = useCallback(
     (itemId: string) => {
       if (!showProject) return;
+      // Media al aire: bloqueado, nunca se congela (Fase 10).
+      if (isMediaRemovalBlocked(store.getState(), itemId)) {
+        setStatus(MEDIA_ON_AIR_REMOVAL_MESSAGE);
+        return;
+      }
       const wasOutdated = outdatedRef.current;
       const title = state.runtime.items.find((item) => item.id === itemId)?.title ?? "El elemento";
       setBusy(true);
@@ -440,6 +445,7 @@ function LiveConsole() {
                 programItemId={programItem?.id ?? null}
                 onSelect={(itemId) => store.selectItem(itemId)}
                 onRemove={handleRemoveItem}
+                isRemoveBlocked={(itemId) => isMediaRemovalBlocked(state, itemId)}
                 canRemove={Boolean(showProject) && !busy}
               />
             )}

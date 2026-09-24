@@ -45,3 +45,20 @@ export function toggleProgramMode(
 ): PresentationState {
   return setProgramMode(state, state.programMode === mode ? "content" : mode);
 }
+
+/** Mensaje único cuando se intenta quitar un Media que está al aire. */
+export const MEDIA_ON_AIR_REMOVAL_MESSAGE = "Cambia primero el contenido que está al aire.";
+
+/**
+ * Regla de Fase 10: un item Media (image/video) en Program NO puede quitarse
+ * del rundown, en ningún modo (content/clear/black). Media no usa
+ * `detachedProgramSlide`: así Output nunca queda apuntando a un media que ya
+ * no pertenece al show. Songs/Bible siguen con ADR-045.
+ */
+export function isMediaRemovalBlocked(state: PresentationState, itemId: string): boolean {
+  if (!state.programSlideId) return false;
+  const location = state.runtime.slideLocationById.get(state.programSlideId);
+  if (!location) return false;
+  const programItem = state.runtime.items[location.itemIndex];
+  return programItem?.id === itemId && programItem.type === "media";
+}
