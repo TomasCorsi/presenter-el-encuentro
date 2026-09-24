@@ -15,7 +15,7 @@ const items: PresentationItem[] = [
 ];
 
 function loaded() {
-  return loadPresentation(createInitialPresentationState(), { id: "p", title: "P", items } as never);
+  return loadPresentation(createInitialPresentationState(), items);
 }
 
 describe("Media al aire no se puede quitar (Fase 10)", () => {
