@@ -2,6 +2,10 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { Radio } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import {
+  isMediaRemovalBlocked,
+  MEDIA_ON_AIR_REMOVAL_MESSAGE,
+} from "@/domain/presentation/presentation-program";
 import { Page } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -162,10 +166,12 @@ function LiveConsole() {
   }, [activeProject, hasLoaded, mediaAssets, mediaLoading, presets, presetsLoaded, session, songs, songsLoaded, store]);
 
   // La reproducción es del video AL AIRE: entra reproduciendo desde el
-  // inicio y se detiene al cambiar de slide o salir de `content`.
+  // inicio y se detiene solo al cambiar la slide de Program. Clear/Black NO la
+  // reinician: el video sigue avanzando internamente (ADR-024) y al volver a
+  // `content` reaparece en la posición correspondiente.
   const programSlideNow = getProgramSlide(state);
   const programVideoId =
-    state.programMode === "content" && programSlideNow?.content.kind === "video"
+    programSlideNow?.content.kind === "video"
       ? programSlideNow.id
       : null;
   useEffect(() => {
@@ -275,6 +281,11 @@ function LiveConsole() {
   const handleRemoveItem = useCallback(
     (itemId: string) => {
       if (!showProject) return;
+      // Media al aire: bloqueado, nunca se congela (Fase 10).
+      if (isMediaRemovalBlocked(store.getState(), itemId)) {
+        setStatus(MEDIA_ON_AIR_REMOVAL_MESSAGE);
+        return;
+      }
       const wasOutdated = outdatedRef.current;
       const title = state.runtime.items.find((item) => item.id === itemId)?.title ?? "El elemento";
       setBusy(true);
@@ -440,6 +451,7 @@ function LiveConsole() {
                 programItemId={programItem?.id ?? null}
                 onSelect={(itemId) => store.selectItem(itemId)}
                 onRemove={handleRemoveItem}
+                isRemoveBlocked={(itemId) => isMediaRemovalBlocked(state, itemId)}
                 canRemove={Boolean(showProject) && !busy}
               />
             )}

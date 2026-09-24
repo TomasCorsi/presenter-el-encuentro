@@ -47,6 +47,7 @@ export function OutputSurface({ snapshot }: OutputSurfaceProps) {
             mediaId={slide.content.mediaId}
             kind={slide.content.kind}
             playback={slide.content.kind === "video" ? slide.playback : undefined}
+            audio
             data-testid="output-media-surface"
           />
         )
