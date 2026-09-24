@@ -32,6 +32,13 @@ export interface MediaSlideSurfaceProps {
  */
 let audioUnlockedInWindow = false;
 
+/** `navigator.userActivation` cuando existe; si no, se asume que sí (se intentará). */
+function windowHasUserActivation(): boolean {
+  const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } })
+    .userActivation;
+  return activation ? activation.hasBeenActive : true;
+}
+
 function isAutoplayBlocked(error: unknown): boolean {
   return error instanceof DOMException && error.name === "NotAllowedError";
 }
@@ -40,7 +47,7 @@ function isAutoplayBlocked(error: unknown): boolean {
  * Renderer de Media (imagen/video) a pantalla completa dentro de su marco.
  *
  * - Resuelve el archivo local por `mediaId` (nunca recibe bytes).
- * - Video SIN AUDIO en la salida y sin controles nativos: la reproducción la
+ * - Video con audio solo en Output (`audio`), sin controles nativos: la reproducción la
  *   ordena Live vía `playback`; aquí solo se aplica y se corrige la deriva.
  * - Archivo no disponible en este dispositivo → placeholder neutro.
  */
@@ -60,12 +67,22 @@ export function MediaSlideSurface({
   /** Reproduce con sonido si corresponde; ante bloqueo cae a muted + overlay. */
   const startPlayback = useCallback(
     (video: HTMLVideoElement) => {
-      if (!audio) {
+      const playMuted = () => {
         video.muted = true;
-        void video.play().catch(() => undefined);
-        return;
+        if (video.paused) void video.play().catch(() => undefined);
+      };
+      if (!audio) return playMuted();
+      // Sin gesto previo en la ventana el navegador bloquearía el sonido (y
+      // pausaría el video al desmutearlo): pedir activación sin intentarlo.
+      if (!audioUnlockedInWindow && !windowHasUserActivation()) {
+        setNeedsActivation(true);
+        return playMuted();
       }
       video.muted = false;
+      if (!video.paused) {
+        audioUnlockedInWindow = true;
+        return;
+      }
       video.play().then(
         () => {
           audioUnlockedInWindow = true;
@@ -73,9 +90,8 @@ export function MediaSlideSurface({
         },
         (error: unknown) => {
           if (!isAutoplayBlocked(error)) return;
-          video.muted = true;
           setNeedsActivation(true);
-          void video.play().catch(() => undefined);
+          playMuted();
         },
       );
     },
