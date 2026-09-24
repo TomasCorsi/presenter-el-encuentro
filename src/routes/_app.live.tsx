@@ -166,10 +166,12 @@ function LiveConsole() {
   }, [activeProject, hasLoaded, mediaAssets, mediaLoading, presets, presetsLoaded, session, songs, songsLoaded, store]);
 
   // La reproducción es del video AL AIRE: entra reproduciendo desde el
-  // inicio y se detiene al cambiar de slide o salir de `content`.
+  // inicio y se detiene solo al cambiar la slide de Program. Clear/Black NO la
+  // reinician: el video sigue avanzando internamente (ADR-024) y al volver a
+  // `content` reaparece en la posición correspondiente.
   const programSlideNow = getProgramSlide(state);
   const programVideoId =
-    state.programMode === "content" && programSlideNow?.content.kind === "video"
+    programSlideNow?.content.kind === "video"
       ? programSlideNow.id
       : null;
   useEffect(() => {
