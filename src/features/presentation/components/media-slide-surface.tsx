@@ -1,4 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
 
 import type { MediaKind } from "@/domain/media/media";
 import { expectedOffsetSeconds, type VideoPlaybackState } from "@/domain/output/video-playback";
@@ -14,8 +16,24 @@ export interface MediaSlideSurfaceProps {
   kind: MediaKind;
   /** Solo video: estado autoritativo de Live. Sin él, el video queda pausado. */
   playback?: VideoPlaybackState | undefined;
+  /**
+   * Solo Output: el video suena. Program de Live nunca pasa `audio` y queda
+   * siempre muted. Si el navegador bloquea el autoplay con sonido, se muestra
+   * "Activar salida" y el video sigue avanzando muted mientras tanto.
+   */
+  audio?: boolean;
   className?: string;
   "data-testid"?: string;
+}
+
+/**
+ * Desbloqueo de audio por VENTANA: tras un gesto del usuario el navegador
+ * permite sonido en esta ventana durante toda su vida.
+ */
+let audioUnlockedInWindow = false;
+
+function isAutoplayBlocked(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "NotAllowedError";
 }
 
 /**
@@ -30,12 +48,48 @@ export function MediaSlideSurface({
   mediaId,
   kind,
   playback,
+  audio = false,
   className,
   "data-testid": testId = "media-slide-surface",
 }: MediaSlideSurfaceProps) {
   const url = useMediaUrl(mediaId);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playbackRevision = playback?.revision;
+  const [needsActivation, setNeedsActivation] = useState(false);
+
+  /** Reproduce con sonido si corresponde; ante bloqueo cae a muted + overlay. */
+  const startPlayback = useCallback(
+    (video: HTMLVideoElement) => {
+      if (!audio) {
+        video.muted = true;
+        void video.play().catch(() => undefined);
+        return;
+      }
+      video.muted = false;
+      video.play().then(
+        () => {
+          audioUnlockedInWindow = true;
+          setNeedsActivation(false);
+        },
+        (error: unknown) => {
+          if (!isAutoplayBlocked(error)) return;
+          video.muted = true;
+          setNeedsActivation(true);
+          void video.play().catch(() => undefined);
+        },
+      );
+    },
+    [audio],
+  );
+
+  const activateOutput = useCallback(() => {
+    const video = videoRef.current;
+    audioUnlockedInWindow = true;
+    setNeedsActivation(false);
+    if (!video) return;
+    video.muted = false;
+    if (playback?.state === "playing") void video.play().catch(() => undefined);
+  }, [playback?.state]);
 
   // Aplicar el estado autoritativo de Live cuando cambia la revisión.
   useEffect(() => {
@@ -45,10 +99,13 @@ export function MediaSlideSurface({
     if (Number.isFinite(expected) && Math.abs(video.currentTime - expected) > DRIFT_TOLERANCE_SECONDS) {
       video.currentTime = expected;
     }
-    if (playback.state === "playing") void video.play().catch(() => undefined);
-    else video.pause();
     video.loop = playback.loop;
-  }, [playback, playbackRevision, url]);
+    if (playback.state === "playing") startPlayback(video);
+    else {
+      video.muted = !audio || !audioUnlockedInWindow;
+      video.pause();
+    }
+  }, [audio, playback, playbackRevision, startPlayback, url]);
 
   // Vigilancia de deriva mientras reproduce.
   useEffect(() => {
@@ -68,7 +125,7 @@ export function MediaSlideSurface({
   return (
     <div
       data-testid={testId}
-      className={cn("grid h-full w-full place-items-center bg-output-safe", className)}
+      className={cn("relative grid h-full w-full place-items-center bg-output-safe", className)}
     >
       {url === null ? (
         <span className="text-sm text-muted-foreground">
@@ -91,6 +148,13 @@ export function MediaSlideSurface({
           preload="auto"
         />
       )}
+      {audio && needsActivation && kind === "video" ? (
+        <div className="absolute inset-0 grid place-items-center bg-background/60">
+          <Button size="lg" onClick={activateOutput} onDoubleClick={(e) => e.stopPropagation()}>
+            Activar salida
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
