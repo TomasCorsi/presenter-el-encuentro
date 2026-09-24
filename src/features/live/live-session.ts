@@ -62,7 +62,15 @@ export function buildAppendedItem(
   if (!rundownItem) return null;
 
   const items = projectToPresentation({ ...project, rundown: [rundownItem] }, songs, media);
-  return resolvePresentationStyles(items, presets)[0] ?? null;
+  return resolvePresentationStyles(items, presets, media)[0] ?? null;
+}
+
+/** Resuelve nuevamente un unico item ya persistido, sin tocar el resto. */
+export function buildReplacementItem(
+  sources: LiveSessionSources,
+  rundownItemId: string,
+): PresentationItem | null {
+  return buildAppendedItem(sources, rundownItemId);
 }
 
 export interface AppendToLiveSessionInput extends LiveSessionSources {
@@ -104,6 +112,26 @@ export function removeFromLiveSession(
     snapshot: {
       ...session.snapshot,
       items: session.snapshot.items.filter((item) => item.id !== itemId),
+      signature: presentationSignature(project, songs, presets, media),
+    },
+    staleExternal: session.staleExternal || wasOutdated,
+  };
+}
+
+export interface ReplaceInLiveSessionInput extends LiveSessionSources {
+  item: PresentationItem;
+  wasOutdated: boolean;
+}
+
+/** Adopta un cambio local de apariencia reemplazando solo su item congelado. */
+export function replaceInLiveSession(
+  session: LiveSession,
+  { project, songs, presets, media, item, wasOutdated }: ReplaceInLiveSessionInput,
+): LiveSession {
+  return {
+    snapshot: {
+      ...session.snapshot,
+      items: session.snapshot.items.map((current) => (current.id === item.id ? item : current)),
       signature: presentationSignature(project, songs, presets, media),
     },
     staleExternal: session.staleExternal || wasOutdated,

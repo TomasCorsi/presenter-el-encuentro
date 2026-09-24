@@ -6,6 +6,7 @@ import {
   toOutputSnapshot,
   type OutputMessage,
   type OutputSnapshot,
+  type BackgroundTransition,
 } from "@/domain/output/output-snapshot";
 import type { OutputTransport } from "@/services/output-sync/output-transport";
 
@@ -27,12 +28,19 @@ export function createOutputPublisher(
   sessionId: string,
   /** Estado de reproducción de video vigente en Live (si hay uno al aire). */
   getPlayback: () => VideoPlaybackState | null = () => null,
+  getBackgroundTransition: () => BackgroundTransition = () => "cut",
 ): OutputPublisher {
   let sequence = 0;
   let lastPublished: OutputSnapshot | null = null;
 
   function publish(type: "snapshot" | "update", output: ProgramOutput): void {
-    const snapshot = toOutputSnapshot(output, sessionId, sequence++, getPlayback());
+    const snapshot = toOutputSnapshot(
+      output,
+      sessionId,
+      sequence++,
+      getPlayback(),
+      getBackgroundTransition(),
+    );
     lastPublished = snapshot;
     const message: OutputMessage = { type, snapshot };
     transport.publish(message);
@@ -52,7 +60,13 @@ export function createOutputPublisher(
   return {
     sync(output) {
       currentOutput = output;
-      const snapshot = toOutputSnapshot(output, sessionId, sequence, getPlayback());
+      const snapshot = toOutputSnapshot(
+        output,
+        sessionId,
+        sequence,
+        getPlayback(),
+        getBackgroundTransition(),
+      );
       if (lastPublished && snapshotsEqual(lastPublished, snapshot)) return;
       publish("update", output);
     },

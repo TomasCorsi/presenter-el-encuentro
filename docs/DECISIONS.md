@@ -418,7 +418,6 @@ Cerrada en la Fase 6: `getCurrentItem()` / `getCurrentSlide()` pasaron a
 `getPreviewItem()` / `getPreviewSlide()` y se añadieron los selectores de
 Program (ADR-022). `logo` sigue fuera hasta Presets/Media.
 
-
 ---
 
 ## ADR-018 — Rundown embebido en Project
@@ -837,7 +836,6 @@ permanece.
 No existen items temporales: lo que se ve en el show está siempre en el
 Project.
 
-
 ## ADR-045 — La salida sobrevive a quitar el item que está al aire
 
 **Contexto.** En Live se puede quitar una aparición del rundown durante la
@@ -910,6 +908,15 @@ Los archivos de Media (imágenes y videos) se referencian por `mediaId` desde Ru
 
 `MediaRepository` solo metadata (IndexedDB), `MediaFileStorage` solo bytes (OPFS con streaming `file.stream().pipeTo()` y archivo temporal `.part`, o IndexedDB Blob limitado a imágenes), `MediaService` coordina con importación compensable: bytes primero, metadata después; si la metadata falla, se borran los bytes. Los videos sin OPFS se rechazan con mensaje claro. `navigator.storage.persist()` se solicita una vez y nunca bloquea; la persistencia no es absoluta y se documenta.
 
+**Aclaración de cierre de Fase 10.** Antes de solicitar se consulta
+`navigator.storage.persisted()`. Si todavía no está concedido se intenta una
+sola vez por dispositivo; denegación, API ausente o error no retrasan ni
+cancelan la importación. La UI informa el estado sin prometer permanencia.
+
 ## ADR-050 — VideoPlaybackState autoritativo y sincronizable
 
-`VideoPlaybackState { state, offsetSeconds, changedAtEpochMs, loop, revision }` vive en Live y se publica a Output con cada snapshot. Output aplica play/pause/offset con tolerancia de deriva de 0,35 s y vigilancia cada 1 s; el video corre `muted` y sin controles nativos.
+`VideoPlaybackState { state, offsetSeconds, changedAtEpochMs, loop, revision }` vive en Live y se publica a Output con cada snapshot. Output aplica play/pause/offset con tolerancia de deriva de 0,35 s y vigilancia cada 1 s; no hay controles nativos.
+
+**Aclaración de cierre de Fase 10.** El monitor Program de Live corre muted.
+Output intenta audio y, si el autoplay lo bloquea, continúa muted hasta que el
+operador use «Activar salida». Esta aclaración no cambia el protocolo.

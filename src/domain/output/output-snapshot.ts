@@ -1,5 +1,8 @@
 import type { VideoPlaybackState } from "@/domain/output/video-playback";
-import type { ProgramMode } from "@/domain/presentation/presentation";
+import type {
+  ProgramMode,
+  ResolvedSlideBackground,
+} from "@/domain/presentation/presentation";
 import { DEFAULT_PRESET_STYLE, type PresetStyle } from "@/domain/presets/preset";
 import { normalizePresetStyle, presetStylesEqual } from "@/domain/presets/preset-rules";
 import type { ProgramOutput } from "@/domain/presentation/presentation-selectors";
@@ -31,15 +34,19 @@ export interface OutputSlide {
   /** Línea secundaria proyectable (referencia bíblica, atribución…). */
   secondaryText?: string | undefined;
   style: PresetStyle;
+  background: ResolvedSlideBackground;
   /** Solo slides de video: estado de reproducción autoritativo de Live. */
   playback?: VideoPlaybackState | undefined;
 }
+
+export type BackgroundTransition = "cut" | "fade";
 
 /** Estado completo que Output necesita para pintar Program. */
 export interface OutputSnapshot {
   sessionId: string;
   sequence: number;
   mode: ProgramMode;
+  backgroundTransition: BackgroundTransition;
   /** `null` en `clear`, `black` o Program vacío. */
   slide: OutputSlide | null;
 }
@@ -65,12 +72,14 @@ export function toOutputSnapshot(
   sessionId: string,
   sequence: number,
   playback: VideoPlaybackState | null = null,
+  backgroundTransition: BackgroundTransition = "cut",
 ): OutputSnapshot {
   const slide = output.slide;
   return {
     sessionId,
     sequence,
     mode: output.mode,
+    backgroundTransition,
     slide: slide
       ? {
           id: slide.id,
@@ -82,11 +91,25 @@ export function toOutputSnapshot(
           // El publisher NO resuelve Presets: solo copia el estilo ya
           // congelado en el runtime, con el Default como red de seguridad.
           style: slide.style ?? DEFAULT_PRESET_STYLE,
+          background:
+            slide.background ?? {
+              type: "solid",
+              color: (slide.style ?? DEFAULT_PRESET_STYLE).background.color,
+            },
           playback:
             slide.content.kind === "video" && playback ? { ...playback } : undefined,
         }
       : null,
   };
+}
+
+function backgroundsEqual(a: ResolvedSlideBackground, b: ResolvedSlideBackground): boolean {
+  if (a.type !== b.type) return false;
+  if (a.type === "solid" && b.type === "solid") return a.color === b.color;
+  if (a.type === "solid" || b.type === "solid") return false;
+  return (
+    a.mediaId === b.mediaId && a.kind === b.kind && a.fallbackColor === b.fallbackColor
+  );
 }
 
 function linesEqual(a: readonly string[], b: readonly string[]): boolean {
@@ -107,14 +130,42 @@ function contentsEqual(a: OutputSlideContent, b: OutputSlideContent): boolean {
  */
 export function snapshotsEqual(a: OutputSnapshot, b: OutputSnapshot): boolean {
   if (a.mode !== b.mode) return false;
+  if (a.backgroundTransition !== b.backgroundTransition) return false;
   if (a.slide === null || b.slide === null) return a.slide === b.slide;
   return (
     a.slide.id === b.slide.id &&
     contentsEqual(a.slide.content, b.slide.content) &&
     (a.slide.secondaryText ?? null) === (b.slide.secondaryText ?? null) &&
     presetStylesEqual(a.slide.style, b.slide.style) &&
+    backgroundsEqual(a.slide.background, b.slide.background) &&
     (a.slide.playback?.revision ?? null) === (b.slide.playback?.revision ?? null)
   );
+}
+
+function parseBackground(
+  value: unknown,
+  fallbackColor: string,
+): ResolvedSlideBackground {
+  if (!value || typeof value !== "object") return { type: "solid", color: fallbackColor };
+  const candidate = value as Record<string, unknown>;
+  if (candidate["type"] === "solid" && typeof candidate["color"] === "string") {
+    return { type: "solid", color: candidate["color"] };
+  }
+  if (
+    candidate["type"] === "media" &&
+    typeof candidate["mediaId"] === "string" &&
+    candidate["mediaId"] !== "" &&
+    (candidate["kind"] === "image" || candidate["kind"] === "video") &&
+    typeof candidate["fallbackColor"] === "string"
+  ) {
+    return {
+      type: "media",
+      mediaId: candidate["mediaId"],
+      kind: candidate["kind"],
+      fallbackColor: candidate["fallbackColor"],
+    };
+  }
+  return { type: "solid", color: fallbackColor };
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -153,6 +204,7 @@ function parseSnapshot(value: unknown): OutputSnapshot | null {
   }
   const mode = candidate["mode"];
   if (mode !== "content" && mode !== "clear" && mode !== "black") return null;
+  const backgroundTransition = candidate["backgroundTransition"] === "fade" ? "fade" : "cut";
 
   const slide = candidate["slide"];
   if (slide !== null) {
@@ -166,10 +218,14 @@ function parseSnapshot(value: unknown): OutputSnapshot | null {
     sessionId: candidate["sessionId"],
     sequence: candidate["sequence"],
     mode,
+    backgroundTransition,
     slide:
       slide === null
         ? null
-        : {
+        : (() => {
+            const rawSlide = slide as Record<string, unknown>;
+            const style = normalizePresetStyle(rawSlide["style"]);
+            return {
             id: (slide as { id: string }).id,
             content: parseContent(
               (slide as { content?: unknown }).content,
@@ -182,11 +238,13 @@ function parseSnapshot(value: unknown): OutputSnapshot | null {
                 : undefined,
             // Un estilo ausente o inválido cae al Default campo a campo: la
             // salida nunca queda indefinida.
-            style: normalizePresetStyle((slide as { style?: unknown }).style),
+            style,
+            background: parseBackground(rawSlide["background"], style.background.color),
             playback: isVideoPlayback((slide as { playback?: unknown }).playback)
               ? (slide as { playback: VideoPlaybackState }).playback
               : undefined,
-          },
+            };
+          })(),
   };
 }
 

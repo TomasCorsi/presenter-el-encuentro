@@ -1,8 +1,8 @@
 import type { CreateProjectInput, Project, ProjectFactoryDependencies } from "@/domain/projects/project";
 import { createProject, duplicateProject, renameProject, sortProjectsByUpdatedAt } from "@/domain/projects/project-rules";
-import type { RundownItem } from "@/domain/projects/rundown";
+import type { RundownBackground, RundownItem } from "@/domain/projects/rundown";
 import type { BiblePassage } from "@/domain/bible/bible";
-import { addMediaToRundown, addPassageToRundown, addSongToRundown, moveRundownItem, removeRundownItem, setRundownItemPreset } from "@/domain/projects/rundown-rules";
+import { addMediaToRundown, addPassageToRundown, addSongToRundown, moveRundownItem, removeRundownItem, setRundownItemBackground, setRundownItemPreset } from "@/domain/projects/rundown-rules";
 import type { ProjectRepository } from "@/services/projects/project-repository";
 
 export interface ProjectsSnapshot {
@@ -86,6 +86,16 @@ export class ProjectService {
   ): Promise<Project> {
     return this.saveRundown(projectId, (rundown) =>
       setRundownItemPreset(rundown, itemId, presetId),
+    );
+  }
+
+  async setRundownItemBackground(
+    projectId: string,
+    itemId: string,
+    background: RundownBackground | undefined,
+  ): Promise<Project> {
+    return this.saveRundown(projectId, (rundown) =>
+      setRundownItemBackground(rundown, itemId, background),
     );
   }
 

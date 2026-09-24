@@ -1,7 +1,7 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { describe, expect, it } from "bun:test";
 
-GlobalRegistrator.register();
+if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const React = await import("react");
@@ -29,7 +29,12 @@ function instrumentStorage() {
     if (key === SONGS_KEY) reads.songs += 1;
     return original.call(this, key);
   };
-  return { reads, restore: () => { proto.getItem = original; } };
+  return {
+    reads,
+    restore: () => {
+      proto.getItem = original;
+    },
+  };
 }
 
 /** Deja correr efectos y promesas pendientes del provider. */

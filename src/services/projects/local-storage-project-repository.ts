@@ -41,10 +41,20 @@ function isValidPayload(value: unknown): boolean {
   return payload["kind"] === "bible" && isBiblePassage(payload["passage"]);
 }
 
+function parseBackground(value: unknown): RundownItem["background"] {
+  if (!value || typeof value !== "object") return undefined;
+  const candidate = value as Record<string, unknown>;
+  return candidate["type"] === "media" &&
+    typeof candidate["mediaId"] === "string" &&
+    candidate["mediaId"] !== ""
+    ? { type: "media", mediaId: candidate["mediaId"] }
+    : undefined;
+}
+
 function isRundownItem(value: unknown): value is RundownItem {
   if (!value || typeof value !== "object") return false;
   const item = value as Record<string, unknown>;
-  return (
+  const valid = (
     typeof item["id"] === "string" &&
     typeof item["sourceId"] === "string" &&
     typeof item["title"] === "string" &&
@@ -53,6 +63,13 @@ function isRundownItem(value: unknown): value is RundownItem {
     isValidPayload(item["payload"]) &&
     RUNDOWN_ITEM_TYPES.includes(item["type"] as RundownItemType)
   );
+  if (!valid) return false;
+  if (item["type"] !== "song" && item["type"] !== "bible") {
+    delete item["background"];
+  } else if (item["background"] !== undefined) {
+    item["background"] = parseBackground(item["background"]);
+  }
+  return true;
 }
 
 /**
@@ -123,8 +140,12 @@ function cloneProject(project: Project): Project {
     ...project,
     rundown: project.rundown.map((item) =>
       item.payload?.kind === "bible"
-        ? { ...item, payload: { kind: "bible" as const, passage: clonePassage(item.payload.passage) } }
-        : { ...item },
+        ? {
+            ...item,
+            ...(item.background ? { background: { ...item.background } } : {}),
+            payload: { kind: "bible" as const, passage: clonePassage(item.payload.passage) },
+          }
+        : { ...item, ...(item.background ? { background: { ...item.background } } : {}) },
     ),
   };
 }

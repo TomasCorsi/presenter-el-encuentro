@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 
 import type { BiblePassage } from "@/domain/bible/bible";
 import type { Project } from "@/domain/projects/project";
+import type { RundownBackground } from "@/domain/projects/rundown";
 import { ProjectService } from "@/features/projects/project-service";
 import { createLocalStorageProjectRepository } from "@/services/projects/local-storage-project-repository";
 
@@ -29,6 +30,11 @@ interface ProjectsContextValue extends ProjectsState {
   removeRundownItem(projectId: string, itemId: string): Promise<Project>;
   moveRundownItem(projectId: string, itemId: string, direction: "up" | "down"): Promise<void>;
   setRundownItemPreset(projectId: string, itemId: string, presetId: string | undefined): Promise<void>;
+  setRundownItemBackground(
+    projectId: string,
+    itemId: string,
+    background: RundownBackground | undefined,
+  ): Promise<Project>;
   clearError(): void;
 }
 
@@ -147,6 +153,10 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     setRundownItemPreset: async (projectId, itemId, presetId) => {
       if (!service) throw new Error("El almacenamiento local no está disponible.");
       await run(() => service.setRundownItemPreset(projectId, itemId, presetId));
+    },
+    setRundownItemBackground: async (projectId, itemId, background) => {
+      if (!service) throw new Error("El almacenamiento local no estÃ¡ disponible.");
+      return run(() => service.setRundownItemBackground(projectId, itemId, background));
     },
     clearError: () => dispatch({ type: "clearError" }),
   }), [run, service, state]);

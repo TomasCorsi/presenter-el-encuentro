@@ -11,36 +11,69 @@ const PERSIST_REQUESTED_KEY = "broadcast-control.persist-requested";
 
 export type StoragePersistenceStatus = "unsupported" | "not-persistent" | "persistent";
 
-export async function storagePersistenceStatus(): Promise<StoragePersistenceStatus> {
-  if (
-    typeof navigator === "undefined" ||
-    !navigator.storage ||
-    typeof navigator.storage.persisted !== "function"
-  ) {
+export interface StoragePersistenceDependencies {
+  storage?: Pick<Storage, "getItem" | "setItem"> | null;
+  manager?: Pick<StorageManager, "persisted" | "persist"> | null;
+}
+
+function browserStorage(): Pick<Storage, "getItem" | "setItem"> | null {
+  return typeof localStorage === "undefined" ? null : localStorage;
+}
+
+function browserStorageManager(): Pick<StorageManager, "persisted" | "persist"> | null {
+  if (typeof navigator === "undefined" || !navigator.storage) return null;
+  return navigator.storage;
+}
+
+export async function storagePersistenceStatus(
+  manager: Pick<StorageManager, "persisted"> | null = browserStorageManager(),
+): Promise<StoragePersistenceStatus> {
+  if (!manager || typeof manager.persisted !== "function") {
     return "unsupported";
   }
   try {
-    return (await navigator.storage.persisted()) ? "persistent" : "not-persistent";
+    return (await manager.persisted()) ? "persistent" : "not-persistent";
   } catch {
     return "unsupported";
   }
 }
 
-/** Solicita persistencia una sola vez por dispositivo. Nunca lanza. */
-export async function requestStoragePersistenceOnce(): Promise<void> {
-  if (typeof localStorage === "undefined") return;
-  if (localStorage.getItem(PERSIST_REQUESTED_KEY)) return;
-  localStorage.setItem(PERSIST_REQUESTED_KEY, "1");
+/**
+ * Consulta el estado y, si hace falta, solicita persistencia una sola vez por
+ * dispositivo. Nunca lanza y devuelve el estado observado tras el intento.
+ */
+export async function requestStoragePersistenceOnce(
+  dependencies: StoragePersistenceDependencies = {},
+): Promise<StoragePersistenceStatus> {
+  const storage = dependencies.storage === undefined ? browserStorage() : dependencies.storage;
+  const manager =
+    dependencies.manager === undefined ? browserStorageManager() : dependencies.manager;
+
+  if (
+    !storage ||
+    !manager ||
+    typeof manager.persisted !== "function" ||
+    typeof manager.persist !== "function"
+  ) {
+    return "unsupported";
+  }
+
   try {
-    if (
-      typeof navigator !== "undefined" &&
-      navigator.storage &&
-      typeof navigator.storage.persist === "function"
-    ) {
-      await navigator.storage.persist();
-    }
+    if (await manager.persisted()) return "persistent";
   } catch {
-    // El navegador puede rechazarlo: la importación continúa igual.
+    return "unsupported";
+  }
+
+  if (storage.getItem(PERSIST_REQUESTED_KEY)) return "not-persistent";
+
+  // Se registra antes del await para que dos importaciones simultáneas no
+  // disparen dos solicitudes.
+  storage.setItem(PERSIST_REQUESTED_KEY, "1");
+  try {
+    return (await manager.persist()) ? "persistent" : "not-persistent";
+  } catch {
+    // El navegador puede rechazar la solicitud: la importación continúa igual.
+    return "not-persistent";
   }
 }
 

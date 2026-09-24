@@ -1,4 +1,5 @@
 import type { PresentationItem, PresentationState, Slide } from "./presentation";
+import { isMediaRemovalBlocked } from "./presentation-program";
 import { EMPTY_PRESENTATION_RUNTIME, buildPresentationRuntime } from "./presentation-runtime";
 
 /**
@@ -96,8 +97,8 @@ export function reloadPresentation(
   items: PresentationItem[],
 ): PresentationState {
   const runtime = buildPresentationRuntime(items);
-  const programSurvives = state.programSlideId !== null
-    && runtime.slideLocationById.has(state.programSlideId);
+  const programSurvives =
+    state.programSlideId !== null && runtime.slideLocationById.has(state.programSlideId);
 
   const base: PresentationState = {
     runtime,
@@ -136,6 +137,43 @@ export function appendPresentationItem(
 }
 
 /**
+ * Reemplaza UN item sin recargar el show. Conserva toda la posicion operativa
+ * porque los ids de item y slides deben permanecer estables.
+ */
+export function replacePresentationItem(
+  state: PresentationState,
+  item: PresentationItem,
+): PresentationState {
+  const index = state.runtime.itemIndexById.get(item.id);
+  if (index === undefined) return state;
+
+  const current = state.runtime.items[index];
+  if (!current) return state;
+  const replacement = { ...item, order: current.order };
+  const items = state.runtime.items.map((entry, position) =>
+    position === index ? replacement : entry,
+  );
+  const runtime = buildPresentationRuntime(items);
+
+  const previewSlideId =
+    state.previewSlideId && runtime.slideLocationById.has(state.previewSlideId)
+      ? state.previewSlideId
+      : replacement.slides[0]?.id ?? null;
+  const programSlideId =
+    state.programSlideId && runtime.slideLocationById.has(state.programSlideId)
+      ? state.programSlideId
+      : state.programSlideId;
+
+  return {
+    ...state,
+    runtime,
+    previewItemId: state.previewItemId === item.id ? item.id : state.previewItemId,
+    previewSlideId: state.previewItemId === item.id ? previewSlideId : state.previewSlideId,
+    programSlideId,
+  };
+}
+
+/**
  * Baja INCREMENTAL de un item (ADR-045).
  *
  * Quita el item del runtime sin reconstruir el contenido de los demás.
@@ -151,6 +189,11 @@ export function removePresentationItem(
   state: PresentationState,
   itemId: string,
 ): PresentationState {
+  // Defensa de dominio: Media al aire nunca se separa del runtime ni usa
+  // `detachedProgramSlide`. Las UIs consultan la misma regla antes de
+  // persistir, pero este guard protege también a futuros consumidores.
+  if (isMediaRemovalBlocked(state, itemId)) return state;
+
   const index = state.runtime.itemIndexById.get(itemId);
   if (index === undefined) return state;
 
@@ -187,6 +230,7 @@ function cloneSlide(slide: Slide): Slide {
         ? { kind: "text" as const, lines: [...slide.content.lines] }
         : { ...slide.content },
     ...(slide.style ? { style: { ...slide.style } } : {}),
+    ...(slide.background ? { background: { ...slide.background } } : {}),
   };
 }
 

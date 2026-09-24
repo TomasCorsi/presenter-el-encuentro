@@ -1,4 +1,4 @@
-import { ListPlus, Radio } from "lucide-react";
+import { Eye, ListPlus, Radio } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -10,6 +10,7 @@ export interface LibraryResultRowProps {
   busy: boolean;
   onAdd(): void;
   onGoLive(): void;
+  onPreview?: (() => void) | undefined;
 }
 
 /**
@@ -23,6 +24,7 @@ export function LibraryResultRow({
   busy,
   onAdd,
   onGoLive,
+  onPreview,
 }: LibraryResultRowProps) {
   return (
     <li className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
@@ -32,6 +34,12 @@ export function LibraryResultRow({
           <span className="block truncate text-xs text-muted-foreground">{subtitle}</span>
         ) : null}
       </span>
+
+      {onPreview ? (
+        <Button variant="ghost" size="icon" onClick={onPreview} aria-label={`Preview de ${title}`}>
+          <Eye />
+        </Button>
+      ) : null}
 
       <Button
         variant="outline"

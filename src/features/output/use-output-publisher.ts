@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import type { VideoPlaybackState } from "@/domain/output/video-playback";
+import type { BackgroundTransition } from "@/domain/output/output-snapshot";
 import { getProgramOutput } from "@/domain/presentation/presentation-selectors";
 import { usePresentationStore } from "@/features/presentation/presentation-context";
 import { createOutputPublisher, type OutputPublisher } from "@/services/output-sync/output-publisher";
@@ -15,10 +16,15 @@ import { createBroadcastTransport } from "@/services/output-sync/output-transpor
  * snapshot y cualquier cambio suyo (revisión nueva) fuerza una publicación,
  * aunque no pase por el store.
  */
-export function useOutputPublisher(playback: VideoPlaybackState | null = null): void {
+export function useOutputPublisher(
+  playback: VideoPlaybackState | null = null,
+  backgroundTransition: BackgroundTransition = "cut",
+): void {
   const store = usePresentationStore();
   const playbackRef = useRef(playback);
   playbackRef.current = playback;
+  const transitionRef = useRef(backgroundTransition);
+  transitionRef.current = backgroundTransition;
   const publisherRef = useRef<OutputPublisher | null>(null);
 
   useEffect(() => {
@@ -27,6 +33,7 @@ export function useOutputPublisher(playback: VideoPlaybackState | null = null): 
       createBroadcastTransport(),
       sessionId,
       () => playbackRef.current,
+      () => transitionRef.current,
     );
     publisherRef.current = publisher;
 
@@ -47,5 +54,5 @@ export function useOutputPublisher(playback: VideoPlaybackState | null = null): 
   // Un cambio de reproducción no pasa por el store: publica por su cuenta.
   useEffect(() => {
     publisherRef.current?.sync(getProgramOutput(store.getState()));
-  }, [store, playback]);
+  }, [store, playback, backgroundTransition]);
 }

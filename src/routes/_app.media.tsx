@@ -1,5 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, CloudUpload, Film, HardDrive, Image as ImageIcon, Loader2, Trash2, Upload, X } from "lucide-react";
+import {
+  Check,
+  CloudUpload,
+  Film,
+  HardDrive,
+  Image as ImageIcon,
+  Loader2,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { toast } from "sonner";
 
@@ -11,6 +21,7 @@ import { MEDIA_ACCEPT_ATTRIBUTE, type MediaAsset } from "@/domain/media/media";
 import { formatMediaSize } from "@/domain/media/media-rules";
 import { useMedia, useMediaUrl } from "@/features/media/media-context";
 import { MediaInUseError } from "@/features/media/media-service";
+import { MediaPreviewDialog } from "@/features/media/components/media-preview-dialog";
 import { cn } from "@/lib/utils";
 
 const TITLE = "Media — Plataforma de presentación en vivo";
@@ -32,13 +43,14 @@ export const Route = createFileRoute("/_app/media")({
 });
 
 function MediaPage() {
-  const { service, storageKind, assets, isLoading, refresh } = useMedia();
+  const { service, storageKind, persistenceStatus, assets, isLoading, refresh } = useMedia();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   // El tipo de almacenamiento depende del navegador: solo tras montar (SSR no
   // tiene OPFS/IndexedDB y mostraría un texto distinto).
   const [mounted, setMounted] = useState(false);
+  const [preview, setPreview] = useState<MediaAsset | null>(null);
   useEffect(() => setMounted(true), []);
 
   const videoImportable = service.canImport({ mimeType: "video/mp4" });
@@ -104,7 +116,10 @@ function MediaPage() {
         role="button"
         tabIndex={0}
         aria-label="Soltar archivos para importar"
-        onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+        onDragOver={(event) => {
+          event.preventDefault();
+          setDragging(true);
+        }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         onClick={() => inputRef.current?.click()}
@@ -118,15 +133,26 @@ function MediaPage() {
         <CloudUpload className="h-6 w-6 text-muted-foreground" />
         <p className="text-sm font-medium">Arrastra archivos o haz clic para importar</p>
         <p className="text-xs text-muted-foreground">PNG · JPEG · WEBP · MP4 · WEBM</p>
+        <p className="text-[11px] text-muted-foreground">
+          MP4 es un contenedor: el códec interno también debe ser compatible con el navegador.
+        </p>
       </div>
 
       {/* Estado de almacenamiento */}
       <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
         <HardDrive className="h-3.5 w-3.5" />
         {mounted
-          ? storageKind === "opfs"
-            ? "Almacenamiento OPFS: imágenes y videos, persistente mientras el navegador lo permita."
-            : "Almacenamiento limitado del navegador: solo imágenes. La persistencia no está garantizada."
+          ? persistenceStatus === null
+            ? "Comprobando persistencia del almacenamiento…"
+            : storageKind === "opfs"
+              ? persistenceStatus === "persistent"
+                ? "Almacenamiento OPFS persistente concedido; el navegador conserva la última palabra."
+                : persistenceStatus === "not-persistent"
+                  ? "Almacenamiento OPFS local no persistente; el navegador puede liberarlo bajo presión."
+                  : "Almacenamiento OPFS disponible; la persistencia reforzada no está disponible."
+              : persistenceStatus === "persistent"
+                ? "Almacenamiento IndexedDB persistente: solo imágenes en este navegador."
+                : "Almacenamiento limitado del navegador: solo imágenes. La persistencia no está garantizada."
           : "Comprobando el almacenamiento del navegador…"}
       </p>
 
@@ -145,7 +171,12 @@ function MediaPage() {
         ) : (
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {assets.map((asset) => (
-              <MediaCard key={asset.id} asset={asset} onDelete={() => void onDelete(asset)} />
+              <MediaCard
+                key={asset.id}
+                asset={asset}
+                onPreview={() => setPreview(asset)}
+                onDelete={() => void onDelete(asset)}
+              />
             ))}
           </ul>
         )}
@@ -157,23 +188,50 @@ function MediaPage() {
           Este navegador no ofrece OPFS: los videos (MP4/WEBM) no se pueden importar aquí.
         </p>
       ) : null}
+      <MediaPreviewDialog
+        asset={preview}
+        open={preview !== null}
+        onOpenChange={(open) => !open && setPreview(null)}
+      />
     </Page>
   );
 }
 
-function MediaCard({ asset, onDelete }: { asset: MediaAsset; onDelete: () => void }) {
+function MediaCard({
+  asset,
+  onPreview,
+  onDelete,
+}: {
+  asset: MediaAsset;
+  onPreview: () => void;
+  onDelete: () => void;
+}) {
   const url = useMediaUrl(asset.id);
   const isVideo = asset.kind === "video";
 
   return (
     <li className="group overflow-hidden rounded-lg border border-border bg-card">
-      <div className="relative aspect-video bg-muted">
+      <div
+        role="button"
+        tabIndex={0}
+        className="relative block aspect-video w-full cursor-pointer bg-muted text-left"
+        onClick={onPreview}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") onPreview();
+        }}
+        aria-label={`Abrir preview de ${asset.name}`}
+      >
         {isVideo && url ? (
           <video src={url} muted preload="metadata" className="h-full w-full object-cover" />
         ) : !isVideo && url ? (
           <img src={url} alt={asset.name} className="h-full w-full object-cover" loading="lazy" />
         ) : asset.thumbnailDataUrl ? (
-          <img src={asset.thumbnailDataUrl} alt={asset.name} className="h-full w-full object-cover" loading="lazy" />
+          <img
+            src={asset.thumbnailDataUrl}
+            alt={asset.name}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
         ) : (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             {isVideo ? <Film className="h-6 w-6" /> : <ImageIcon className="h-6 w-6" />}
@@ -184,7 +242,10 @@ function MediaCard({ asset, onDelete }: { asset: MediaAsset; onDelete: () => voi
           variant="secondary"
           size="icon"
           aria-label={`Eliminar ${asset.name}`}
-          onClick={onDelete}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete();
+          }}
           className="absolute right-1.5 top-1.5 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -198,7 +259,9 @@ function MediaCard({ asset, onDelete }: { asset: MediaAsset; onDelete: () => voi
       </div>
       <div className="flex items-center gap-2 px-2.5 py-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-medium" title={asset.name}>{asset.name}</p>
+          <p className="truncate text-xs font-medium" title={asset.name}>
+            {asset.name}
+          </p>
           <p className="text-[11px] text-muted-foreground">
             {formatMediaSize(asset.sizeBytes)}
             {asset.width && asset.height ? ` · ${asset.width}×${asset.height}` : ""}

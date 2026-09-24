@@ -29,6 +29,8 @@ export class MediaService {
     private readonly newId: () => string = () => crypto.randomUUID(),
     /** Lectura de metadata visual (no bloqueante). Inyectable para tests. */
     private readonly readInfo: typeof readVisualMediaInfo = readVisualMediaInfo,
+    /** Preparación best-effort del storage; jamás debe bloquear importación. */
+    private readonly prepareStorage: () => Promise<unknown> = async () => undefined,
   ) {}
 
   async list(): Promise<MediaAsset[]> {
@@ -47,6 +49,10 @@ export class MediaService {
   }
 
   async importFiles(files: readonly File[]): Promise<{ imported: MediaAsset[]; errors: string[] }> {
+    // Se inicia dentro del gesto de importación, pero no se espera: una
+    // denegación de persistencia nunca retrasa ni cancela el guardado.
+    void this.prepareStorage().catch(() => undefined);
+
     const imported: MediaAsset[] = [];
     const errors: string[] = [];
 
@@ -89,7 +95,16 @@ export class MediaService {
     }
 
     // 2. Metadata visual (no bloqueante).
-    const info = await this.readInfo(file, kind ?? "image");
+    const info = await this.readInfo(file, kind ?? "image").catch(() => null);
+
+    // MIME/container no garantiza que el navegador pueda decodificar el
+    // códec real. Un video ilegible no entra a la biblioteca y no deja bytes.
+    if (kind === "video" && info === null) {
+      await this.fileStorage.delete(id).catch(() => undefined);
+      return new Error(
+        `No se pudo leer «${file.name}». El contenedor MP4/WEBM está admitido, pero el códec debe ser compatible con este navegador.`,
+      );
+    }
 
     // 3. Metadata después; si falla, compensación: borrar los bytes.
     const timestamp = this.now().toISOString();

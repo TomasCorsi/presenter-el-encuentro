@@ -16,9 +16,9 @@ import type { PresentationState, ProgramMode } from "./presentation";
 export function take(state: PresentationState): PresentationState {
   if (!state.previewSlideId) return state;
   if (
-    state.programSlideId === state.previewSlideId
-    && state.programMode === "content"
-    && state.detachedProgramSlide === null
+    state.programSlideId === state.previewSlideId &&
+    state.programMode === "content" &&
+    state.detachedProgramSlide === null
   ) {
     return state;
   }
@@ -48,6 +48,14 @@ export function toggleProgramMode(
 
 /** Mensaje único cuando se intenta quitar un Media que está al aire. */
 export const MEDIA_ON_AIR_REMOVAL_MESSAGE = "Cambia primero el contenido que está al aire.";
+
+/**
+ * Motivo compartido por dominio y UIs para impedir una baja insegura.
+ * `null` significa que el item puede quitarse.
+ */
+export function mediaRemovalBlockReason(state: PresentationState, itemId: string): string | null {
+  return isMediaRemovalBlocked(state, itemId) ? MEDIA_ON_AIR_REMOVAL_MESSAGE : null;
+}
 
 /**
  * Regla de Fase 10: un item Media (image/video) en Program NO puede quitarse

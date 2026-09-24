@@ -4,11 +4,11 @@
 
 ```ts
 interface Workspace {
-  id: string
-  name: string
-  slug: string
-  createdAt: string
-  updatedAt: string
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: string;
+  updatedAt: string;
 }
 ```
 
@@ -16,13 +16,13 @@ interface Workspace {
 
 ```ts
 interface Project {
-  id: string
-  workspaceId: string
-  name: string
-  eventDate?: string
-  rundown: RundownItem[]
-  createdAt: string
-  updatedAt: string
+  id: string;
+  workspaceId: string;
+  name: string;
+  eventDate?: string;
+  rundown: RundownItem[];
+  createdAt: string;
+  updatedAt: string;
 }
 ```
 
@@ -31,15 +31,14 @@ interface Project {
 El rundown vive embebido en el Project (ADR-018); `itemIds` fue eliminado.
 
 ```ts
-type RundownItemType =
-  | "song" | "bible" | "media" | "presentation" | "countdown" | "message"
+type RundownItemType = "song" | "bible" | "media" | "presentation" | "countdown" | "message";
 
 interface RundownItem {
-  id: string        // identidad de instancia dentro de este rundown
-  type: RundownItemType
-  sourceId: string  // identidad de origen, p. ej. song.id
-  title: string     // snapshot para referencias rotas
-  order: number     // normalizado siempre a 0..n-1
+  id: string; // identidad de instancia dentro de este rundown
+  type: RundownItemType;
+  sourceId: string; // identidad de origen, p. ej. song.id
+  title: string; // snapshot para referencias rotas
+  order: number; // normalizado siempre a 0..n-1
 }
 ```
 
@@ -57,7 +56,6 @@ capacidad de localStorage es limitada y depende del navegador y del entorno:
 un error de cuota es un error real y se propaga. IndexedDB sigue diferido a la
 Fase 11.
 
-
 ### Proyecto activo
 
 `activeProjectId: string | null` no es un campo de `Project`. En la Fase 2 es
@@ -68,22 +66,16 @@ dispositivo o si debe sincronizarse.
 ## Presentation Item
 
 ```ts
-type PresentationItemType =
-  | "song"
-  | "bible"
-  | "media"
-  | "presentation"
-  | "countdown"
-  | "message"
+type PresentationItemType = "song" | "bible" | "media" | "presentation" | "countdown" | "message";
 
 interface PresentationItem {
-  id: string
-  projectId: string
-  type: PresentationItemType
-  title: string
-  order: number
-  slideIds: string[]
-  presetId?: string
+  id: string;
+  projectId: string;
+  type: PresentationItemType;
+  title: string;
+  order: number;
+  slideIds: string[];
+  presetId?: string;
 }
 ```
 
@@ -91,11 +83,11 @@ interface PresentationItem {
 
 ```ts
 interface Slide {
-  id: string
-  itemId: string
-  order: number
-  content: SlideContent
-  notes?: string
+  id: string;
+  itemId: string;
+  order: number;
+  content: SlideContent;
+  notes?: string;
 }
 ```
 
@@ -103,13 +95,13 @@ interface Slide {
 
 ```ts
 interface Song {
-  id: string
-  workspaceId: string
-  title: string
-  author?: string
-  sections: SongSection[] // embebidas, ordenadas por `order`
-  createdAt: string
-  updatedAt: string
+  id: string;
+  workspaceId: string;
+  title: string;
+  author?: string;
+  sections: SongSection[]; // embebidas, ordenadas por `order`
+  createdAt: string;
+  updatedAt: string;
 }
 ```
 
@@ -119,21 +111,14 @@ Campos diferidos a fases posteriores (ADR-012): `tags`, `favorite`,
 ## Song Section
 
 ```ts
-type SongSectionType =
-  | "verse"
-  | "chorus"
-  | "prechorus"
-  | "bridge"
-  | "intro"
-  | "outro"
-  | "custom"
+type SongSectionType = "verse" | "chorus" | "prechorus" | "bridge" | "intro" | "outro" | "custom";
 
 interface SongSection {
-  id: string
-  type: SongSectionType
-  label: string
-  content: string
-  order: number // normalizado a 0..n-1
+  id: string;
+  type: SongSectionType;
+  label: string;
+  content: string;
+  order: number; // normalizado a 0..n-1
 }
 ```
 
@@ -146,13 +131,13 @@ crear la sección y nunca sobrescriben un label personalizado.
 
 ```ts
 interface Preset {
-  id: string
-  workspaceId: string
-  name: string
-  category: "worship" | "bible" | "sermon" | "youth" | "conference" | "lower-third" | "custom"
-  mainLayout: OutputLayout
-  stageLayout?: OutputLayout
-  streamLayout?: OutputLayout
+  id: string;
+  workspaceId: string;
+  name: string;
+  category: "worship" | "bible" | "sermon" | "youth" | "conference" | "lower-third" | "custom";
+  mainLayout: OutputLayout;
+  stageLayout?: OutputLayout;
+  streamLayout?: OutputLayout;
 }
 ```
 
@@ -160,34 +145,44 @@ interface Preset {
 
 ```ts
 interface MediaAsset {
-  id: string
-  workspaceId: string
-  name: string
-  type: "image" | "video" | "audio" | "logo"
-  mimeType: string
-  size: number
-  width?: number
-  height?: number
-  duration?: number
-  cloudUrl?: string
-  localKey?: string
-  offlineReady: boolean
+  id: string;
+  workspaceId: string;
+  name: string;
+  kind: "image" | "video";
+  mimeType: string;
+  sizeBytes: number;
+  storage: "opfs" | "indexeddb-blob" | "memory";
+  width?: number;
+  height?: number;
+  durationSeconds?: number;
+  thumbnailDataUrl?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 ```
+
+La metadata vive en IndexedDB (`broadcast-control.media`). Los bytes nunca se
+guardan en el Project: viven en OPFS o, para imágenes cuando OPFS no está
+disponible, como Blob en IndexedDB. Un `RundownItem` Media referencia el asset
+mediante `sourceId`; Live y Output resuelven una URL local por ventana.
+
+`workspaceId = "local-media"` es un placeholder local actual, sin filtrado ni
+aislamiento real. Su normalización se decidirá junto con workspaces/Supabase;
+no se migra anticipadamente en Fase 10.
 
 ## Output
 
 ```ts
-type OutputType = "main" | "stage" | "stream"
+type OutputType = "main" | "stage" | "stream";
 
 interface OutputConfig {
-  id: string
-  workspaceId: string
-  type: OutputType
-  name: string
-  width: number
-  height: number
-  enabled: boolean
+  id: string;
+  workspaceId: string;
+  type: OutputType;
+  name: string;
+  width: number;
+  height: number;
+  enabled: boolean;
 }
 ```
 
@@ -195,11 +190,11 @@ interface OutputConfig {
 
 ```ts
 interface SyncMetadata {
-  entityType: string
-  entityId: string
-  localUpdatedAt: string
-  cloudUpdatedAt?: string
-  syncStatus: "synced" | "pending" | "conflict" | "error"
+  entityType: string;
+  entityId: string;
+  localUpdatedAt: string;
+  cloudUpdatedAt?: string;
+  syncStatus: "synced" | "pending" | "conflict" | "error";
 }
 ```
 
@@ -217,21 +212,21 @@ slides no se persisten en esta fase; se derivan de la Song.
 
 ```ts
 interface Slide {
-  id: string          // `${itemId}:${sectionId}:${chunkIndex}`
-  itemId: string
-  order: number       // 0..n-1 dentro del item
-  content: { kind: "text"; lines: string[] }
-  label?: string
-  sourceSectionId?: string
+  id: string; // `${itemId}:${sectionId}:${chunkIndex}`
+  itemId: string;
+  order: number; // 0..n-1 dentro del item
+  content: { kind: "text"; lines: string[] };
+  label?: string;
+  sourceSectionId?: string;
 }
 
 interface PresentationItem {
-  id: string          // identidad de ESTA instancia en la presentación
-  type: PresentationItemType
-  title: string
-  order: number
-  slides: Slide[]
-  sourceId?: string   // identidad de la entidad original (song.id)
+  id: string; // identidad de ESTA instancia en la presentación
+  type: PresentationItemType;
+  title: string;
+  order: number;
+  slides: Slide[];
+  sourceId?: string; // identidad de la entidad original (song.id)
 }
 ```
 
@@ -243,20 +238,20 @@ varias veces en un rundown (A, B, A). `item.id` distingue cada aparición y
 
 ```ts
 interface PresentationRuntime {
-  items: readonly PresentationItem[]
-  itemIndexById: ReadonlyMap<string, number>
-  slideLocationById: ReadonlyMap<string, SlideLocation>
-  navigableSlideIds: readonly string[]
+  items: readonly PresentationItem[];
+  itemIndexById: ReadonlyMap<string, number>;
+  slideLocationById: ReadonlyMap<string, SlideLocation>;
+  navigableSlideIds: readonly string[];
 }
 
-type ProgramMode = "content" | "clear" | "black"
+type ProgramMode = "content" | "clear" | "black";
 
 interface PresentationState {
-  runtime: PresentationRuntime
-  previewItemId: string | null
-  previewSlideId: string | null
-  programSlideId: string | null   // el item de Program se deriva del runtime
-  programMode: ProgramMode
+  runtime: PresentationRuntime;
+  previewItemId: string | null;
+  previewSlideId: string | null;
+  programSlideId: string | null; // el item de Program se deriva del runtime
+  programMode: ProgramMode;
 }
 ```
 
@@ -270,16 +265,15 @@ nunca borran `programSlideId`, así que volver a `content` devuelve al aire la
 misma slide. `loadPresentation` descarta Program; `reloadPresentation` lo
 conserva mientras su id siga existiendo.
 
-
 ## Output Sync (Fase 7)
 
 `OutputSnapshot` es el único estado que viaja de Live a `/output/main`:
 
 ```ts
 interface OutputSnapshot {
-  sessionId: string;        // efímero, generado al montar Live
-  sequence: number;         // incremental por sesión
-  mode: ProgramMode;        // content | clear | black
+  sessionId: string; // efímero, generado al montar Live
+  sequence: number; // incremental por sesión
+  mode: ProgramMode; // content | clear | black
   slide: { id: string; lines: string[]; style: PresetStyle } | null;
 }
 ```
@@ -287,7 +281,6 @@ interface OutputSnapshot {
 Transmite el contenido RESUELTO de Program: Output nunca reconstruye nada
 desde Projects/Songs. Preview no se sincroniza. No hay persistencia: el
 protocolo vive solo en memoria y en el canal de broadcast.
-
 
 ## Preset (Fase 8)
 
@@ -302,16 +295,16 @@ interface Preset {
 }
 
 interface PresetStyle {
-  fontFamily: "sans" | "serif" | "mono";  // stacks locales, sin CDN
-  fontSize: number;                        // % de la ALTURA del lienzo → cqh
+  fontFamily: "sans" | "serif" | "mono"; // stacks locales, sin CDN
+  fontSize: number; // % de la ALTURA del lienzo → cqh
   fontWeight: 400 | 600 | 700;
-  lineHeight: number;                      // 1.0 .. 2.0
+  lineHeight: number; // 1.0 .. 2.0
   align: "left" | "center" | "right";
   verticalAlign: "top" | "center" | "bottom";
-  textColor: string;                       // dato del usuario, no token de UI
-  background: { type: "solid"; color: string };  // discriminado: solo solid
-  safeAreaX: number;                       // % del ancho → cqw
-  safeAreaY: number;                       // % de la altura → cqh
+  textColor: string; // dato del usuario, no token de UI
+  background: { type: "solid"; color: string }; // discriminado: solo solid
+  safeAreaX: number; // % del ancho → cqw
+  safeAreaY: number; // % de la altura → cqh
 }
 ```
 
@@ -332,24 +325,48 @@ Modelo canónico (independiente del archivo importado):
 
 ```ts
 interface BibleVersionMeta {
-  id: string; abbreviation: string; title: string;
-  language: string; publisher?: string; copyright?: string;
-  bookCount: number; installedAt: string;
+  id: string;
+  abbreviation: string;
+  title: string;
+  language: string;
+  publisher?: string;
+  copyright?: string;
+  bookCount: number;
+  installedAt: string;
 }
-interface BibleBookMeta { usfm: string; name: string; chapters: number[] }
-interface BibleVerse { number: string; lines: string[] }   // multilínea real
-interface BibleChapter { versionId: string; bookUsfm: string; chapter: number; verses: BibleVerse[] }
-interface CanonicalBible { version: BibleVersionMeta; books: BibleBookMeta[]; chapters: BibleChapter[] }
+interface BibleBookMeta {
+  usfm: string;
+  name: string;
+  chapters: number[];
+}
+interface BibleVerse {
+  number: string;
+  lines: string[];
+} // multilínea real
+interface BibleChapter {
+  versionId: string;
+  bookUsfm: string;
+  chapter: number;
+  verses: BibleVerse[];
+}
+interface CanonicalBible {
+  version: BibleVersionMeta;
+  books: BibleBookMeta[];
+  chapters: BibleChapter[];
+}
 ```
 
 Pasaje congelado que viaja al Rundown:
 
 ```ts
 interface BiblePassage {
-  versionId: string; versionAbbreviation: string;
-  bookUsfm: string; bookName: string; chapter: number;
-  reference: string;            // "Juan 3:2-4"
-  verses: BibleVerse[];         // texto completo, copiado
+  versionId: string;
+  versionAbbreviation: string;
+  bookUsfm: string;
+  bookName: string;
+  chapter: number;
+  reference: string; // "Juan 3:2-4"
+  verses: BibleVerse[]; // texto completo, copiado
 }
 ```
 

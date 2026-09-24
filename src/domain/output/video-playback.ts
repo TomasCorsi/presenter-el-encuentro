@@ -19,6 +19,22 @@ export interface VideoPlaybackState {
   revision: number;
 }
 
+/** Máxima deriva aceptada antes de corregir el elemento de video. */
+export const VIDEO_DRIFT_TOLERANCE_SECONDS = 0.35;
+
+/**
+ * Decisión pura compartida por la aplicación inicial y la vigilancia
+ * periódica del video. El límite exacto todavía es tolerable.
+ */
+export function shouldCorrectVideoDrift(
+  actualSeconds: number,
+  expectedSeconds: number,
+  toleranceSeconds: number = VIDEO_DRIFT_TOLERANCE_SECONDS,
+): boolean {
+  if (!Number.isFinite(actualSeconds) || !Number.isFinite(expectedSeconds)) return false;
+  return Math.abs(actualSeconds - expectedSeconds) > toleranceSeconds;
+}
+
 /** Una slide de video entra al aire reproduciendo desde el inicio. */
 export function createInitialPlayback(now: number): VideoPlaybackState {
   return { state: "playing", offsetSeconds: 0, changedAtEpochMs: now, loop: false, revision: 1 };

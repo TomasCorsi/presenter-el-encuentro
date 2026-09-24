@@ -24,14 +24,22 @@ export interface SlideRendererProps {
    */
   secondaryText?: string | undefined;
   className?: string | undefined;
+  /** La superficie compuesta pinta el fondo en una capa separada. */
+  transparentBackground?: boolean | undefined;
 }
 
-export function SlideRenderer({ lines, style, secondaryText, className }: SlideRendererProps) {
+export function SlideRenderer({
+  lines,
+  style,
+  secondaryText,
+  className,
+  transparentBackground = false,
+}: SlideRendererProps) {
   const resolved = resolveSlideRenderStyle(style);
 
   const surfaceStyle: CSSProperties = {
     containerType: "size",
-    background: resolved.background,
+    background: transparentBackground ? "transparent" : resolved.background,
   };
 
   const contentStyle: CSSProperties = {

@@ -212,9 +212,9 @@ atajos y tiempos. Empaquetar una fuente local se evaluará más adelante.
 
 El App Shell no impone ancho máximo. Cada pantalla elige mediante `Page`:
 
-| Modo        | Uso                                                    |
-| ----------- | ------------------------------------------------------ |
-| `contained` | Settings, formularios y textos largos                  |
+| Modo        | Uso                                                     |
+| ----------- | ------------------------------------------------------- |
+| `contained` | Settings, formularios y textos largos                   |
 | `full`      | Live, Projects, Media, Presets, Outputs y vistas densas |
 
 ## Refinamiento del App Shell (Fase 1.1)
@@ -280,7 +280,7 @@ Amplía las reglas de la Fase 8.2 con la capa operativa:
   (Previous, Next, TAKE), salidas (Clear, Black) y Buscar. Nunca se desplaza
   ni depende del scroll de ninguna columna.
 - **Library Dock al pie**, colapsable, con scroll propio y altura acotada para
-  no robar espacio a las slides. Pestañas Songs | Bible.
+  no robar espacio a las slides. Pestañas Songs | Bible | Media.
 - **Acciones explícitas, nunca implícitas**: cada resultado ofrece "Rundown"
   (agregar) y "Al aire" (agregar y proyectar). Sin arrastrar ni doble clic.
 - **Afordancia de proyección**: la rejilla de slides rotula "un clic envía al
@@ -290,10 +290,16 @@ Amplía las reglas de la Fase 8.2 con la capa operativa:
 - **Sin Project activo** el dock sigue buscando, pero las acciones quedan
   deshabilitadas con una explicación compacta de una línea.
 
-
 ## Consola Live (Fase 9.2)
 
 Tres columnas: rundown `clamp(170px,14vw,240px)`, rejilla de slides flexible y
 Program `clamp(320px,30vw,520px)`. No hay monitor de Preview: la selección se
 distingue en la rejilla. Controles siempre arriba, Library Dock abajo. La acción
 "Quitar del rundown" de cada línea aparece al pasar el cursor o al tabular.
+
+## Media en Project Detail (Fase 10)
+
+La biblioteca lateral usa pestañas Songs | Media. Las filas Media del rundown
+muestran thumbnail cuando existe, nombre y tipo Image/Video; si falta la
+metadata conservan la aparición como contenido faltante. Bible mantiene su
+flujo de alta propio y convive en el mismo rundown con Song y Media.

@@ -5,6 +5,7 @@ import type { Project } from "@/domain/projects/project";
 import { MediaInUseError, MediaService } from "@/features/media/media-service";
 import { createInMemoryMediaRepository } from "@/services/media/in-memory-media-repository";
 import { createInMemoryMediaStorage } from "@/services/media/in-memory-media-storage";
+import type { MediaRepository } from "@/services/media/media-repository";
 
 const noInfo = async () => null;
 
@@ -27,9 +28,7 @@ function projectUsing(mediaId: string): Project {
   return {
     id: "p1",
     name: "Domingo",
-    rundown: [
-      { id: "i1", type: "media", sourceId: mediaId, title: "Media", order: 0 },
-    ],
+    rundown: [{ id: "i1", type: "media", sourceId: mediaId, title: "Media", order: 0 }],
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
   } as unknown as Project;
@@ -66,6 +65,130 @@ describe("MediaService.importFiles", () => {
     const result = await service.importFiles([video]);
     expect(result.imported).toEqual([]);
     expect(result.errors[0]).toContain("OPFS");
+  });
+
+  it("no espera persistent storage para continuar la importación", async () => {
+    const repository = createInMemoryMediaRepository();
+    const storage = createInMemoryMediaStorage();
+    let preparationCalls = 0;
+    const service = new MediaService(
+      repository,
+      storage,
+      { list: async () => [] },
+      "local-media",
+      () => new Date(),
+      () => "asset-1",
+      noInfo,
+      async () => {
+        preparationCalls += 1;
+        await new Promise(() => undefined);
+      },
+    );
+    const result = await service.importFiles([
+      new File([new Uint8Array([1])], "Fondo.png", { type: "image/png" }),
+    ]);
+    expect(preparationCalls).toBe(1);
+    expect(result.imported).toHaveLength(1);
+  });
+
+  it("compensa los bytes si falla la escritura de metadata", async () => {
+    const storage = createInMemoryMediaStorage();
+    const repository: MediaRepository = {
+      list: async () => [],
+      get: async () => null,
+      put: async () => {
+        throw new Error("metadata failed");
+      },
+      delete: async () => undefined,
+    };
+    const service = new MediaService(
+      repository,
+      storage,
+      { list: async () => [] },
+      "local-media",
+      () => new Date(),
+      () => "asset-1",
+      noInfo,
+    );
+    const result = await service.importFiles([
+      new File([new Uint8Array([1])], "Fondo.png", { type: "image/png" }),
+    ]);
+    expect(result.imported).toEqual([]);
+    expect(result.errors[0]).toContain("No se pudo registrar");
+    expect(storage.files.size).toBe(0);
+  });
+
+  it("un fallo de bytes no escribe metadata", async () => {
+    const repository = createInMemoryMediaRepository();
+    const base = createInMemoryMediaStorage();
+    const storage = {
+      ...base,
+      save: async () => {
+        throw new Error("disk full");
+      },
+    };
+    const service = new MediaService(
+      repository,
+      storage,
+      { list: async () => [] },
+      "local-media",
+      () => new Date(),
+      () => "asset-1",
+      noInfo,
+    );
+    const result = await service.importFiles([
+      new File([new Uint8Array([1])], "Fondo.png", { type: "image/png" }),
+    ]);
+    expect(result.imported).toEqual([]);
+    expect(repository.assets.size).toBe(0);
+  });
+
+  it("rechaza y limpia un video cuyo códec no puede leerse", async () => {
+    const repository = createInMemoryMediaRepository();
+    const base = createInMemoryMediaStorage();
+    const storage = { ...base, kind: "opfs" as const };
+    const service = new MediaService(
+      repository,
+      storage,
+      { list: async () => [] },
+      "local-media",
+      () => new Date(),
+      () => "video-1",
+      noInfo,
+    );
+    const result = await service.importFiles([
+      new File([new Uint8Array([1])], "clip.mp4", { type: "video/mp4" }),
+    ]);
+    expect(result.imported).toEqual([]);
+    expect(result.errors[0]).toContain("códec");
+    expect(storage.files.size).toBe(0);
+    expect(repository.assets.size).toBe(0);
+  });
+
+  it("acepta MP4 cuando el navegador puede leer su metadata", async () => {
+    const repository = createInMemoryMediaRepository();
+    const base = createInMemoryMediaStorage();
+    const storage = { ...base, kind: "opfs" as const };
+    const service = new MediaService(
+      repository,
+      storage,
+      { list: async () => [] },
+      "local-media",
+      () => new Date(),
+      () => "video-1",
+      async () => ({ width: 1920, height: 1080, durationSeconds: 12 }),
+    );
+    const result = await service.importFiles([
+      new File([new Uint8Array([1])], "clip.mp4", { type: "video/mp4" }),
+    ]);
+    expect(result.errors).toEqual([]);
+    expect(result.imported[0]).toMatchObject({
+      id: "video-1",
+      kind: "video",
+      width: 1920,
+      height: 1080,
+      durationSeconds: 12,
+    });
   });
 });
 

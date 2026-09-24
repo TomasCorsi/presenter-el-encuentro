@@ -60,7 +60,6 @@ src/
 Las carpetas se crean cuando su fase comienza. Ver `ARCHITECTURE.md` para la
 regla de dependencias y las restricciones de SSR.
 
-
 ## Principios
 
 1. Live nunca debe depender de Internet.
@@ -75,17 +74,17 @@ regla de dependencias y las restricciones de SSR.
 ```bash
 bun install
 bun run dev
+bun test
 bun run build
 ```
 
-Todavía no hay runner de tests instalado: se añade en la Fase 4 junto con los
-tests del Presentation Engine.
+La suite usa `bun:test`. Los tests de componentes mínimos se apoyan en
+`@happy-dom/global-registrator`; no hay Vitest ni Playwright instalados.
 
 ## Fuente de verdad
 
 Toda la documentación vive en `/docs`. `ROADMAP.md` es la única fuente de verdad
 del estado de las fases; no existe ningún roadmap duplicado en la raíz.
-
 
 ## Documentación
 

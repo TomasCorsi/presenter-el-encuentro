@@ -12,7 +12,7 @@ import type { Song } from "@/domain/songs/song";
  * un SNAPSHOT explícito, nunca sobre la biblioteca en vivo (ADR-023).
  *
  * Desde la Fase 8 el snapshot congela también la apariencia: editar un Preset
- * mientras Live opera NO cambia el show al aire (ADR-038).
+ * mientras Live opera NO cambia el show al aire (ADR-036).
  */
 
 export interface LiveSnapshot {
@@ -42,11 +42,24 @@ export function presentationSignature(
     .sort((a, b) => a.order - b.order)
     .map((item) => {
       const source =
-        item.type === "media" ? (mediaById.get(item.sourceId)?.updatedAt ?? "missing")
-        : item.type === "song" ? (songsById.get(item.sourceId)?.updatedAt ?? "missing")
-        : "frozen";
+        item.type === "media"
+          ? (mediaById.get(item.sourceId)?.updatedAt ?? "missing")
+          : item.type === "song"
+            ? (songsById.get(item.sourceId)?.updatedAt ?? "missing")
+            : "frozen";
       const preset = resolvePreset(item.presetId, presets);
-      return [item.id, item.sourceId, source, preset.id, preset.updatedAt].join("@");
+      const backgroundSource = item.background
+        ? (mediaById.get(item.background.mediaId)?.updatedAt ?? "missing")
+        : "none";
+      return [
+        item.id,
+        item.sourceId,
+        source,
+        preset.id,
+        preset.updatedAt,
+        item.background?.mediaId ?? "none",
+        backgroundSource,
+      ].join("@");
     });
 
   return [project.id, project.updatedAt, ...parts].join("|");
@@ -61,7 +74,7 @@ export function buildLiveSnapshot(
   return {
     projectId: project.id,
     projectName: project.name,
-    items: resolvePresentationStyles(projectToPresentation(project, songs, media), presets),
+    items: resolvePresentationStyles(projectToPresentation(project, songs, media), presets, media),
     signature: presentationSignature(project, songs, presets, media),
   };
 }

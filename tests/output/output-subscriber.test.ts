@@ -14,7 +14,13 @@ function snapshot(sessionId: string, sequence: number, lines = ["A"]): OutputSna
     sessionId,
     sequence,
     mode: "content",
-    slide: { id: "s:0", content: { kind: "text", lines }, style: DEFAULT_PRESET_STYLE },
+    backgroundTransition: "cut",
+    slide: {
+      id: "s:0",
+      content: { kind: "text", lines },
+      style: DEFAULT_PRESET_STYLE,
+      background: { type: "solid", color: DEFAULT_PRESET_STYLE.background.color },
+    },
   };
 }
 

@@ -11,6 +11,7 @@ import {
   loadPresentation,
   reloadPresentation,
   removePresentationItem,
+  replacePresentationItem,
   reset,
   selectItem,
   selectSlide,
@@ -35,6 +36,8 @@ export interface PresentationStore {
   appendPresentationItem(item: PresentationItem): void;
   /** Baja incremental de un item; conserva la salida congelada si estaba al aire. */
   removePresentationItem(itemId: string): void;
+  /** Reemplazo incremental con ids estables; conserva estado operativo. */
+  replacePresentationItem(item: PresentationItem): void;
   /** Un clic en una slide: al aire inmediatamente y en modo `content`. */
   goLive(slideId: string): void;
   reset(): void;
@@ -83,6 +86,7 @@ export function createPresentationStore(
     reloadPresentation: (items) => apply(reloadPresentation(state, items)),
     appendPresentationItem: (item) => apply(appendPresentationItem(state, item)),
     removePresentationItem: (itemId) => apply(removePresentationItem(state, itemId)),
+    replacePresentationItem: (item) => apply(replacePresentationItem(state, item)),
     goLive: (slideId) => apply(goLive(state, slideId)),
     reset: () => apply(reset()),
     selectItem: (itemId) => apply(selectItem(state, itemId)),

@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import type { MediaAsset } from "@/domain/media/media";
 import { formatMediaSize, searchMedia } from "@/domain/media/media-rules";
+import { MediaPreviewDialog } from "@/features/media/components/media-preview-dialog";
 
 import { LibraryResultRow } from "./library-result-row";
 
@@ -28,6 +29,7 @@ export function LibraryMediaTab({
   onAdd,
 }: LibraryMediaTabProps) {
   const [query, setQuery] = useState("");
+  const [preview, setPreview] = useState<MediaAsset | null>(null);
   const results = searchMedia(assets, query);
 
   return (
@@ -61,10 +63,16 @@ export function LibraryMediaTab({
               busy={busy}
               onAdd={() => onAdd(asset, "rundown")}
               onGoLive={() => onAdd(asset, "live")}
+              onPreview={() => setPreview(asset)}
             />
           ))}
         </ul>
       )}
+      <MediaPreviewDialog
+        asset={preview}
+        open={preview !== null}
+        onOpenChange={(open) => !open && setPreview(null)}
+      />
     </div>
   );
 }

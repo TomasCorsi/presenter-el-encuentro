@@ -5,13 +5,17 @@ import { Button } from "@/components/ui/button";
 import type { BiblePassage } from "@/domain/bible/bible";
 import type { MediaAsset } from "@/domain/media/media";
 import type { Song } from "@/domain/songs/song";
+import type { BackgroundTransition } from "@/domain/output/output-snapshot";
+import type { PresentationItem } from "@/domain/presentation/presentation";
+import type { RundownBackground } from "@/domain/projects/rundown";
 import { cn } from "@/lib/utils";
 
 import { LibraryBibleTab } from "./library-bible-tab";
 import { LibraryMediaTab } from "./library-media-tab";
 import { LibrarySongsTab } from "./library-songs-tab";
+import { QuickBackgroundDeck } from "./quick-background-deck";
 
-export type LibraryTab = "songs" | "bible" | "media";
+export type LibraryTab = "songs" | "bible" | "media" | "backgrounds";
 
 export interface LiveLibraryDockProps {
   open: boolean;
@@ -31,12 +35,16 @@ export interface LiveLibraryDockProps {
   onAddSong(song: Song, mode: "rundown" | "live"): void;
   onAddPassage(passage: BiblePassage, mode: "rundown" | "live"): void;
   onAddMedia(asset: MediaAsset, mode: "rundown" | "live"): void;
+  backgroundTarget: PresentationItem | null;
+  onBackgroundTransitionChange(transition: BackgroundTransition): void;
+  onApplyBackground(background: RundownBackground | undefined): Promise<boolean>;
 }
 
 const TABS: ReadonlyArray<{ id: LibraryTab; label: string }> = [
   { id: "songs", label: "Songs" },
   { id: "bible", label: "Bible" },
   { id: "media", label: "Media" },
+  { id: "backgrounds", label: "Backgrounds" },
 ];
 
 /**
@@ -61,6 +69,9 @@ export function LiveLibraryDock({
   onAddSong,
   onAddPassage,
   onAddMedia,
+  backgroundTarget,
+  onBackgroundTransitionChange,
+  onApplyBackground,
 }: LiveLibraryDockProps) {
   return (
     <section
@@ -137,7 +148,7 @@ export function LiveLibraryDock({
               onVersionChange={onBibleVersionChange}
               onAdd={onAddPassage}
             />
-          ) : (
+          ) : tab === "media" ? (
             <LibraryMediaTab
               assets={mediaAssets}
               isLoading={mediaLoading}
@@ -145,6 +156,15 @@ export function LiveLibraryDock({
               canAdd={canAdd}
               busy={busy}
               onAdd={onAddMedia}
+            />
+          ) : (
+            <QuickBackgroundDeck
+              assets={mediaAssets}
+              inputRef={inputRef}
+              target={backgroundTarget}
+              busy={busy}
+              onTransitionChange={onBackgroundTransitionChange}
+              onApply={onApplyBackground}
             />
           )}
         </div>

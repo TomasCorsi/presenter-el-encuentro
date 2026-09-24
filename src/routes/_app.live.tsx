@@ -2,15 +2,14 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { Radio } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import {
-  isMediaRemovalBlocked,
-  MEDIA_ON_AIR_REMOVAL_MESSAGE,
-} from "@/domain/presentation/presentation-program";
+import { mediaRemovalBlockReason } from "@/domain/presentation/presentation-program";
 import { Page } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { BiblePassage } from "@/domain/bible/bible";
 import type { MediaAsset } from "@/domain/media/media";
+import type { BackgroundTransition } from "@/domain/output/output-snapshot";
+import type { RundownBackground } from "@/domain/projects/rundown";
 import {
   createInitialPlayback,
   pausePlayback,
@@ -37,10 +36,12 @@ import { LiveShowBar } from "@/features/live/components/live-show-bar";
 import {
   appendToLiveSession,
   buildAppendedItem,
+  buildReplacementItem,
   createLiveSession,
   isLiveSessionOutdated,
   reloadLiveSession,
   removeFromLiveSession,
+  replaceInLiveSession,
   type LiveSession,
 } from "@/features/live/live-session";
 import { LiveSlideGrid } from "@/features/live/components/live-slide-grid";
@@ -60,6 +61,11 @@ import {
 import { usePresets } from "@/features/presets/presets-context";
 import { useProjects } from "@/features/projects/projects-context";
 import { useSongs } from "@/features/songs/songs-context";
+import { getQuickBackgroundTarget } from "@/features/live/background-target";
+import {
+  BACKGROUND_PREFERENCES_KEY,
+  parseBackgroundPreferences,
+} from "@/features/live/background-preferences";
 
 const TITLE = "Live — Consola de operación en vivo";
 const DESCRIPTION =
@@ -84,7 +90,10 @@ function readLibraryPreference(): LibraryPreference {
     const parsed = JSON.parse(raw) as Partial<LibraryPreference>;
     return {
       open: typeof parsed.open === "boolean" ? parsed.open : DEFAULT_LIBRARY.open,
-      tab: parsed.tab === "bible" || parsed.tab === "media" ? parsed.tab : "songs",
+      tab:
+        parsed.tab === "bible" || parsed.tab === "media" || parsed.tab === "backgrounds"
+          ? parsed.tab
+          : "songs",
       versionId: typeof parsed.versionId === "string" ? parsed.versionId : null,
     };
   } catch {
@@ -109,8 +118,14 @@ export const Route = createFileRoute("/_app/live")({
 
 function LiveConsole() {
   const {
-    projects, activeProject, hasLoaded, addSongToProject, addPassageToProject, addMediaToProject,
+    projects,
+    activeProject,
+    hasLoaded,
+    addSongToProject,
+    addPassageToProject,
+    addMediaToProject,
     removeRundownItem,
+    setRundownItemBackground,
   } = useProjects();
   const { refreshVersions } = useBible();
   const { songs, hasLoaded: songsLoaded } = useSongs();
@@ -121,6 +136,7 @@ function LiveConsole() {
   const [session, setSession] = useState<LiveSession | null>(null);
   /** Reproducción del video al aire: Live es la única autoridad. */
   const [playback, setPlayback] = useState<VideoPlaybackState | null>(null);
+  const [backgroundTransition, setBackgroundTransition] = useState<BackgroundTransition>("cut");
 
   // Preferencias locales del dock: se leen tras el montaje para no romper SSR.
   const [library, setLibrary] = useState<LibraryPreference>(DEFAULT_LIBRARY);
@@ -131,6 +147,9 @@ function LiveConsole() {
 
   useEffect(() => {
     setLibrary(readLibraryPreference());
+    setBackgroundTransition(
+      parseBackgroundPreferences(window.localStorage.getItem(BACKGROUND_PREFERENCES_KEY)).transition,
+    );
   }, []);
 
   // Al volver a la consola se revalida SOLO la metadata de traducciones: una
@@ -154,26 +173,35 @@ function LiveConsole() {
 
   // Live es la autoridad del protocolo Output Sync: publica Program a
   // `/output/main` (ADR-027/028), incluido el estado de reproducción.
-  useOutputPublisher(playback);
+  useOutputPublisher(playback, backgroundTransition);
   const outputWindow = useOutputWindow();
 
   // Carga inicial del show: un único snapshot explícito por sesión.
   useEffect(() => {
-    if (session || !hasLoaded || !songsLoaded || !presetsLoaded || mediaLoading || !activeProject) return;
+    if (session || !hasLoaded || !songsLoaded || !presetsLoaded || mediaLoading || !activeProject)
+      return;
     const next = createLiveSession({ project: activeProject, songs, presets, media: mediaAssets });
     setSession(next);
     store.loadPresentation(next.snapshot.items);
-  }, [activeProject, hasLoaded, mediaAssets, mediaLoading, presets, presetsLoaded, session, songs, songsLoaded, store]);
+  }, [
+    activeProject,
+    hasLoaded,
+    mediaAssets,
+    mediaLoading,
+    presets,
+    presetsLoaded,
+    session,
+    songs,
+    songsLoaded,
+    store,
+  ]);
 
   // La reproducción es del video AL AIRE: entra reproduciendo desde el
   // inicio y se detiene solo al cambiar la slide de Program. Clear/Black NO la
   // reinician: el video sigue avanzando internamente (ADR-024) y al volver a
   // `content` reaparece en la posición correspondiente.
   const programSlideNow = getProgramSlide(state);
-  const programVideoId =
-    programSlideNow?.content.kind === "video"
-      ? programSlideNow.id
-      : null;
+  const programVideoId = programSlideNow?.content.kind === "video" ? programSlideNow.id : null;
   useEffect(() => {
     setPlayback(programVideoId ? createInitialPlayback(Date.now()) : null);
   }, [programVideoId]);
@@ -181,7 +209,8 @@ function LiveConsole() {
   const snapshot = session?.snapshot ?? null;
   const showProject = projects.find((project) => project.id === snapshot?.projectId) ?? null;
   const outdated = Boolean(
-    session && showProject &&
+    session &&
+    showProject &&
     isLiveSessionOutdated(session, { project: showProject, songs, presets, media: mediaAssets }),
   );
   // El handler necesita saber si YA había desfase antes de su propia alta.
@@ -282,8 +311,9 @@ function LiveConsole() {
     (itemId: string) => {
       if (!showProject) return;
       // Media al aire: bloqueado, nunca se congela (Fase 10).
-      if (isMediaRemovalBlocked(store.getState(), itemId)) {
-        setStatus(MEDIA_ON_AIR_REMOVAL_MESSAGE);
+      const blocked = mediaRemovalBlockReason(store.getState(), itemId);
+      if (blocked) {
+        setStatus(blocked);
         return;
       }
       const wasOutdated = outdatedRef.current;
@@ -319,13 +349,49 @@ function LiveConsole() {
     [mediaAssets, presets, removeRundownItem, showProject, songs, state.runtime.items, store],
   );
 
+  const handleApplyBackground = useCallback(
+    async (background: RundownBackground | undefined): Promise<boolean> => {
+      if (!showProject) return false;
+      const target = getQuickBackgroundTarget(store.getState());
+      if (!target) {
+        setStatus("Selecciona una Song o Bible en Preview o Program.");
+        return false;
+      }
+      const wasOutdated = outdatedRef.current;
+      setBusy(true);
+      setStatus(null);
+      try {
+        const project = await setRundownItemBackground(showProject.id, target.id, background);
+        const sources = { project, songs, presets, media: mediaAssets };
+        const item = buildReplacementItem(sources, target.id);
+        if (!item) throw new Error("No se pudo preparar el fondo para el show.");
+        setSession((current) =>
+          current
+            ? replaceInLiveSession(current, { ...sources, item, wasOutdated })
+            : current,
+        );
+        store.replacePresentationItem(item);
+        setStatus(background ? `Fondo aplicado a ${target.title}.` : `Fondo quitado de ${target.title}.`);
+        return true;
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : "No se pudo cambiar el fondo.");
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [mediaAssets, presets, setRundownItemBackground, showProject, songs, store],
+  );
+
   /** Comandos del video al aire: actualizan el estado autoritativo de Live. */
   const handlePlaybackCommand = useCallback((command: VideoPlaybackCommand) => {
     setPlayback((current) => {
       if (!current) return current;
       const now = Date.now();
       if (command === "toggle-play") {
-        return current.state === "playing" ? pausePlayback(current, now) : playPlayback(current, now);
+        return current.state === "playing"
+          ? pausePlayback(current, now)
+          : playPlayback(current, now);
       }
       if (command === "restart") return restartPlayback(current, now);
       return togglePlaybackLoop(current);
@@ -374,7 +440,13 @@ function LiveConsole() {
   });
 
   if (!hasLoaded || !songsLoaded || !presetsLoaded) {
-    return <Page><p className="text-sm text-muted-foreground" role="status">Cargando show…</p></Page>;
+    return (
+      <Page>
+        <p className="text-sm text-muted-foreground" role="status">
+          Cargando show…
+        </p>
+      </Page>
+    );
   }
 
   if (!snapshot) {
@@ -384,7 +456,11 @@ function LiveConsole() {
           icon={Radio}
           title="No hay proyecto activo"
           description="Marca un proyecto como activo para cargarlo en la consola de operación."
-          actions={<Button asChild variant="outline"><Link to="/projects">Ir a Projects</Link></Button>}
+          actions={
+            <Button asChild variant="outline">
+              <Link to="/projects">Ir a Projects</Link>
+            </Button>
+          }
         />
       </Page>
     );
@@ -409,10 +485,14 @@ function LiveConsole() {
 
       {/* Controles SIEMPRE visibles: la barra nunca se desplaza con el scroll. */}
       <LiveOperationBar
-        canPrevious={getPreviousSlide(state) !== null
-          || (state.previewSlideId === null && state.runtime.navigableSlideIds.length > 0)}
-        canNext={getNextSlide(state) !== null
-          || (state.previewSlideId === null && state.runtime.navigableSlideIds.length > 0)}
+        canPrevious={
+          getPreviousSlide(state) !== null ||
+          (state.previewSlideId === null && state.runtime.navigableSlideIds.length > 0)
+        }
+        canNext={
+          getNextSlide(state) !== null ||
+          (state.previewSlideId === null && state.runtime.navigableSlideIds.length > 0)
+        }
         canTake={canTake}
         programMode={state.programMode}
         onPrevious={onPrevious}
@@ -451,7 +531,7 @@ function LiveConsole() {
                 programItemId={programItem?.id ?? null}
                 onSelect={(itemId) => store.selectItem(itemId)}
                 onRemove={handleRemoveItem}
-                isRemoveBlocked={(itemId) => isMediaRemovalBlocked(state, itemId)}
+                removeBlockReason={(itemId) => mediaRemovalBlockReason(state, itemId)}
                 canRemove={Boolean(showProject) && !busy}
               />
             )}
@@ -492,6 +572,7 @@ function LiveConsole() {
             detached={isProgramDetached(state)}
             playback={playback}
             onPlaybackCommand={handlePlaybackCommand}
+            backgroundTransition={backgroundTransition}
           />
         </div>
       </div>
@@ -513,6 +594,9 @@ function LiveConsole() {
         onAddSong={handleAddSong}
         onAddPassage={handleAddPassage}
         onAddMedia={handleAddMedia}
+        backgroundTarget={getQuickBackgroundTarget(state)}
+        onBackgroundTransitionChange={setBackgroundTransition}
+        onApplyBackground={handleApplyBackground}
       />
     </Page>
   );

@@ -1,7 +1,6 @@
 import { X } from "lucide-react";
 
 import type { PresentationItem } from "@/domain/presentation/presentation";
-import { MEDIA_ON_AIR_REMOVAL_MESSAGE } from "@/domain/presentation/presentation-program";
 import { cn } from "@/lib/utils";
 
 export interface LiveRundownProps {
@@ -14,7 +13,7 @@ export interface LiveRundownProps {
   /** Sin proyecto del show no se puede persistir la baja. */
   canRemove: boolean;
   /** Media al aire: quitar bloqueado (Fase 10). */
-  isRemoveBlocked?: (itemId: string) => boolean;
+  removeBlockReason?: (itemId: string) => string | null;
 }
 
 /**
@@ -28,7 +27,7 @@ export function LiveRundown({
   onSelect,
   onRemove,
   canRemove,
-  isRemoveBlocked,
+  removeBlockReason,
 }: LiveRundownProps) {
   return (
     <ul className="flex flex-col gap-px bg-border" aria-label="Rundown del show">
@@ -36,7 +35,8 @@ export function LiveRundown({
         const isPreview = item.id === previewItemId;
         const isProgram = item.id === programItemId;
         const missing = item.slides.length === 0;
-        const blocked = isRemoveBlocked?.(item.id) ?? false;
+        const blockedReason = removeBlockReason?.(item.id) ?? null;
+        const blocked = blockedReason !== null;
         const states = [isProgram ? "en Program" : null, isPreview ? "seleccionado" : null]
           .filter(Boolean)
           .join(" y ");
@@ -46,9 +46,7 @@ export function LiveRundown({
             key={item.id}
             className={cn(
               "group flex items-stretch border-l-2 bg-card transition-colors",
-              isProgram ? "border-l-live"
-              : isPreview ? "border-l-primary"
-              : "border-l-transparent",
+              isProgram ? "border-l-live" : isPreview ? "border-l-primary" : "border-l-transparent",
               isPreview && "bg-muted",
             )}
           >
@@ -92,13 +90,15 @@ export function LiveRundown({
                 aria-disabled={blocked || undefined}
                 aria-label={
                   blocked
-                    ? `Quitar ${item.title} del rundown: ${MEDIA_ON_AIR_REMOVAL_MESSAGE}`
+                    ? `Quitar ${item.title} del rundown: ${blockedReason}`
                     : `Quitar ${item.title} del rundown`
                 }
-                title={blocked ? MEDIA_ON_AIR_REMOVAL_MESSAGE : "Quitar del rundown"}
+                title={blockedReason ?? "Quitar del rundown"}
                 className={cn(
                   "shrink-0 px-1.5 text-muted-foreground opacity-0 transition-opacity",
-                  blocked ? "cursor-not-allowed hover:text-muted-foreground" : "hover:text-destructive",
+                  blocked
+                    ? "cursor-not-allowed hover:text-muted-foreground"
+                    : "hover:text-destructive",
                   "focus-visible:opacity-100 focus-visible:outline-none",
                   "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                   "group-hover:opacity-100",

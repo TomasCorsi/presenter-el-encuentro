@@ -23,6 +23,7 @@ function toPlaceholderItem(item: RundownItem, order: number): PresentationItem {
     slides: [],
     sourceId: item.sourceId,
     presetId: item.presetId,
+    background: item.background ? { ...item.background } : undefined,
   };
 }
 
@@ -52,6 +53,7 @@ export function projectToPresentation(
         return {
           ...passageToPresentationItem(passage, { itemId: item.id, order }),
           presetId: item.presetId,
+          background: item.background ? { ...item.background } : undefined,
         };
       }
 
@@ -61,6 +63,7 @@ export function projectToPresentation(
         return {
           ...mediaToPresentationItem(asset, { itemId: item.id, order }),
           presetId: item.presetId,
+          background: undefined,
         };
       }
 
@@ -72,6 +75,7 @@ export function projectToPresentation(
       return {
         ...songToPresentationItem(song, { itemId: item.id, order }),
         presetId: item.presetId,
+        background: item.background ? { ...item.background } : undefined,
       };
     });
 }

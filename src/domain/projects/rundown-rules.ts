@@ -1,7 +1,11 @@
 import { clonePassage, passageCaption, type BiblePassage } from "@/domain/bible/bible";
 
 import type { Project } from "./project";
-import type { RundownItem, RundownItemFactoryDependencies } from "./rundown";
+import type {
+  RundownBackground,
+  RundownItem,
+  RundownItemFactoryDependencies,
+} from "./rundown";
 
 /** Reordena por `order` y renormaliza a 0..n-1 sin mutar la entrada. */
 export function normalizeRundown(items: readonly RundownItem[]): RundownItem[] {
@@ -127,7 +131,11 @@ export function duplicateRundown(
   items: readonly RundownItem[],
   dependencies: RundownItemFactoryDependencies,
 ): RundownItem[] {
-  return normalizeRundown(items).map((item) => ({ ...item, id: dependencies.createId() }));
+  return normalizeRundown(items).map((item) => ({
+    ...item,
+    id: dependencies.createId(),
+    ...(item.background ? { background: { ...item.background } } : {}),
+  }));
 }
 
 export interface SongUsage {
@@ -173,6 +181,21 @@ export function setRundownItemPreset(
     const next: RundownItem = { ...item };
     if (presetId) next.presetId = presetId;
     else delete next.presetId;
+    return next;
+  });
+}
+
+/** Asigna o quita el fondo Media de una aparicion Song/Bible. */
+export function setRundownItemBackground(
+  items: readonly RundownItem[],
+  itemId: string,
+  background: RundownBackground | undefined,
+): RundownItem[] {
+  return normalizeRundown(items).map((item) => {
+    if (item.id !== itemId || (item.type !== "song" && item.type !== "bible")) return item;
+    const next: RundownItem = { ...item };
+    if (background) next.background = { ...background };
+    else delete next.background;
     return next;
   });
 }

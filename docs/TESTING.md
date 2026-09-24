@@ -91,11 +91,15 @@ Una fase no está completa si:
 
 ---
 
-## Tooling Recomendado (Fase 4+)
+## Tooling actual
 
-- **Unit/Logic**: `Vitest` (Fast, Vite-native).
-- **Components**: `Vitest` + `@testing-library/react`.
-- **E2E**: `Playwright`.
+- **Suite automatizada:** `bun test` (`bun:test`).
+- **Componentes mínimos:** `react-dom` + `@happy-dom/global-registrator`.
+- **Validación de tipos:** `npx tsc --noEmit`.
+- **Lint/build:** scripts reales de `package.json` (`npm run lint`,
+  `npm run build`).
+- **Navegador:** checklist manual cuando la API nativa, codec, pantalla o
+  permisos no pueden representarse fielmente en la suite.
 
 ## Estrategia de Minimización
 
@@ -122,12 +126,6 @@ y el repository temporal (CRUD, JSON inválido, formas corruptas, copias sin
 referencias compartidas y propagación de errores de cuota). El autoguardado
 (debounce, blur, flush) se verifica con comprobaciones E2E en el entorno de
 desarrollo.
-
-## Nota de Fase 0
-
-Aún no hay runner de tests instalado. Vitest y Playwright se añaden en la
-Fase 4, junto con los primeros tests del Presentation Engine. No se instalan
-dependencias antes de que su fase las requiera.
 
 ## Fase 4 — Presentation Engine
 
@@ -193,7 +191,7 @@ dependencias antes de que su fase las requiera.
   (ignora Live B mientras A vive; adopta B tras `bye` de A), timeout sin
   `bye` → salida segura, reconexión, `bye` de otra sesión ignorado, mensajes
   inválidos ignorados, múltiples subscribers.
-- **Navegador** (Playwright): TAKE reflejado en Output, Preview no afecta,
+- **Navegador** (checklist manual registrado): TAKE reflejado en Output, Preview no afecta,
   Clear/Black/Content, dos Outputs simultáneos, recarga de Output, Live
   ausente → negro puro, overlay de fullscreen y cursor oculto, 1920×1080,
   consola sin errores.
@@ -207,7 +205,7 @@ dependencias antes de que su fase las requiera.
 - **Contrato** (`tests/routing/route-provider-contract.test.ts`): el shell
   monta los providers, ningún layout hijo los remonta y el sidebar navega con
   `Link` del router.
-- **Medición** (Playwright sobre el build de producción): navegación SPA sin
+- **Medición manual sobre el build de producción:** navegación SPA sin
   peticiones de documento adicionales, sidebar no remontado, sin placeholders
   de carga entre secciones y consola limpia.
 
@@ -306,7 +304,6 @@ buscador del dock; escribir "black cosa" no dispara B ni C; Esc devuelve el
 foco; B, C y Enter funcionan fuera del input; controles visibles y sin scroll
 global en ambas resoluciones.
 
-
 ## Fase 9.2
 
 - `tests/domain/presentation-remove.test.ts` — baja incremental, orden renormalizado,
@@ -348,4 +345,28 @@ automatizado. Checklist manual en Windows con Chrome o Edge:
 
 ## Fase 10 — Media
 
-`tests/media/media-rules.test.ts` y `media-service.test.ts` (importación compensable, `MediaInUseError`, rename). `MediaService` acepta `readInfo` inyectable: los tests usan `async () => null` para evitar el hang de `readVisualMediaInfo` (evento de carga DOM ausente en suite completa). E2E Playwright en `/tmp/browser/fase10/`: importar PNG → proyecto activo → dock Media → Al aire → `/output/main` renderiza la imagen.
+Cobertura automatizada:
+
+- reglas, búsqueda, uso, Project → Presentation y bloqueo de baja al aire;
+- importación compensable, rechazo de video sin OPFS y fallo de códec;
+- playback puro con epoch ms, revisión, loop, apertura tardía y umbral de deriva;
+- persistent storage concedido/denegado/ausente y no bloqueante;
+- OPFS mediante handles falsos, caché/revocación de Blob URLs y bytes ausentes;
+- representación mixta Song/Bible/Media en el rundown.
+
+Quality Gate manual cerrado el 2026-09-24 por aceptación explícita del usuario:
+
+- PASS: Chrome Windows, MP4 compatible, thumbnail/metadata, reload, cierre y
+  reapertura del navegador, copia OPFS independiente del archivo original;
+- PASS: estado `not-persistent` visible y la denegación no bloquea la
+  importación;
+- PASS: video en Live, Program muted y play/pause/restart/loop;
+- no ejecutado por falta de archivo: MP4 con códec incompatible;
+- no ejecutado: Output tardío/recargado/doble, audio de Output y activación,
+  continuidad bajo Clear/Black, rundown mixto completo y bloqueo de baja al
+  aire;
+- revisión de consola parcial: `/media` y Live sin errores nuevos.
+
+Las comprobaciones no ejecutadas no se consideran PASS. El usuario aceptó el
+riesgo residual y dio por terminada la Fase 10. WEBM y el flujo PNG → Live →
+Output ya habían sido validados en navegador.

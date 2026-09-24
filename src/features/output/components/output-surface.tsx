@@ -1,6 +1,5 @@
 import type { OutputSnapshot } from "@/domain/output/output-snapshot";
-import { MediaSlideSurface } from "@/features/presentation/components/media-slide-surface";
-import { SlideRenderer } from "@/features/presentation/components/slide-renderer";
+import { PresentationSurface } from "@/features/presentation/components/presentation-surface";
 import { cn } from "@/lib/utils";
 
 /**
@@ -36,21 +35,16 @@ export function OutputSurface({ snapshot }: OutputSurfaceProps) {
       )}
     >
       {slide ? (
-        slide.content.kind === "text" ? (
-          <SlideRenderer
-            lines={slide.content.lines}
-            style={slide.style}
-            secondaryText={slide.secondaryText}
-          />
-        ) : (
-          <MediaSlideSurface
-            mediaId={slide.content.mediaId}
-            kind={slide.content.kind}
-            playback={slide.content.kind === "video" ? slide.playback : undefined}
-            audio
-            data-testid="output-media-surface"
-          />
-        )
+        <PresentationSurface
+          content={slide.content}
+          style={slide.style}
+          background={slide.background}
+          secondaryText={slide.secondaryText}
+          transition={snapshot?.backgroundTransition ?? "cut"}
+          playback={slide.content.kind === "video" ? slide.playback : undefined}
+          audio={slide.content.kind === "video"}
+          data-testid="output-presentation-surface"
+        />
       ) : null}
     </main>
   );

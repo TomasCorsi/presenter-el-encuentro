@@ -11,18 +11,18 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Fase actual completada: **Fase 8.2 — Rediseño del espacio de trabajo Live**
-  (sobre la Fase 8.1 — Auto-advance).
-- Próxima fase: **Fase 10 — Media** (pendiente de aprobación).
+- Última fase completada: **Fase 10 — Media** (2026-09-24). El Quality Gate
+  manual fue cerrado por aceptación explícita del usuario, con el riesgo
+  residual de las pruebas no ejecutadas registrado en `TESTING.md`.
+- Fases 9, 9.1 y los incrementos operativos 9.2/9.3 están implementados.
+- La Fase 11 no fue iniciada.
 - Backend: no conectado. Se decide en la Fase 13.
 - Dependencias añadidas hasta la Fase 6: ninguna.
 - Renumeración: Rundown pasa a ser la Fase 5 y las fases posteriores se
   desplazan una posición (Live Mode → Fase 6, …, Supabase → Fase 13).
-- Implementado hasta ahora: documentación en `/docs`, tema oscuro con tokens
-  semánticos, App Shell, gestión local completa de Projects, biblioteca de
-  Songs con editor de secciones y autoguardado, Presentation Engine como
-  dominio puro con store vanilla, y la consola Live con Preview, Program,
-  TAKE, Clear/Black y atajos de teclado.
+- Implementado hasta ahora: Projects/Rundown, Songs, Presentation Engine,
+  Live, Output Main, Presets, Bible, selección de proyector y Media local para
+  imágenes/videos con playback sincronizado.
 - Ancho de página: lo decide cada pantalla (`contained` o `full`), no el shell.
 - Tipografía: stack del sistema, sin fuentes externas (offline-first).
 - Dirección visual: superficie de control broadcast, con jerarquía operativa,
@@ -66,7 +66,6 @@ Definir la base técnica y funcional del proyecto.
 ### Estado
 
 - [x] Completada
-
 
 ---
 
@@ -159,7 +158,7 @@ Fase 5. IndexedDB continúa diferido a la Fase 12.
 - [x] Secciones.
 - [x] Buscar.
 - [x] Slides (Fase 4, Presentation Engine).
-- [ ] Añadir a proyecto (cuando Projects y Songs se integren).
+- [x] Añadir a proyecto mediante Rundown.
 
 ---
 
@@ -234,7 +233,6 @@ Project activo no altera el show en curso sin acción del operador.
 
 ---
 
-
 ## Fase 7 — Output Main
 
 - [x] `/output/main` fuera del App Shell, viewport completo, sin scroll.
@@ -258,7 +256,7 @@ Project activo no altera el show en curso sin acción del operador.
 - [x] Tipografía (stacks locales), tamaño, peso, alineación H/V, color, fondo sólido y safe area.
 - [x] Renderer compartido por Live Preview, Live Program, Output Main y el editor (ADR-035).
 - [x] Estilo resuelto y congelado en el snapshot de Live y en `OutputSnapshot` (ADR-036).
-- [ ] Background de imagen/vídeo (llega con Media).
+- [x] Decisión cerrada: Media es contenido, no background de Preset (ADR-048).
 - [ ] Logo.
 - [ ] Transition.
 
@@ -312,7 +310,7 @@ Completada.
 - [x] Clic en un RundownItem sigue moviendo solo Preview.
 - [x] Barra de operación fija arriba: Previous, Next, TAKE, Clear, Black, Buscar.
 - [x] Library Dock operativo abajo, colapsable y con scroll propio.
-- [x] Pestañas Songs y Bible reutilizando las fuentes existentes.
+- [x] Pestañas Songs, Bible y Media reutilizando las fuentes existentes.
 - [x] Dos acciones explícitas por resultado: "Rundown" y "Al aire".
 - [x] Alta incremental (`appendPresentationItem`) sin recargar la presentación.
 - [x] Sin items temporales: todo lo agregado queda en el Project activo.
@@ -323,15 +321,47 @@ Completada.
 
 ---
 
+## Fase 9.2 — Baja incremental y salida congelada
+
+Completada.
+
+- [x] Quitar apariciones desde Live sin reconstruir el show.
+- [x] Songs/Bible al aire sobreviven mediante `detachedProgramSlide`.
+- [x] Media al aire no se puede quitar hasta cambiar Program.
+- [x] El desfase externo pendiente se conserva.
+
+---
+
+## Fase 9.3 — Output sobre proyector
+
+Completada.
+
+- [x] Detección y selección conservadora de pantalla.
+- [x] Preferencia local y manejo de pantalla desconectada.
+- [x] Reutilización de la ventana `audience-main`.
+- [x] Fullscreen manual y pantalla de prueba.
+
+---
+
 ## Fase 10 — Media
 
-- [ ] Images.
-- [ ] Videos.
-- [ ] Audio.
-- [ ] Logos.
-- [ ] Thumbnails.
-- [ ] Metadata.
-- [ ] Offline-ready.
+- [x] Imágenes PNG/JPEG/WEBP.
+- [x] Videos MP4/WEBM con compatibilidad de códec dependiente del navegador.
+- [x] Thumbnails y metadata visual.
+- [x] Metadata en IndexedDB y bytes en OPFS; fallback Blob para imágenes.
+- [x] Project Detail, Library Dock, Live y Output Main.
+- [x] Playback autoritativo con play/pause/restart/loop.
+- [x] Persistent storage best-effort y no bloqueante.
+- [x] Tests automatizados de dominio, servicios y storage.
+- [x] Quality Gate manual cerrado en Chrome sobre Windows: MP4 compatible,
+      metadata, OPFS tras reload/reapertura, independencia del archivo original,
+      estado `not-persistent`, Program muted y controles de playback.
+
+**Estado:** COMPLETADA (2026-09-24). Las comprobaciones manuales no ejecutadas
+fueron aceptadas como riesgo residual y permanecen detalladas en `TESTING.md`;
+no se registran como PASS.
+
+**Fuera de alcance de esta fase:** audio assets, logos y backgrounds Media.
 
 ---
 

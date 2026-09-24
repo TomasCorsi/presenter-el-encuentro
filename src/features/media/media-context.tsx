@@ -1,4 +1,13 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import type { MediaAsset } from "@/domain/media/media";
 import type { ProjectRepository } from "@/services/projects/project-repository";
@@ -7,13 +16,21 @@ import { createIndexedDbMediaRepository } from "@/services/media/indexeddb-media
 import { createInMemoryMediaRepository } from "@/services/media/in-memory-media-repository";
 import { createInMemoryMediaStorage } from "@/services/media/in-memory-media-storage";
 import { createMediaUrlCache, type MediaUrlCache } from "@/services/media/media-url-cache";
-import { createBrowserOpfsMediaStorage, isOpfsAvailable } from "@/services/media/opfs-media-storage";
+import {
+  createBrowserOpfsMediaStorage,
+  isOpfsAvailable,
+} from "@/services/media/opfs-media-storage";
 import { createLocalStorageProjectRepository } from "@/services/projects/local-storage-project-repository";
 import type { MediaFileStorage } from "@/services/media/media-file-storage";
 import type { MediaRepository } from "@/services/media/media-repository";
-import { requestStoragePersistenceOnce } from "@/services/media/storage-persistence";
+import {
+  requestStoragePersistenceOnce,
+  storagePersistenceStatus,
+  type StoragePersistenceStatus,
+} from "@/services/media/storage-persistence";
 
 import { MediaService } from "./media-service";
+import { readVisualMediaInfo } from "./read-media-info";
 
 const MEDIA_WORKSPACE_ID = "local-media";
 
@@ -23,6 +40,8 @@ export interface MediaContextValue {
   urlCache: MediaUrlCache;
   /** Almacenamiento físico activo (para mostrar el respaldo en la UI). */
   storageKind: MediaFileStorage["kind"];
+  /** Estado real informado por StorageManager; `null` mientras se consulta. */
+  persistenceStatus: StoragePersistenceStatus | null;
   assets: MediaAsset[];
   isLoading: boolean;
   /** Cargar/recargar la biblioteca. */
@@ -76,16 +95,36 @@ export function MediaProvider({
     return createLocalStorageProjectRepository(window.localStorage);
   }, [projectRepository]);
 
+  const [assets, setAssets] = useState<MediaAsset[]>(initialAssets ?? []);
+  const [isLoading, setIsLoading] = useState(initialAssets === undefined);
+  const [persistenceStatus, setPersistenceStatus] = useState<StoragePersistenceStatus | null>(null);
+
+  const prepareStorage = useCallback(async () => {
+    const status = await requestStoragePersistenceOnce();
+    setPersistenceStatus(status);
+  }, []);
+
   const service = useMemo(
-    () => new MediaService(resolved.repository, resolved.fileStorage, resolvedProjects),
-    [resolved, resolvedProjects],
+    () =>
+      new MediaService(
+        resolved.repository,
+        resolved.fileStorage,
+        resolvedProjects,
+        MEDIA_WORKSPACE_ID,
+        () => new Date(),
+        () => crypto.randomUUID(),
+        readVisualMediaInfo,
+        prepareStorage,
+      ),
+    [prepareStorage, resolved, resolvedProjects],
   );
 
   const urlCacheRef = useRef<MediaUrlCache | null>(null);
   if (!urlCacheRef.current) urlCacheRef.current = createMediaUrlCache(resolved.fileStorage);
 
-  const [assets, setAssets] = useState<MediaAsset[]>(initialAssets ?? []);
-  const [isLoading, setIsLoading] = useState(initialAssets === undefined);
+  useEffect(() => {
+    void storagePersistenceStatus().then(setPersistenceStatus);
+  }, []);
 
   useEffect(() => {
     const cache = urlCacheRef.current;
@@ -111,6 +150,7 @@ export function MediaProvider({
     service,
     urlCache: urlCacheRef.current,
     storageKind: resolved.fileStorage.kind,
+    persistenceStatus,
     assets,
     isLoading,
     refresh,

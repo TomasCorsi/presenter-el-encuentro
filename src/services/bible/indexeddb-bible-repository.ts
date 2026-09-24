@@ -8,7 +8,7 @@ import type {
 import { chapterKey, type BibleRepository } from "./bible-repository";
 
 /**
- * Persistencia de Bible en IndexedDB (ADR-040).
+ * Persistencia local de Bible detrás de repository (ADR-003/039).
  *
  * Es la ÚNICA entidad que no vive en `localStorage`: una Biblia completa supera
  * de largo su cuota. El resto migrará en la Fase 12.

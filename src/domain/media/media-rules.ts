@@ -75,7 +75,10 @@ export function findMediaUsage(projects: readonly Project[], mediaId: string): M
 
   for (const project of projects) {
     const matches = project.rundown.filter(
-      (item) => item.type === "media" && item.sourceId === mediaId,
+      (item) =>
+        (item.type === "media" && item.sourceId === mediaId) ||
+        ((item.type === "song" || item.type === "bible") &&
+          item.background?.mediaId === mediaId),
     ).length;
     if (matches > 0) {
       occurrences += matches;

@@ -20,6 +20,14 @@ export type RundownItemType =
  */
 export type RundownItemPayload = { kind: "bible"; passage: BiblePassage };
 
+/** Override Media de fondo para una aparicion Song/Bible. */
+export interface RundownMediaBackground {
+  type: "media";
+  mediaId: string;
+}
+
+export type RundownBackground = RundownMediaBackground;
+
 export interface RundownItem {
   /** Identidad de ESTA instancia dentro del project. */
   id: string;
@@ -36,6 +44,8 @@ export interface RundownItem {
    * que la misma Song puede verse distinta en dos apariciones.
    */
   presetId?: string | undefined;
+  /** Fondo Media de ESTA aparicion. Ausente = fondo solido del Preset. */
+  background?: RundownBackground | undefined;
   /** Contenido congelado de la aparición (Bible). Ausente en canciones. */
   payload?: RundownItemPayload | undefined;
 }

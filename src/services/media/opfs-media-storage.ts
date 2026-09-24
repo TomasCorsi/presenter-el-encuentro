@@ -43,6 +43,7 @@ export function createBrowserOpfsMediaStorage(): MediaFileStorage {
 
 export function createOpfsMediaStorage(
   getRoot: () => Promise<DirectoryHandle>,
+  canMoveFiles: boolean = supportsMove,
 ): MediaFileStorage {
   let directory: Promise<DirectoryHandle> | null = null;
   const mediaDir = () =>
@@ -64,16 +65,14 @@ export function createOpfsMediaStorage(
     async save(id, file) {
       const dir = await mediaDir();
       const tempName = `${id}.part`;
-      const targetName = supportsMove ? tempName : id;
+      const targetName = canMoveFiles ? tempName : id;
       try {
         const handle = await dir.getFileHandle(targetName, { create: true });
         const writable = await handle.createWritable();
         await file.stream().pipeTo(writable);
-        if (supportsMove) {
+        if (canMoveFiles) {
           await removeQuietly(dir, id);
-          await (
-            handle as unknown as { move(name: string): Promise<void> }
-          ).move(id);
+          await (handle as unknown as { move(name: string): Promise<void> }).move(id);
         }
       } catch (error) {
         // Compensación local: nada queda a medias con nombre válido.

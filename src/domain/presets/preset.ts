@@ -18,9 +18,8 @@ export type PresetHorizontalAlign = "left" | "center" | "right";
 export type PresetVerticalAlign = "top" | "center" | "bottom";
 
 /**
- * Unión discriminada desde el inicio: en la Fase 8 el único caso válido es
- * `solid`; `image` o `video` se añadirán con Media ampliando la unión, sin
- * migrar el modelo (ADR-039).
+ * En el alcance actual el fondo del Preset es siempre sólido. Media es
+ * contenido referencial y no estilo del Preset (ADR-048).
  */
 export interface PresetSolidBackground {
   type: "solid";

@@ -3,12 +3,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 import type { MediaKind } from "@/domain/media/media";
-import { expectedOffsetSeconds, type VideoPlaybackState } from "@/domain/output/video-playback";
+import {
+  expectedOffsetSeconds,
+  shouldCorrectVideoDrift,
+  type VideoPlaybackState,
+} from "@/domain/output/video-playback";
 import { useMediaUrl } from "@/features/media/media-context";
 import { cn } from "@/lib/utils";
 
-/** Máxima deriva tolerada antes de corregir la posición del video. */
-const DRIFT_TOLERANCE_SECONDS = 0.35;
 const DRIFT_CHECK_INTERVAL_MS = 1000;
 
 export interface MediaSlideSurfaceProps {
@@ -112,7 +114,7 @@ export function MediaSlideSurface({
     const video = videoRef.current;
     if (!video || !playback || url === null) return;
     const expected = expectedOffsetSeconds(playback, Date.now());
-    if (Number.isFinite(expected) && Math.abs(video.currentTime - expected) > DRIFT_TOLERANCE_SECONDS) {
+    if (shouldCorrectVideoDrift(video.currentTime, expected)) {
       video.currentTime = expected;
     }
     video.loop = playback.loop;
@@ -131,7 +133,7 @@ export function MediaSlideSurface({
       if (!video) return;
       const duration = Number.isFinite(video.duration) ? video.duration : undefined;
       const expected = expectedOffsetSeconds(playback, Date.now(), duration);
-      if (Math.abs(video.currentTime - expected) > DRIFT_TOLERANCE_SECONDS) {
+      if (shouldCorrectVideoDrift(video.currentTime, expected)) {
         video.currentTime = expected;
       }
     }, DRIFT_CHECK_INTERVAL_MS);
@@ -148,12 +150,7 @@ export function MediaSlideSurface({
           Este archivo no está disponible en este dispositivo
         </span>
       ) : kind === "image" ? (
-        <img
-          src={url}
-          alt=""
-          className="max-h-full max-w-full object-contain"
-          draggable={false}
-        />
+        <img src={url} alt="" className="max-h-full max-w-full object-contain" draggable={false} />
       ) : (
         <video
           ref={videoRef}

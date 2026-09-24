@@ -15,7 +15,12 @@ function textSlide(
   style = DEFAULT_PRESET_STYLE,
   id = "song:1:slide:0",
 ): OutputSlide {
-  return { id, content: { kind: "text", lines: [...lines] }, style };
+  return {
+    id,
+    content: { kind: "text", lines: [...lines] },
+    style,
+    background: { type: "solid", color: style.background.color },
+  };
 }
 
 function snapshot(overrides: Partial<OutputSnapshot> = {}): OutputSnapshot {
@@ -23,6 +28,7 @@ function snapshot(overrides: Partial<OutputSnapshot> = {}): OutputSnapshot {
     sessionId: "session-a",
     sequence: 0,
     mode: "content",
+    backgroundTransition: "cut",
     slide: textSlide(["Línea uno", "Línea dos"]),
     ...overrides,
   };
@@ -47,11 +53,13 @@ describe("toOutputSnapshot", () => {
       sessionId: "s1",
       sequence: 7,
       mode: "content",
+      backgroundTransition: "cut",
       slide: {
         id: "song:1:slide:0",
         content: { kind: "text", lines: ["Hola", "Mundo"] },
         secondaryText: undefined,
         style: DEFAULT_PRESET_STYLE,
+        background: { type: "solid", color: DEFAULT_PRESET_STYLE.background.color },
         playback: undefined,
       },
     });
@@ -140,6 +148,20 @@ describe("snapshotsEqual", () => {
   it("slide null vs slide → distintos", () => {
     expect(snapshotsEqual(snapshot(), snapshot({ slide: null }))).toBe(false);
   });
+
+  it("background o modo de transicion distintos son cambios visibles", () => {
+    const mediaSlide: OutputSlide = {
+      ...textSlide(["Linea"]),
+      background: {
+        type: "media",
+        mediaId: "m1",
+        kind: "image",
+        fallbackColor: "#123456",
+      },
+    };
+    expect(snapshotsEqual(snapshot(), snapshot({ slide: mediaSlide }))).toBe(false);
+    expect(snapshotsEqual(snapshot(), snapshot({ backgroundTransition: "fade" }))).toBe(false);
+  });
 });
 
 describe("parseOutputMessage", () => {
@@ -170,6 +192,11 @@ describe("parseOutputMessage", () => {
     expect(parsed?.type).toBe("snapshot");
     if (parsed?.type === "snapshot") {
       expect(parsed.snapshot.slide?.content).toEqual({ kind: "text", lines: ["una", "dos"] });
+      expect(parsed.snapshot.backgroundTransition).toBe("cut");
+      expect(parsed.snapshot.slide?.background).toEqual({
+        type: "solid",
+        color: DEFAULT_PRESET_STYLE.background.color,
+      });
     }
   });
 

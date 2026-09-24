@@ -6,6 +6,17 @@
  */
 
 import type { PresetStyle } from "@/domain/presets/preset";
+import type { MediaKind } from "@/domain/media/media";
+import type { RundownBackground } from "@/domain/projects/rundown";
+
+export type ResolvedSlideBackground =
+  | { type: "solid"; color: string }
+  | {
+      type: "media";
+      mediaId: string;
+      kind: MediaKind;
+      fallbackColor: string;
+    };
 
 export interface SlideTextContent {
   kind: "text";
@@ -51,21 +62,18 @@ export interface Slide {
   secondaryText?: string | undefined;
   sourceSectionId?: string | undefined;
   /**
-   * Estilo YA RESUELTO y congelado por el snapshot de Live (ADR-038). La
+   * Estilo YA RESUELTO y congelado por el snapshot de Live (ADR-036). La
    * composición de contenido no lo produce: es opcional antes de resolver y
    * está siempre presente en el runtime que Live carga. El motor solo lo
    * transporta; nunca interpreta ni consulta Presets.
    */
   style?: PresetStyle | undefined;
+  /** Fondo resuelto y congelado junto con el estilo. */
+  background?: ResolvedSlideBackground | undefined;
 }
 
 export type PresentationItemType =
-  | "song"
-  | "bible"
-  | "media"
-  | "presentation"
-  | "countdown"
-  | "message";
+  "song" | "bible" | "media" | "presentation" | "countdown" | "message";
 
 export interface PresentationItem {
   /** Identidad de ESTA instancia dentro de la presentación. */
@@ -79,6 +87,8 @@ export interface PresentationItem {
   sourceId?: string | undefined;
   /** Preset pedido por el RundownItem; sin resolver. */
   presetId?: string | undefined;
+  /** Referencia persistida antes de resolver el snapshot. */
+  background?: RundownBackground | undefined;
 }
 
 export interface SlideLocation {
@@ -131,4 +141,3 @@ export interface PresentationState {
    */
   detachedProgramSlide: Slide | null;
 }
-

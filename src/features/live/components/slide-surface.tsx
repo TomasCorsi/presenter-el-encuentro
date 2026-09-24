@@ -2,8 +2,8 @@ import type { ComponentProps } from "react";
 
 import type { Slide } from "@/domain/presentation/presentation";
 import type { VideoPlaybackState } from "@/domain/output/video-playback";
-import { MediaSlideSurface } from "@/features/presentation/components/media-slide-surface";
-import { SlideRenderer } from "@/features/presentation/components/slide-renderer";
+import type { BackgroundTransition } from "@/domain/output/output-snapshot";
+import { PresentationSurface } from "@/features/presentation/components/presentation-surface";
 import { cn } from "@/lib/utils";
 
 export interface SlideSurfaceProps extends ComponentProps<"div"> {
@@ -15,6 +15,7 @@ export interface SlideSurfaceProps extends ComponentProps<"div"> {
   live?: boolean;
   /** Solo slides de video: estado autoritativo de Live. */
   playback?: VideoPlaybackState | undefined;
+  transition?: BackgroundTransition | undefined;
 }
 
 /**
@@ -28,6 +29,7 @@ export function SlideSurface({
   tone = "preview",
   live = false,
   playback,
+  transition = "cut",
   className,
   ...props
 }: SlideSurfaceProps) {
@@ -51,12 +53,13 @@ export function SlideSurface({
         <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
           {emptyLabel}
         </p>
-      ) : content.kind === "text" ? (
-        <SlideRenderer lines={content.lines} style={slide?.style} secondaryText={slide?.secondaryText} />
       ) : (
-        <MediaSlideSurface
-          mediaId={content.mediaId}
-          kind={content.kind}
+        <PresentationSurface
+          content={content}
+          style={slide?.style}
+          background={slide?.background}
+          secondaryText={slide?.secondaryText}
+          transition={transition}
           playback={content.kind === "video" ? playback : undefined}
         />
       )}

@@ -1,17 +1,43 @@
 import { describe, expect, it } from "bun:test";
 
 import type { PresentationItem, Slide } from "@/domain/presentation/presentation";
-import { createInitialPresentationState, loadPresentation, selectSlide } from "@/domain/presentation/presentation-engine";
+import {
+  createInitialPresentationState,
+  loadPresentation,
+  removePresentationItem,
+  selectSlide,
+} from "@/domain/presentation/presentation-engine";
 import { goLive } from "@/domain/presentation/presentation-live";
-import { isMediaRemovalBlocked, toggleProgramMode } from "@/domain/presentation/presentation-program";
+import {
+  isMediaRemovalBlocked,
+  toggleProgramMode,
+} from "@/domain/presentation/presentation-program";
 
 function slide(id: string, content: Slide["content"]): Slide {
   return { id, content } as Slide;
 }
 const items: PresentationItem[] = [
-  { id: "img", type: "media", title: "Foto", order: 0, slides: [slide("s-img", { kind: "image", mediaId: "m1" })] },
-  { id: "vid", type: "media", title: "Clip", order: 1, slides: [slide("s-vid", { kind: "video", mediaId: "m2" })] },
-  { id: "song", type: "song", title: "Canción", order: 2, slides: [slide("s-song", { kind: "text", lines: ["a"] })] },
+  {
+    id: "img",
+    type: "media",
+    title: "Foto",
+    order: 0,
+    slides: [slide("s-img", { kind: "image", mediaId: "m1" })],
+  },
+  {
+    id: "vid",
+    type: "media",
+    title: "Clip",
+    order: 1,
+    slides: [slide("s-vid", { kind: "video", mediaId: "m2" })],
+  },
+  {
+    id: "song",
+    type: "song",
+    title: "Canción",
+    order: 2,
+    slides: [slide("s-song", { kind: "text", lines: ["a"] })],
+  },
 ];
 
 function loaded() {
@@ -29,6 +55,13 @@ describe("Media al aire no se puede quitar (Fase 10)", () => {
     expect(isMediaRemovalBlocked(s, "vid")).toBe(true);
     expect(isMediaRemovalBlocked(toggleProgramMode(s, "clear"), "vid")).toBe(true);
     expect(isMediaRemovalBlocked(toggleProgramMode(s, "black"), "vid")).toBe(true);
+  });
+  it("el comando de baja es defensivo y nunca separa Media al aire", () => {
+    const onAir = goLive(loaded(), "s-vid");
+    const after = removePresentationItem(onAir, "vid");
+    expect(after).toBe(onAir);
+    expect(after.programSlideId).toBe("s-vid");
+    expect(after.detachedProgramSlide).toBeNull();
   });
   it("cambiar Program → quitar permitido", () => {
     const s = goLive(goLive(loaded(), "s-vid"), "s-song");

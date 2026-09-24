@@ -42,6 +42,43 @@ describe("local storage project repository", () => {
     expect(await repository.getActiveProjectId()).toBeNull();
   });
 
+  test("reads optional backgrounds and drops only an invalid background", async () => {
+    const storage = new MemoryStorage();
+    storage.setRaw(
+      JSON.stringify({
+        version: 2,
+        activeProjectId: null,
+        projects: [
+          {
+            ...project,
+            rundown: [
+              {
+                id: "song-valid",
+                type: "song",
+                sourceId: "song-1",
+                title: "Song",
+                order: 0,
+                background: { type: "media", mediaId: "m1" },
+              },
+              {
+                id: "bible-invalid",
+                type: "bible",
+                sourceId: "bible-1",
+                title: "Bible",
+                order: 1,
+                background: { type: "media", mediaId: 4 },
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    const stored = (await createLocalStorageProjectRepository(storage).list())[0];
+    expect(stored?.rundown).toHaveLength(2);
+    expect(stored?.rundown[0]?.background).toEqual({ type: "media", mediaId: "m1" });
+    expect(stored?.rundown[1]?.background).toBeUndefined();
+  });
+
   test("keeps duplication in the service and clears an active deletion", async () => {
     const repository = createLocalStorageProjectRepository(new MemoryStorage());
     let sequence = 0;

@@ -1,6 +1,7 @@
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { VideoPlaybackState } from "@/domain/output/video-playback";
 import type { PresentationItem, ProgramMode, Slide } from "@/domain/presentation/presentation";
+import type { BackgroundTransition } from "@/domain/output/output-snapshot";
 
 import { LiveVideoControls, type VideoPlaybackCommand } from "./live-video-controls";
 import { SlideSurface } from "./slide-surface";
@@ -14,6 +15,7 @@ export interface LiveProgramMonitorProps {
   /** Estado de reproducción del video al aire (si lo hay). */
   playback?: VideoPlaybackState | null;
   onPlaybackCommand?: ((command: VideoPlaybackCommand) => void) | undefined;
+  backgroundTransition?: BackgroundTransition | undefined;
 }
 
 const MODE_LABEL: Record<ProgramMode, string> = {
@@ -35,6 +37,7 @@ export function LiveProgramMonitor({
   detached,
   playback = null,
   onPlaybackCommand,
+  backgroundTransition = "cut",
 }: LiveProgramMonitorProps) {
   const onAir = programMode === "content" ? programSlide : null;
   const videoOnAir = onAir?.content.kind === "video" ? onAir : null;
@@ -58,6 +61,7 @@ export function LiveProgramMonitor({
         tone="program"
         live={Boolean(onAir)}
         playback={videoOnAir ? (playback ?? undefined) : undefined}
+        transition={backgroundTransition}
         emptyLabel={
           programMode === "black" ? "Salida en negro"
           : programMode === "clear" ? "Salida vacía"
