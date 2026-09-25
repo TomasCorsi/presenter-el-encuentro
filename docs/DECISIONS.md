@@ -920,3 +920,44 @@ cancelan la importación. La UI informa el estado sin prometer permanencia.
 **Aclaración de cierre de Fase 10.** El monitor Program de Live corre muted.
 Output intenta audio y, si el autoplay lo bloquea, continúa muted hasta que el
 operador use «Activar salida». Esta aclaración no cambia el protocolo.
+
+## ADR-051 — Background Media por aparición y transición local
+
+**Contexto.** Song/Bible necesitan fondos visuales elegibles por cada lugar del
+rundown, sin convertir Media en estilo de Preset ni alterar silenciosamente un
+show cargado.
+
+**Decisión.** `RundownItem.background?: { type: "media"; mediaId }` existe solo
+para Song/Bible. `PresetStyle.background` permanece sólido y se congela como
+base/fallback. Al cargar Live se resuelve metadata Media dentro de
+`Slide.background`; bytes ausentes o errores de carga/decode muestran el sólido.
+Project Detail solo persiste y provoca stale/external. Live persiste el item y
+lo reemplaza incrementalmente sin incorporar otros cambios pendientes.
+
+La superficie compartida se divide en `BackgroundLayer + ContentLayer`.
+Background video es decorativo: muted, loop, autoplay, playsInline, sin controles
+ni `VideoPlaybackState`. `OutputSnapshot` agrega el estado actual y el modo
+`cut | fade`, pero no un evento histórico. El crossfade de 500 ms ocurre de
+forma local al detectar un cambio real; una ventana tardía no repite fades.
+
+**Consecuencias.** Favoritos y recientes son preferencias locales y no bloquean
+delete. En cambio, una referencia de contenido o background Song/Bible cuenta
+como uso y bloquea eliminar el asset. Preview de Media es totalmente local y no
+muta el Presentation Store.
+
+## ADR-052 — Miniaturas visuales estáticas con primitives compartidos
+
+**Contexto.** El Live slide grid necesita representar el resultado de
+Song/Bible sin crear un renderer paralelo ni abrir un decoder o los bytes OPFS
+por cada card.
+
+**Decisión.** `SlideThumbnailSurface` compone el `SlideRenderer` existente y un
+`BackgroundVisual` puro compartido con `BackgroundLayer`. Recibe estilo y fondo
+ya resueltos. Para image y video consume exclusivamente `thumbnailDataUrl` de
+la metadata y siempre monta `<img>`; no usa `useMediaUrl`, Blob URLs, playback
+ni transiciones. Ausencia o error deja visible el solid congelado del Preset.
+
+**Consecuencias.** La tipografía y el fit no se duplican, las cards mantienen
+proporción mediante `cqh/cqw`, y los estados Preview/Program viven en el chrome
+externo. La fidelidad de un video queda limitada al frame generado al importar,
+a cambio de no activar múltiples decoders ni lecturas del almacenamiento.

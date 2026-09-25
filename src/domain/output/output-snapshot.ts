@@ -3,7 +3,7 @@ import type {
   ProgramMode,
   ResolvedSlideBackground,
 } from "@/domain/presentation/presentation";
-import { DEFAULT_PRESET_STYLE, type PresetStyle } from "@/domain/presets/preset";
+import type { PresetStyle } from "@/domain/presets/preset";
 import { normalizePresetStyle, presetStylesEqual } from "@/domain/presets/preset-rules";
 import type { ProgramOutput } from "@/domain/presentation/presentation-selectors";
 
@@ -75,6 +75,7 @@ export function toOutputSnapshot(
   backgroundTransition: BackgroundTransition = "cut",
 ): OutputSnapshot {
   const slide = output.slide;
+  const style = normalizePresetStyle(slide?.style);
   return {
     sessionId,
     sequence,
@@ -90,11 +91,11 @@ export function toOutputSnapshot(
           secondaryText: slide.secondaryText,
           // El publisher NO resuelve Presets: solo copia el estilo ya
           // congelado en el runtime, con el Default como red de seguridad.
-          style: slide.style ?? DEFAULT_PRESET_STYLE,
+          style,
           background:
             slide.background ?? {
               type: "solid",
-              color: (slide.style ?? DEFAULT_PRESET_STYLE).background.color,
+              color: style.background.color,
             },
           playback:
             slide.content.kind === "video" && playback ? { ...playback } : undefined,

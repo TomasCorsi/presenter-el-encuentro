@@ -20,6 +20,40 @@ async function flush() {
 }
 
 describe("BackgroundLayer", () => {
+  it("does not replay a fade on mount and crossfades only a real background change", async () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    const storage = createInMemoryMediaStorage();
+    const render = (color: string, transition: "cut" | "fade") =>
+      React.createElement(
+        MediaProvider,
+        {
+          repository: createInMemoryMediaRepository(),
+          fileStorage: storage,
+          initialAssets: [],
+        },
+        React.createElement(BackgroundLayer, {
+          background: { type: "solid", color },
+          transition,
+        }),
+      );
+
+    await act(async () => root.render(render("#111111", "fade")));
+    expect(container.querySelector('[data-testid="background-layer"]')?.children).toHaveLength(1);
+
+    await act(async () => root.render(render("#222222", "fade")));
+    const fading = container.querySelector('[data-testid="background-layer"]');
+    expect(fading?.children).toHaveLength(2);
+    expect(fading?.innerHTML).toContain("#111111");
+    expect(fading?.innerHTML).toContain("#222222");
+
+    await act(async () => root.render(render("#333333", "cut")));
+    const cut = container.querySelector('[data-testid="background-layer"]');
+    expect(cut?.children).toHaveLength(1);
+    expect(cut?.innerHTML).toContain("#333333");
+    await act(async () => root.unmount());
+  });
+
   it("video backgrounds are muted looping autoplay surfaces", async () => {
     const storage = createInMemoryMediaStorage();
     await storage.save("video-1", new Blob(["video"], { type: "video/mp4" }));
@@ -53,7 +87,7 @@ describe("BackgroundLayer", () => {
     expect(video?.muted).toBe(true);
     expect(video?.loop).toBe(true);
     expect(video?.autoplay).toBe(true);
-    expect(video?.playsInline).toBe(true);
+    expect(video?.hasAttribute("playsinline")).toBe(true);
     expect(video?.controls).toBe(false);
 
     await act(async () => root.unmount());

@@ -21,17 +21,25 @@ export function buildPresentationRuntime(items: PresentationItem[]): Presentatio
     // duplicado en lugar de producir un runtime ambiguo.
     if (itemIndexById.has(item.id)) return;
 
-    const slides = item.slides.map((slide, slideIndex) => ({
-      ...slide,
-      itemId: item.id,
-      order: slideIndex,
-    }));
+    const slidesAlreadyNormalized = item.slides.every(
+      (slide, slideIndex) => slide.itemId === item.id && slide.order === slideIndex,
+    );
+    const slides = slidesAlreadyNormalized
+      ? item.slides
+      : item.slides.map((slide, slideIndex) => ({
+          ...slide,
+          itemId: item.id,
+          order: slideIndex,
+        }));
 
-    const normalizedItem: PresentationItem = {
-      ...item,
-      order: normalizedItems.length,
-      slides,
-    };
+    const normalizedItem: PresentationItem =
+      item.order === normalizedItems.length && slides === item.slides
+        ? item
+        : {
+            ...item,
+            order: normalizedItems.length,
+            slides,
+          };
 
     itemIndexById.set(item.id, normalizedItems.length);
     normalizedItems.push(normalizedItem);

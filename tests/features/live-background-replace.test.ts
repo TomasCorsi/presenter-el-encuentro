@@ -5,6 +5,7 @@ import type { Song } from "@/domain/songs/song";
 import {
   buildReplacementItem,
   createLiveSession,
+  isLiveSessionOutdated,
   replaceInLiveSession,
 } from "@/features/live/live-session";
 
@@ -27,6 +28,31 @@ const project: Project = {
 };
 
 describe("Live background replacement", () => {
+  it("keeps the loaded snapshot frozen when Project Detail changes the background", () => {
+    const session = createLiveSession({ project, songs: [song], presets: [], media: [] });
+    const externallySaved: Project = {
+      ...project,
+      updatedAt: "2026-01-02T00:00:00.000Z",
+      rundown: project.rundown.map((entry) => ({
+        ...entry,
+        background: { type: "media" as const, mediaId: "missing" },
+      })),
+    };
+
+    expect(
+      isLiveSessionOutdated(session, {
+        project: externallySaved,
+        songs: [song],
+        presets: [],
+        media: [],
+      }),
+    ).toBe(true);
+    expect(session.snapshot.items[0]?.slides[0]?.background).toEqual({
+      type: "solid",
+      color: "#0B0D10",
+    });
+  });
+
   it("replaces only the edited frozen item and preserves external stale state", () => {
     const session = createLiveSession({ project, songs: [song], presets: [], media: [] });
     const saved: Project = {

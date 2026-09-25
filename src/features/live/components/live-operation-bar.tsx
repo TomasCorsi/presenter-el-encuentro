@@ -2,6 +2,7 @@ import { Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { ProgramMode } from "@/domain/presentation/presentation";
+import { cn } from "@/lib/utils";
 
 import { LiveControls, type LiveControlsProps } from "./live-controls";
 
@@ -18,8 +19,14 @@ export interface LiveOperationBarProps extends LiveControlsProps {
  * grilla de trabajo la que se comprime.
  */
 export function LiveOperationBar({ onSearch, libraryOpen, ...controls }: LiveOperationBarProps) {
+  const { compact = false, short = false } = controls;
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
+    <div
+      className={cn(
+        "flex shrink-0 flex-wrap items-center rounded-md border border-border bg-card px-2",
+        compact ? "gap-1 py-1" : "gap-2 py-1.5",
+      )}
+    >
       <LiveControls {...controls} />
       <Button
         variant="outline"
@@ -32,7 +39,11 @@ export function LiveOperationBar({ onSearch, libraryOpen, ...controls }: LiveOpe
       >
         <Search />
         Buscar
-        <span className="ml-1 font-mono text-[10px] text-muted-foreground" aria-hidden="true">/</span>
+        {!compact && !short ? (
+          <span className="ml-1 font-mono text-[10px] text-muted-foreground" aria-hidden="true">
+            /
+          </span>
+        ) : null}
       </Button>
     </div>
   );

@@ -303,3 +303,25 @@ La biblioteca lateral usa pestañas Songs | Media. Las filas Media del rundown
 muestran thumbnail cuando existe, nombre y tipo Image/Video; si falta la
 metadata conservan la aparición como contenido faltante. Bible mantiene su
 flujo de alta propio y convive en el mismo rundown con Song y Media.
+
+## Preview y Background Deck (Fase 10.1)
+
+- El preview de Media es un diálogo local y no representa Preview/Program:
+  imagen amplia; video muted al abrir, play/pause, restart, loop, audio local y
+  progreso. Cerrar pausa y vuelve a cero.
+- Song/Bible muestran un selector compacto de fondo en Project Detail. Media
+  como contenido no lo muestra. `Sin fondo` recupera el sólido del Preset.
+- El Library Dock suma `Backgrounds`: target visible `Aplicar a: <item>`, grilla
+  de thumbnails, tipo image/video, búsqueda, Favoritos, Recientes y Cut/Fade.
+  Sin Song/Bible elegible la grilla queda deshabilitada con explicación.
+- Preview elegible tiene prioridad sobre Program. Favoritos y recientes son
+  preferencias locales; recientes es MRU de 12 y ninguno cuenta como uso.
+- `PresentationSurface` superpone Content sobre `BackgroundLayer`. Fade afecta
+  solo la capa de fondo; texto y contenido no cambian opacidad.
+- Las cards Song/Bible del Live slide grid son previews 16:9 reales: reutilizan
+  `SlideRenderer`, respetan tipografía, color, alineaciones, safe area,
+  line-height, `secondaryText` y el background resuelto. Preview/Program se
+  indican exclusivamente en borde y chrome externo.
+- Backgrounds image/video usan el `thumbnailDataUrl` de metadata; video muestra
+  un indicador discreto pero nunca monta `<video>`. Sin thumbnail se ve el
+  solid real del Preset. Las cards Media conservan su representación existente.

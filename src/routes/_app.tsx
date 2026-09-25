@@ -1,4 +1,4 @@
-import { Outlet, createFileRoute } from "@tanstack/react-router";
+import { Outlet, createFileRoute, useRouterState } from "@tanstack/react-router";
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
@@ -9,6 +9,8 @@ import { PresentationProvider } from "@/features/presentation/presentation-conte
 import { PresetsProvider } from "@/features/presets/presets-context";
 import { ProjectsProvider } from "@/features/projects/projects-context";
 import { SongsProvider } from "@/features/songs/songs-context";
+import { appContentOverflowClass } from "@/features/live/live-layout";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app")({
   component: AppShell,
@@ -22,6 +24,7 @@ export const Route = createFileRoute("/_app")({
  * remontaría en cada navegación (ADR-031).
  */
 function AppShell() {
+  const liveRoute = useRouterState({ select: (state) => state.location.pathname === "/live" });
   return (
     <ProjectsProvider>
       <SongsProvider>
@@ -39,7 +42,10 @@ function AppShell() {
                     <AppSidebar />
                     <SidebarInset className="flex min-w-0 flex-1 flex-col bg-background">
                       <AppTopbar />
-                      <main className="min-w-0 flex-1 overflow-y-auto">
+                      <main
+                        data-live-scroll-root={liveRoute ? "locked" : "scrollable"}
+                        className={cn("min-h-0 min-w-0 flex-1", appContentOverflowClass(liveRoute))}
+                      >
                         <Outlet />
                       </main>
                     </SidebarInset>

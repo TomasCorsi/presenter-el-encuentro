@@ -2,6 +2,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import type { VideoPlaybackState } from "@/domain/output/video-playback";
 import type { PresentationItem, ProgramMode, Slide } from "@/domain/presentation/presentation";
 import type { BackgroundTransition } from "@/domain/output/output-snapshot";
+import { cn } from "@/lib/utils";
 
 import { LiveVideoControls, type VideoPlaybackCommand } from "./live-video-controls";
 import { SlideSurface } from "./slide-surface";
@@ -16,6 +17,7 @@ export interface LiveProgramMonitorProps {
   playback?: VideoPlaybackState | null;
   onPlaybackCommand?: ((command: VideoPlaybackCommand) => void) | undefined;
   backgroundTransition?: BackgroundTransition | undefined;
+  compact?: boolean;
 }
 
 const MODE_LABEL: Record<ProgramMode, string> = {
@@ -38,13 +40,14 @@ export function LiveProgramMonitor({
   playback = null,
   onPlaybackCommand,
   backgroundTransition = "cut",
+  compact = false,
 }: LiveProgramMonitorProps) {
   const onAir = programMode === "content" ? programSlide : null;
   const videoOnAir = onAir?.content.kind === "video" ? onAir : null;
 
   return (
     <section aria-labelledby="program-title" className="flex min-h-0 min-w-0 flex-col">
-      <div className="mb-1.5 flex items-center justify-between gap-2">
+      <div className={cn("flex items-center justify-between gap-2", compact ? "mb-1" : "mb-1.5")}>
         <h2
           id="program-title"
           className="font-mono text-[11px] font-semibold uppercase tracking-wide text-live"
@@ -63,9 +66,11 @@ export function LiveProgramMonitor({
         playback={videoOnAir ? (playback ?? undefined) : undefined}
         transition={backgroundTransition}
         emptyLabel={
-          programMode === "black" ? "Salida en negro"
-          : programMode === "clear" ? "Salida vacía"
-          : "Nada al aire"
+          programMode === "black"
+            ? "Salida en negro"
+            : programMode === "clear"
+              ? "Salida vacía"
+              : "Nada al aire"
         }
       />
 

@@ -7,9 +7,8 @@ import {
 } from "@/components/ui/select";
 import { passageCaption, type BiblePassage } from "@/domain/bible/bible";
 import { passageToPresentationItem } from "@/domain/presentation/passage-to-presentation";
-import { slideTextLines } from "@/domain/presentation/presentation";
 import type { Project } from "@/domain/projects/project";
-import { SlideRenderer } from "@/features/presentation/components/slide-renderer";
+import { SlideThumbnailSurface } from "@/features/presentation/components/slide-thumbnail-surface";
 
 export interface BiblePassagePanelProps {
   passage: BiblePassage | null;
@@ -62,11 +61,7 @@ export function BiblePassagePanel({ passage, projects, defaultProjectId, onAdd }
         ) : (
           slides.map((slide) => (
             <div key={slide.id} className="aspect-video overflow-hidden rounded-sm border border-border">
-              <SlideRenderer
-                lines={slideTextLines(slide.content) as string[]}
-                style={slide.style}
-                secondaryText={slide.secondaryText}
-              />
+              <SlideThumbnailSurface slide={slide} />
             </div>
           ))
         )}

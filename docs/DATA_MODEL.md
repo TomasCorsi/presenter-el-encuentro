@@ -170,6 +170,33 @@ mediante `sourceId`; Live y Output resuelven una URL local por ventana.
 aislamiento real. Su normalización se decidirá junto con workspaces/Supabase;
 no se migra anticipadamente en Fase 10.
 
+### Background por aparición (Fase 10.1)
+
+```ts
+type RundownBackground = { type: "media"; mediaId: string };
+
+interface RundownItem {
+  // campos existentes
+  presetId?: string;
+  background?: RundownBackground; // solo Song/Bible
+}
+
+type ResolvedSlideBackground =
+  | { type: "solid"; color: string }
+  | {
+      type: "media";
+      mediaId: string;
+      kind: "image" | "video";
+      fallbackColor: string;
+    };
+```
+
+La extensión de Projects v2 es aditiva: no requiere cambio de versión ni
+migración destructiva. La ausencia de `background` equivale a Sin fondo Media
+y deja actuar al fondo sólido del Preset. La referencia persistida se resuelve
+al cargar Live; el `ResolvedSlideBackground` resultante queda congelado en cada
+slide. Media como contenido no admite este override.
+
 ## Output
 
 ```ts
@@ -274,7 +301,13 @@ interface OutputSnapshot {
   sessionId: string; // efímero, generado al montar Live
   sequence: number; // incremental por sesión
   mode: ProgramMode; // content | clear | black
-  slide: { id: string; lines: string[]; style: PresetStyle } | null;
+  backgroundTransition: "cut" | "fade";
+  slide: {
+    id: string;
+    content: SlideContent;
+    style: PresetStyle;
+    background: ResolvedSlideBackground;
+  } | null;
 }
 ```
 

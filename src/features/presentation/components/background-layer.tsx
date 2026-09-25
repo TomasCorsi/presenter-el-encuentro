@@ -4,50 +4,20 @@ import type { BackgroundTransition } from "@/domain/output/output-snapshot";
 import type { ResolvedSlideBackground } from "@/domain/presentation/presentation";
 import { useMediaUrl } from "@/features/media/media-context";
 
+import { BackgroundVisual } from "./background-visual";
+
 const FADE_MS = 500;
 
-export function backgroundIdentity(background: ResolvedSlideBackground): string {
+function backgroundIdentity(background: ResolvedSlideBackground): string {
   return background.type === "solid"
     ? `solid:${background.color}`
     : `media:${background.kind}:${background.mediaId}:${background.fallbackColor}`;
 }
 
-function BackgroundVisual({ background }: { background: ResolvedSlideBackground }) {
+function RuntimeBackgroundVisual({ background }: { background: ResolvedSlideBackground }) {
   const mediaId = background.type === "media" ? background.mediaId : null;
   const url = useMediaUrl(mediaId);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => setFailed(false), [mediaId, url]);
-
-  const color = background.type === "solid" ? background.color : background.fallbackColor;
-  return (
-    <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: color }}>
-      {background.type === "media" && url && !failed ? (
-        background.kind === "image" ? (
-          <img
-            src={url}
-            alt=""
-            aria-hidden="true"
-            draggable={false}
-            className="h-full w-full object-cover"
-            onError={() => setFailed(true)}
-          />
-        ) : (
-          <video
-            src={url}
-            aria-hidden="true"
-            className="h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            onError={() => setFailed(true)}
-          />
-        )
-      ) : null}
-    </div>
-  );
+  return <BackgroundVisual background={background} mediaUrl={url} />;
 }
 
 export interface BackgroundLayerProps {
@@ -98,7 +68,7 @@ export function BackgroundLayer({ background, transition = "cut" }: BackgroundLa
 
   return (
     <div data-testid="background-layer" className="absolute inset-0">
-      {previous ? <BackgroundVisual background={previous} /> : null}
+      {previous ? <RuntimeBackgroundVisual background={previous} /> : null}
       <div
         className="absolute inset-0"
         style={{
@@ -106,7 +76,7 @@ export function BackgroundLayer({ background, transition = "cut" }: BackgroundLa
           transition: previous ? `opacity ${FADE_MS}ms ease` : undefined,
         }}
       >
-        <BackgroundVisual background={current} />
+        <RuntimeBackgroundVisual background={current} />
       </div>
     </div>
   );

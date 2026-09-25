@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, EyeOff, Play, SquareSlash } from "lucide-rea
 
 import { Button } from "@/components/ui/button";
 import type { ProgramMode } from "@/domain/presentation/presentation";
+import { cn } from "@/lib/utils";
 
 export interface LiveControlsProps {
   canPrevious: boolean;
@@ -12,6 +13,8 @@ export interface LiveControlsProps {
   onNext(): void;
   onTake(): void;
   onToggleMode(mode: Exclude<ProgramMode, "content">): void;
+  compact?: boolean;
+  short?: boolean;
 }
 
 /** Controles de operación. Solo TAKE envía contenido nuevo al aire. */
@@ -24,10 +27,12 @@ export function LiveControls({
   onNext,
   onTake,
   onToggleMode,
+  compact = false,
+  short = false,
 }: LiveControlsProps) {
   return (
     <div
-      className="flex flex-wrap items-center gap-1.5"
+      className={cn("flex flex-wrap items-center", compact ? "gap-1" : "gap-1.5")}
       role="group"
       aria-label="Controles de presentación"
     >
@@ -40,7 +45,11 @@ export function LiveControls({
       >
         <ChevronLeft />
         Previous
-        <span className="ml-1 font-mono text-[10px] text-muted-foreground" aria-hidden="true">←</span>
+        {!compact ? (
+          <span className="ml-1 font-mono text-[10px] text-muted-foreground" aria-hidden="true">
+            ←
+          </span>
+        ) : null}
       </Button>
       <Button
         variant="outline"
@@ -51,7 +60,11 @@ export function LiveControls({
       >
         Next
         <ChevronRight />
-        <span className="ml-1 font-mono text-[10px] text-muted-foreground" aria-hidden="true">→</span>
+        {!compact ? (
+          <span className="ml-1 font-mono text-[10px] text-muted-foreground" aria-hidden="true">
+            →
+          </span>
+        ) : null}
       </Button>
       <Button
         size="sm"
@@ -61,7 +74,11 @@ export function LiveControls({
       >
         <Play />
         TAKE
-        <span className="ml-1 font-mono text-[10px] opacity-70" aria-hidden="true">⏎</span>
+        {!compact ? (
+          <span className="ml-1 font-mono text-[10px] opacity-70" aria-hidden="true">
+            ⏎
+          </span>
+        ) : null}
       </Button>
       <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
       <Button
@@ -71,7 +88,8 @@ export function LiveControls({
         onClick={() => onToggleMode("clear")}
         title="Salida vacía sin perder la slide al aire"
       >
-        <SquareSlash />Clear
+        <SquareSlash />
+        Clear
       </Button>
       <Button
         variant={programMode === "black" ? "default" : "outline"}
@@ -80,11 +98,14 @@ export function LiveControls({
         onClick={() => onToggleMode("black")}
         title="Salida en negro sin perder la slide al aire"
       >
-        <EyeOff />Black
+        <EyeOff />
+        Black
       </Button>
-      <p className="ml-auto hidden font-mono text-[10px] uppercase tracking-wide text-muted-foreground lg:block">
-        ← anterior · → siguiente · enter take
-      </p>
+      {!compact && !short ? (
+        <p className="ml-auto hidden font-mono text-[10px] uppercase tracking-wide text-muted-foreground lg:block">
+          ← anterior · → siguiente · enter take
+        </p>
+      ) : null}
     </div>
   );
 }

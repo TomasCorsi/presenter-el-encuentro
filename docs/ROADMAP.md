@@ -11,9 +11,10 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Última fase completada: **Fase 10 — Media** (2026-09-24). El Quality Gate
-  manual fue cerrado por aceptación explícita del usuario, con el riesgo
-  residual de las pruebas no ejecutadas registrado en `TESTING.md`.
+- Última fase completada: **Fase 10 — Media** (2026-09-24).
+- **Fase 10.1 — Media Preview + Backgrounds Dinámicos:** implementación y
+  Quality Gate automatizado completos; validación manual en Chrome/Edge
+  pendiente por falta de navegador disponible en el entorno de cierre.
 - Fases 9, 9.1 y los incrementos operativos 9.2/9.3 están implementados.
 - La Fase 11 no fue iniciada.
 - Backend: no conectado. Se decide en la Fase 13.
@@ -362,6 +363,30 @@ fueron aceptadas como riesgo residual y permanecen detalladas en `TESTING.md`;
 no se registran como PASS.
 
 **Fuera de alcance de esta fase:** audio assets, logos y backgrounds Media.
+
+---
+
+## Fase 10.1 — Media Preview + Backgrounds Dinámicos
+
+- [x] Preview local de imagen/video en `/media` y en el dock de Live.
+- [x] Background Media por aparición Song/Bible, separado de `PresetStyle`.
+- [x] Fondo sólido del Preset como base y fallback congelado.
+- [x] `PresentationSurface` por capas: Background + Content.
+- [x] Videos decorativos muted, loop, autoplay y sin playback autoritativo.
+- [x] Quick Background Deck: Sin fondo, búsqueda, favoritos, recientes y Preview-first.
+- [x] Cut inmediato y Fade local de 500 ms, sin timeline entre ventanas.
+- [x] Replace incremental de un solo `PresentationItem` desde Live.
+- [x] Uso y protección de borrado extendidos a backgrounds Song/Bible.
+- [x] Thumbnails visuales Song/Bible en Live con estilo y background resueltos;
+      los videos usan frame estático y nunca abren bytes por card.
+- [x] 314 tests, typecheck, lint dirigido y build de producción.
+- [x] Gate incremental de thumbnails: 323 tests, typecheck, lint dirigido y
+      build de producción PASS.
+- [ ] Quality Gate visual final en Chrome/Edge sobre Windows real.
+
+**Estado:** IMPLEMENTACIÓN COMPLETA / VALIDACIÓN MANUAL PENDIENTE (2026-09-25).
+No se avanza de fase hasta registrar el control visual pendiente en
+`TESTING.md`.
 
 ---
 

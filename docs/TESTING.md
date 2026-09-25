@@ -370,3 +370,46 @@ Quality Gate manual cerrado el 2026-09-24 por aceptación explícita del usuario
 Las comprobaciones no ejecutadas no se consideran PASS. El usuario aceptó el
 riesgo residual y dio por terminada la Fase 10. WEBM y el flujo PNG → Live →
 Output ya habían sido validados en navegador.
+
+## Fase 10.1 — Media Preview + Backgrounds Dinámicos
+
+Quality Gate automatizado del 2026-09-25:
+
+- `bun test`: 314 PASS, 0 FAIL, 743 assertions, 49 archivos;
+- `npx tsc --noEmit`: PASS;
+- lint dirigido: 0 errores; queda el warning preexistente de Fast Refresh en
+  `projects-context.tsx`; la regla global Prettier/CRLF se excluyó para no
+  reformatear masivamente el repositorio;
+- `npm run build`: PASS (client, SSR y Nitro/Cloudflare).
+
+Cobertura nueva: persistencia y saneamiento de `RundownItem.background`,
+resolución/fallback del Preset, uso y delete protection, target Preview-first,
+favoritos/MRU, replace incremental preservando estado, snapshot Output
+retrocompatible, video decorativo y preview local con reset al cerrar.
+
+Pendiente manual en Chrome/Edge Windows: preview visual de image/video y sus
+controles; selectores Song/Bible; equivalencia Program/Output; Output tardío y
+reload; Cut/Fade visual limitado al fondo; error real de decode; consola limpia.
+El entorno automatizado de cierre no expuso ningún navegador, por lo que estos
+puntos no se registran como PASS.
+
+### Ajuste: visual slide thumbnails
+
+Gate automatizado del 2026-09-25:
+
+- `bun test`: 323 PASS, 0 FAIL, 780 assertions, 51 archivos;
+- `npx tsc --noEmit`: PASS;
+- tests dirigidos de thumbnail/BackgroundLayer: PASS;
+- lint normal sobre archivos nuevos: PASS; lint sobre todos los archivos del
+  ajuste con la regla global Prettier/CRLF excluida: PASS, 0 errores;
+- `npm run build`: PASS (client, SSR y Nitro/Cloudflare).
+
+Cobertura: Song solid/image/video-thumbnail, Bible con referencia secundaria,
+estilo y safe area compartidos, fallback por metadata ausente o error de carga,
+Preview/Program fuera de la superficie, click `goLive`, cards Media sin cambios,
+cero `<video>` y cero lecturas/getUrl del storage desde la grilla.
+
+Pendiente manual: fluidez del scroll con un item de muchas slides, legibilidad
+en el ancho mínimo de card y contraste de los indicadores Preview/Program. El
+entorno de cierre no expuso apps ni browsers, por lo que no se registra PASS
+visual para este ajuste.

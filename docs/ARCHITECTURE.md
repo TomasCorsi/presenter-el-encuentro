@@ -395,3 +395,40 @@ IndexedDB se instancia solo en cliente, después del montaje.
 ## Fase 10 — Cadena de Media
 
 `src/domain/media/` (tipos y reglas puras) → `src/services/media/` (repositorio, storages, caché de URLs por ventana, persistencia) → `src/features/media/media-service.ts` (coordinador) → `media-context.tsx` (`MediaProvider`, `useMedia`, `useMediaUrl`) montado en `_app.tsx` y `output.main.tsx`. `SlideContent` es unión discriminada `text | image | video`; `MediaSlideSurface` renderiza image/video en Live y Output. La firma de presentación incorpora los assets por `updatedAt` para baja incremental en Live.
+
+## Fase 10.1 — Preview y backgrounds dinámicos
+
+```text
+RundownItem.background? (mediaId)
+  → projectToPresentation
+  → resolvePresentationStyles (metadata + solid del Preset congelados)
+  → Slide.background: ResolvedSlideBackground
+  → PresentationSurface
+       ├─ BackgroundLayer
+       └─ ContentLayer
+  → Program / OutputSnapshot / Output
+```
+
+`PresetStyle.background` continúa siendo sólido y es siempre la base/fallback.
+El asset se superpone solo si metadata y bytes pueden resolverse; ausencia o
+fallo de carga/decode dejan visible ese color, nunca un negro implícito.
+
+Project Detail actualiza el Project y deja desactualizado cualquier snapshot
+Live ya cargado. El Quick Background Deck persiste el mismo RundownItem y usa
+`replacePresentationItem`/`replaceInLiveSession` para sustituir solo ese item
+congelado, conservando Preview, Program, Clear/Black y cualquier desfase
+externo anterior. No reconstruye el show.
+
+`OutputSnapshot` transporta el background resuelto y `cut | fade`; no transporta
+eventos ni timestamps de transición. Cada `BackgroundLayer` anima localmente un
+cambio real durante 500 ms. Un Output nuevo monta directamente el estado actual.
+El video decorativo es muted/loop/autoplay/playsInline, no usa
+`VideoPlaybackState` y no comparte controles con un video de contenido.
+
+Las miniaturas visuales Song/Bible no usan la superficie operativa ni consultan
+OPFS. `SlideThumbnailSurface` compone el mismo `SlideRenderer` y el primitive
+`BackgroundVisual`; recibe el `thumbnailDataUrl` desde un mapa de metadata de
+Live. Tanto imagen como video se representan mediante `<img>` estático. El
+solid resuelto permanece debajo y actúa como fallback ante metadata, thumbnail
+o decode ausentes. `BackgroundLayer` reutiliza el mismo primitive, pero conserva
+por separado su resolución de bytes, video real y transiciones.

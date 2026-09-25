@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { Radio } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { mediaRemovalBlockReason } from "@/domain/presentation/presentation-program";
 import { Page } from "@/components/layout/page";
@@ -66,6 +66,17 @@ import {
   BACKGROUND_PREFERENCES_KEY,
   parseBackgroundPreferences,
 } from "@/features/live/background-preferences";
+import {
+  LIBRARY_DOCK_DEFAULT_HEIGHT,
+  LIVE_WORKSPACE_MIN_HEIGHT,
+  clampLibraryDockHeight,
+  getLibraryDockBounds,
+  persistLibraryDockPreference,
+  readLibraryDockPreference,
+} from "@/features/live/library-dock-height";
+import { useLiveFullscreen } from "@/features/live/use-live-fullscreen";
+import { useLiveLayout } from "@/features/live/use-live-layout";
+import { cn } from "@/lib/utils";
 
 const TITLE = "Live — Consola de operación en vivo";
 const DESCRIPTION =
@@ -133,6 +144,8 @@ function LiveConsole() {
   const { assets: mediaAssets, isLoading: mediaLoading } = useMedia();
   const store = usePresentationStore();
   const state = usePresentationState();
+  const layout = useLiveLayout();
+  const fullscreen = useLiveFullscreen();
   const [session, setSession] = useState<LiveSession | null>(null);
   /** Reproducción del video al aire: Live es la única autoridad. */
   const [playback, setPlayback] = useState<VideoPlaybackState | null>(null);
@@ -140,16 +153,83 @@ function LiveConsole() {
 
   // Preferencias locales del dock: se leen tras el montaje para no romper SSR.
   const [library, setLibrary] = useState<LibraryPreference>(DEFAULT_LIBRARY);
+  const [preferredDockHeight, setPreferredDockHeight] = useState(
+    LIBRARY_DOCK_DEFAULT_HEIGHT.desktop,
+  );
+  const [draftDockHeight, setDraftDockHeight] = useState<number | null>(null);
+  const [dockRegionHeight, setDockRegionHeight] = useState<number | null>(null);
   const [focusSignal, setFocusSignal] = useState(0);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const dockRegionRef = useRef<HTMLDivElement | null>(null);
+  const backgroundThumbnails = useMemo(
+    () =>
+      new Map(
+        mediaAssets.flatMap((asset) =>
+          asset.thumbnailDataUrl ? [[asset.id, asset.thumbnailDataUrl] as const] : [],
+        ),
+      ),
+    [mediaAssets],
+  );
+  const handleGoLive = useCallback((slideId: string) => store.goLive(slideId), [store]);
 
   useEffect(() => {
     setLibrary(readLibraryPreference());
-    setBackgroundTransition(
-      parseBackgroundPreferences(window.localStorage.getItem(BACKGROUND_PREFERENCES_KEY)).transition,
+    setPreferredDockHeight(
+      readLibraryDockPreference(window.localStorage, LIBRARY_DOCK_DEFAULT_HEIGHT[layout.density]),
     );
+    setBackgroundTransition(
+      parseBackgroundPreferences(window.localStorage.getItem(BACKGROUND_PREFERENCES_KEY))
+        .transition,
+    );
+  }, [layout.density]);
+
+  useEffect(() => {
+    const region = dockRegionRef.current;
+    if (!region) return;
+    const measure = () => setDockRegionHeight(region.clientHeight);
+    measure();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", measure);
+      return () => window.removeEventListener("resize", measure);
+    }
+    const observer = new ResizeObserver(measure);
+    observer.observe(region);
+    return () => observer.disconnect();
+  }, []);
+
+  const dockBounds = useMemo(
+    () =>
+      getLibraryDockBounds({
+        viewportHeight: layout.height,
+        availableHeight: dockRegionHeight,
+        density: layout.density,
+      }),
+    [dockRegionHeight, layout.density, layout.height],
+  );
+  const libraryDockHeight = clampLibraryDockHeight(
+    draftDockHeight ?? preferredDockHeight,
+    dockBounds,
+  );
+
+  const commitLibraryDockHeight = useCallback((height: number) => {
+    const persisted = persistLibraryDockPreference(window.localStorage, height);
+    setPreferredDockHeight(persisted);
+    setDraftDockHeight(null);
+  }, []);
+
+  const resetLibraryDockHeight = useCallback(() => {
+    const reset = persistLibraryDockPreference(
+      window.localStorage,
+      LIBRARY_DOCK_DEFAULT_HEIGHT[layout.density],
+    );
+    setPreferredDockHeight(reset);
+    setDraftDockHeight(null);
+  }, [layout.density]);
+
+  const cancelLibraryDockResize = useCallback(() => {
+    setDraftDockHeight(null);
   }, []);
 
   // Al volver a la consola se revalida SOLO la metadata de traducciones: una
@@ -366,12 +446,12 @@ function LiveConsole() {
         const item = buildReplacementItem(sources, target.id);
         if (!item) throw new Error("No se pudo preparar el fondo para el show.");
         setSession((current) =>
-          current
-            ? replaceInLiveSession(current, { ...sources, item, wasOutdated })
-            : current,
+          current ? replaceInLiveSession(current, { ...sources, item, wasOutdated }) : current,
         );
         store.replacePresentationItem(item);
-        setStatus(background ? `Fondo aplicado a ${target.title}.` : `Fondo quitado de ${target.title}.`);
+        setStatus(
+          background ? `Fondo aplicado a ${target.title}.` : `Fondo quitado de ${target.title}.`,
+        );
         return true;
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "No se pudo cambiar el fondo.");
@@ -470,7 +550,20 @@ function LiveConsole() {
   const programItem = getProgramItem(state);
 
   return (
-    <Page className="flex h-full min-h-0 flex-col gap-2 py-4 lg:py-4">
+    <Page
+      data-live-workspace="true"
+      data-live-density={layout.density}
+      className={cn(
+        "flex h-full min-h-0 flex-col overflow-hidden",
+        layout.short
+          ? "gap-1 px-2 py-1.5"
+          : layout.compact
+            ? "gap-1.5 px-3 py-2"
+            : layout.narrow
+              ? "gap-2 px-4 py-3"
+              : "gap-2 py-4 lg:px-8 lg:py-4",
+      )}
+    >
       <LiveShowBar
         showName={showProject?.name ?? snapshot.projectName}
         itemCount={state.runtime.items.length}
@@ -478,7 +571,13 @@ function LiveConsole() {
         activeProjectName={changedActiveProject?.name ?? null}
         outputStatus={outputWindow.status}
         outputMessage={outputWindow.message}
+        compact={layout.compact}
+        short={layout.short}
+        fullscreenSupported={fullscreen.supported}
+        fullscreen={fullscreen.fullscreen}
+        fullscreenError={fullscreen.error}
         onOpenOutput={() => void outputWindow.open()}
+        onToggleFullscreen={() => void fullscreen.toggle()}
         onReload={reload}
         onLoadActiveProject={loadActiveProject}
       />
@@ -501,103 +600,137 @@ function LiveConsole() {
         onToggleMode={(mode) => store.toggleProgramMode(mode)}
         onSearch={onSearch}
         libraryOpen={library.open}
+        compact={layout.compact}
+        short={layout.short}
       />
 
-      {/*
-        Anchos como objetivo, no como restricción: `clamp` deja que Rundown y la
-        columna de monitores se compriman en 1366×768 sin sacrificar la rejilla
-        de slides, que es la zona con prioridad visual.
-      */}
-      <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[clamp(170px,14vw,240px)_minmax(0,1fr)_clamp(320px,30vw,520px)]">
-        <section
-          aria-labelledby="live-rundown-title"
-          className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-border"
+      <div
+        ref={dockRegionRef}
+        className={cn("flex min-h-0 flex-1 flex-col", layout.compact ? "gap-1.5" : "gap-2")}
+      >
+        <div
+          className={cn(
+            "grid min-h-0 flex-1",
+            layout.compact ? "gap-1.5" : "gap-2",
+            layout.narrow || layout.compact
+              ? "lg:grid-cols-[clamp(150px,12vw,190px)_minmax(0,1fr)_clamp(300px,27vw,400px)]"
+              : "lg:grid-cols-[clamp(170px,14vw,240px)_minmax(0,1fr)_clamp(320px,30vw,520px)]",
+          )}
+          style={{ minHeight: LIVE_WORKSPACE_MIN_HEIGHT[layout.density] }}
         >
-          <h2
-            id="live-rundown-title"
-            className="shrink-0 border-b border-border bg-card px-2 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+          <section
+            aria-labelledby="live-rundown-title"
+            className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-border"
           >
-            Rundown
-          </h2>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {state.runtime.items.length === 0 ? (
-              <p className="p-3 text-sm text-muted-foreground">
-                El proyecto no tiene elementos en el rundown.
-              </p>
-            ) : (
-              <LiveRundown
-                items={state.runtime.items}
-                previewItemId={state.previewItemId}
-                programItemId={programItem?.id ?? null}
-                onSelect={(itemId) => store.selectItem(itemId)}
-                onRemove={handleRemoveItem}
-                removeBlockReason={(itemId) => mediaRemovalBlockReason(state, itemId)}
-                canRemove={Boolean(showProject) && !busy}
-              />
-            )}
-          </div>
-        </section>
+            <h2
+              id="live-rundown-title"
+              className={cn(
+                "shrink-0 border-b border-border bg-card px-2 font-mono text-[11px] font-semibold uppercase tracking-wide text-muted-foreground",
+                layout.compact ? "py-1" : "py-1.5",
+              )}
+            >
+              Rundown
+            </h2>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {state.runtime.items.length === 0 ? (
+                <p className="p-3 text-sm text-muted-foreground">
+                  El proyecto no tiene elementos en el rundown.
+                </p>
+              ) : (
+                <LiveRundown
+                  items={state.runtime.items}
+                  previewItemId={state.previewItemId}
+                  programItemId={programItem?.id ?? null}
+                  onSelect={(itemId) => store.selectItem(itemId)}
+                  onRemove={handleRemoveItem}
+                  removeBlockReason={(itemId) => mediaRemovalBlockReason(state, itemId)}
+                  canRemove={Boolean(showProject) && !busy}
+                  compact={layout.compact}
+                />
+              )}
+            </div>
+          </section>
 
-        <section
-          aria-labelledby="live-slides-title"
-          className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-border"
-        >
-          <h2
-            id="live-slides-title"
-            className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-2 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+          <section
+            aria-labelledby="live-slides-title"
+            className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-border"
           >
-            Slides
-            <span className="truncate normal-case tracking-normal text-foreground">
-              {previewItem?.title ?? ""}
-            </span>
-            <span className="ml-auto hidden normal-case tracking-normal xl:inline">
-              un clic envía al aire
-            </span>
-          </h2>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <LiveSlideGrid
-              item={previewItem}
-              previewSlideId={state.previewSlideId}
-              programSlideId={state.programSlideId}
-              onGoLive={(slideId) => store.goLive(slideId)}
+            <h2
+              id="live-slides-title"
+              className={cn(
+                "flex shrink-0 items-center gap-2 border-b border-border bg-card px-2 font-mono text-[11px] font-semibold uppercase tracking-wide text-muted-foreground",
+                layout.compact ? "py-1" : "py-1.5",
+              )}
+            >
+              Slides
+              <span className="truncate normal-case tracking-normal text-foreground">
+                {previewItem?.title ?? ""}
+              </span>
+              <span
+                className={cn(
+                  "ml-auto hidden normal-case tracking-normal xl:inline",
+                  layout.compact && "xl:hidden",
+                )}
+              >
+                un clic envía al aire
+              </span>
+            </h2>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <LiveSlideGrid
+                item={previewItem}
+                previewSlideId={state.previewSlideId}
+                programSlideId={state.programSlideId}
+                backgroundThumbnails={backgroundThumbnails}
+                onGoLive={handleGoLive}
+                compact={layout.compact}
+                narrow={layout.narrow}
+              />
+            </div>
+          </section>
+
+          <div className="min-h-0 min-w-0 overflow-y-auto">
+            <LiveProgramMonitor
+              programSlide={getProgramSlide(state)}
+              programItem={programItem}
+              programMode={state.programMode}
+              detached={isProgramDetached(state)}
+              playback={playback}
+              onPlaybackCommand={handlePlaybackCommand}
+              backgroundTransition={backgroundTransition}
+              compact={layout.compact}
             />
           </div>
-        </section>
-
-        <div className="min-h-0 min-w-0 overflow-y-auto">
-          <LiveProgramMonitor
-            programSlide={getProgramSlide(state)}
-            programItem={programItem}
-            programMode={state.programMode}
-            detached={isProgramDetached(state)}
-            playback={playback}
-            onPlaybackCommand={handlePlaybackCommand}
-            backgroundTransition={backgroundTransition}
-          />
         </div>
-      </div>
 
-      <LiveLibraryDock
-        open={library.open}
-        onToggle={() => updateLibrary({ open: !library.open })}
-        tab={library.tab}
-        onTabChange={(tab) => updateLibrary({ tab })}
-        inputRef={searchInputRef}
-        songs={songs}
-        bibleVersionId={library.versionId}
-        onBibleVersionChange={(versionId) => updateLibrary({ versionId })}
-        mediaAssets={mediaAssets}
-        mediaLoading={mediaLoading}
-        canAdd={Boolean(showProject)}
-        busy={busy}
-        status={status}
-        onAddSong={handleAddSong}
-        onAddPassage={handleAddPassage}
-        onAddMedia={handleAddMedia}
-        backgroundTarget={getQuickBackgroundTarget(state)}
-        onBackgroundTransitionChange={setBackgroundTransition}
-        onApplyBackground={handleApplyBackground}
-      />
+        <LiveLibraryDock
+          open={library.open}
+          onToggle={() => updateLibrary({ open: !library.open })}
+          height={libraryDockHeight}
+          heightBounds={dockBounds}
+          onHeightChange={setDraftDockHeight}
+          onHeightCommit={commitLibraryDockHeight}
+          onHeightCancel={cancelLibraryDockResize}
+          onHeightReset={resetLibraryDockHeight}
+          compact={layout.compact}
+          tab={library.tab}
+          onTabChange={(tab) => updateLibrary({ tab })}
+          inputRef={searchInputRef}
+          songs={songs}
+          bibleVersionId={library.versionId}
+          onBibleVersionChange={(versionId) => updateLibrary({ versionId })}
+          mediaAssets={mediaAssets}
+          mediaLoading={mediaLoading}
+          canAdd={Boolean(showProject)}
+          busy={busy}
+          status={status}
+          onAddSong={handleAddSong}
+          onAddPassage={handleAddPassage}
+          onAddMedia={handleAddMedia}
+          backgroundTarget={getQuickBackgroundTarget(state)}
+          onBackgroundTransitionChange={setBackgroundTransition}
+          onApplyBackground={handleApplyBackground}
+        />
+      </div>
     </Page>
   );
 }

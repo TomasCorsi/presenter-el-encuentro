@@ -1,8 +1,9 @@
-import { ExternalLink, RefreshCw } from "lucide-react";
+import { ExternalLink, Maximize, Minimize, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import type { OutputWindowStatus } from "@/features/output/use-output-window";
+import { cn } from "@/lib/utils";
 
 export interface LiveShowBarProps {
   showName: string;
@@ -15,9 +16,15 @@ export interface LiveShowBarProps {
   outputStatus: OutputWindowStatus;
   /** Aviso sobre la salida; `null` cuando no hay nada que explicar. */
   outputMessage: string | null;
+  compact?: boolean;
+  short?: boolean;
+  fullscreenSupported: boolean;
+  fullscreen: boolean;
+  fullscreenError: string | null;
   onReload(): void;
   onLoadActiveProject(): void;
   onOpenOutput(): void;
+  onToggleFullscreen(): void;
 }
 
 const OUTPUT_LABEL: Record<OutputWindowStatus, string> = {
@@ -48,30 +55,65 @@ export function LiveShowBar({
   activeProjectName,
   outputStatus,
   outputMessage,
+  compact = false,
+  short = false,
+  fullscreenSupported,
+  fullscreen,
+  fullscreenError,
   onReload,
   onLoadActiveProject,
   onOpenOutput,
+  onToggleFullscreen,
 }: LiveShowBarProps) {
   return (
-    <div className="flex shrink-0 flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card px-3 py-2">
+    <div className={cn("flex shrink-0 flex-col", compact ? "gap-1" : "gap-2")}>
+      <div
+        className={cn(
+          "flex flex-wrap items-center rounded-md border border-border bg-card",
+          compact ? "gap-1.5 px-2 py-1" : "gap-3 px-3 py-2",
+        )}
+      >
         <span className="truncate text-sm font-semibold text-foreground">{showName}</span>
-        <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+        <span
+          className={cn(
+            "font-mono text-[10px] uppercase tracking-wide text-muted-foreground",
+            short && "hidden",
+          )}
+        >
           {itemCount} elementos
         </span>
         {outdated ? <StatusBadge tone="sync">Contenido actualizado</StatusBadge> : null}
         <StatusBadge tone={OUTPUT_TONE[outputStatus]}>{OUTPUT_LABEL[outputStatus]}</StatusBadge>
         <Button variant="outline" size="sm" className="ml-auto" onClick={onReload}>
-          <RefreshCw />Recargar presentación
+          <RefreshCw />
+          {compact ? "Recargar" : "Recargar presentación"}
         </Button>
         <Button variant="outline" size="sm" onClick={onOpenOutput}>
-          <ExternalLink />Abrir Output
+          <ExternalLink />
+          {compact ? "Output" : "Abrir Output"}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!fullscreenSupported}
+          onClick={onToggleFullscreen}
+          aria-label={fullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
+          title={
+            fullscreenSupported
+              ? fullscreen
+                ? "Salir de pantalla completa"
+                : "Pantalla completa"
+              : "Este navegador no admite la Fullscreen API"
+          }
+        >
+          {fullscreen ? <Minimize /> : <Maximize />}
+          {!short ? (fullscreen ? "Salir" : "Pantalla completa") : null}
         </Button>
       </div>
 
-      {outputMessage ? (
+      {outputMessage || fullscreenError ? (
         <p role="status" className="text-sm text-muted-foreground">
-          {outputMessage}
+          {fullscreenError ?? outputMessage}
         </p>
       ) : null}
 

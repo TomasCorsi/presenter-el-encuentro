@@ -8,9 +8,11 @@ import type { Song } from "@/domain/songs/song";
 import type { BackgroundTransition } from "@/domain/output/output-snapshot";
 import type { PresentationItem } from "@/domain/presentation/presentation";
 import type { RundownBackground } from "@/domain/projects/rundown";
+import type { LibraryDockBounds } from "@/features/live/library-dock-height";
 import { cn } from "@/lib/utils";
 
 import { LibraryBibleTab } from "./library-bible-tab";
+import { LibraryDockResizeHandle } from "./library-dock-resize-handle";
 import { LibraryMediaTab } from "./library-media-tab";
 import { LibrarySongsTab } from "./library-songs-tab";
 import { QuickBackgroundDeck } from "./quick-background-deck";
@@ -20,6 +22,13 @@ export type LibraryTab = "songs" | "bible" | "media" | "backgrounds";
 export interface LiveLibraryDockProps {
   open: boolean;
   onToggle(): void;
+  height: number;
+  heightBounds: LibraryDockBounds;
+  onHeightChange(height: number): void;
+  onHeightCommit(height: number): void;
+  onHeightCancel(): void;
+  onHeightReset(): void;
+  compact?: boolean;
   tab: LibraryTab;
   onTabChange(tab: LibraryTab): void;
   inputRef: RefObject<HTMLInputElement | null>;
@@ -55,6 +64,13 @@ const TABS: ReadonlyArray<{ id: LibraryTab; label: string }> = [
 export function LiveLibraryDock({
   open,
   onToggle,
+  height,
+  heightBounds,
+  onHeightChange,
+  onHeightCommit,
+  onHeightCancel,
+  onHeightReset,
+  compact = false,
   tab,
   onTabChange,
   inputRef,
@@ -79,10 +95,26 @@ export function LiveLibraryDock({
       aria-label="Biblioteca operativa"
       className={cn(
         "flex shrink-0 flex-col overflow-hidden rounded-md border border-border bg-card",
-        open && "h-[clamp(170px,24vh,300px)]",
       )}
+      style={open ? { height } : undefined}
     >
-      <div className="flex shrink-0 items-center gap-1 border-b border-border px-2 py-1">
+      {open ? (
+        <LibraryDockResizeHandle
+          height={height}
+          bounds={heightBounds}
+          onHeightChange={onHeightChange}
+          onHeightCommit={onHeightCommit}
+          onHeightCancel={onHeightCancel}
+          onReset={onHeightReset}
+        />
+      ) : null}
+
+      <div
+        className={cn(
+          "flex shrink-0 items-center gap-1 border-b border-border px-2",
+          compact ? "py-0.5" : "py-1",
+        )}
+      >
         <div role="tablist" aria-label="Secciones de la biblioteca" className="flex gap-1">
           {TABS.map((entry) => (
             <button
@@ -105,7 +137,10 @@ export function LiveLibraryDock({
         </div>
 
         {status ? (
-          <p className="ml-2 min-w-0 flex-1 truncate text-xs text-muted-foreground" aria-live="polite">
+          <p
+            className="ml-2 min-w-0 flex-1 truncate text-xs text-muted-foreground"
+            aria-live="polite"
+          >
             {status}
           </p>
         ) : null}

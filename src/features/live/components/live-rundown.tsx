@@ -14,6 +14,7 @@ export interface LiveRundownProps {
   canRemove: boolean;
   /** Media al aire: quitar bloqueado (Fase 10). */
   removeBlockReason?: (itemId: string) => string | null;
+  compact?: boolean;
 }
 
 /**
@@ -28,6 +29,7 @@ export function LiveRundown({
   onRemove,
   canRemove,
   removeBlockReason,
+  compact = false,
 }: LiveRundownProps) {
   return (
     <ul className="flex flex-col gap-px bg-border" aria-label="Rundown del show">
@@ -56,7 +58,8 @@ export function LiveRundown({
               aria-current={isPreview ? "true" : undefined}
               aria-label={`${index + 1}. ${item.title}${states ? `, ${states}` : ""}`}
               className={cn(
-                "flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left transition-colors",
+                "flex min-w-0 flex-1 items-center gap-2 px-2 text-left transition-colors",
+                compact ? "py-1" : "py-1.5",
                 "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
               )}
             >
@@ -64,7 +67,12 @@ export function LiveRundown({
                 {String(index + 1).padStart(2, "0")}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] leading-5 text-foreground">
+                <span
+                  className={cn(
+                    "block truncate text-[13px] text-foreground",
+                    compact ? "leading-4" : "leading-5",
+                  )}
+                >
                   {item.title}
                 </span>
                 <span
