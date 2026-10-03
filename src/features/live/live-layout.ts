@@ -1,5 +1,5 @@
 export const LIVE_NARROW_MAX_WIDTH = 1440;
-export const LIVE_COMPACT_MAX_HEIGHT = 820;
+export const LIVE_COMPACT_MAX_HEIGHT = 880;
 export const LIVE_SHORT_MAX_HEIGHT = 740;
 
 export type LiveDensity = "desktop" | "compact" | "short";

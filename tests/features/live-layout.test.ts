@@ -22,6 +22,12 @@ describe("Live responsive layout", () => {
       density: "desktop",
     });
     expect(getLiveLayoutProfile(1600, 900).density).toBe("desktop");
+    expect(getLiveLayoutProfile(1920, 855)).toMatchObject({
+      narrow: false,
+      compact: true,
+      short: false,
+      density: "compact",
+    });
     expect(getLiveLayoutProfile(1440, 900)).toMatchObject({ narrow: true, density: "desktop" });
     expect(getLiveLayoutProfile(1366, 768)).toMatchObject({
       narrow: true,

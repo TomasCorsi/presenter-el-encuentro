@@ -11,6 +11,7 @@ import {
   loadPresentation,
   reloadPresentation,
   removePresentationItem,
+  reorderPresentation,
   replacePresentationItem,
   reset,
   selectItem,
@@ -32,6 +33,8 @@ export interface PresentationStore {
   loadPresentation(items: PresentationItem[]): void;
   /** Recarga explícita: conserva Preview y Program cuando siguen existiendo. */
   reloadPresentation(items: PresentationItem[]): void;
+  /** Reorder incremental: conserva todo el estado operativo y exige ids estables. */
+  reorderPresentation(items: PresentationItem[]): void;
   /** Alta incremental al final del show; no reconstruye los items existentes. */
   appendPresentationItem(item: PresentationItem): void;
   /** Baja incremental de un item; conserva la salida congelada si estaba al aire. */
@@ -84,6 +87,7 @@ export function createPresentationStore(
     },
     loadPresentation: (items) => apply(loadPresentation(state, items)),
     reloadPresentation: (items) => apply(reloadPresentation(state, items)),
+    reorderPresentation: (items) => apply(reorderPresentation(state, items)),
     appendPresentationItem: (item) => apply(appendPresentationItem(state, item)),
     removePresentationItem: (itemId) => apply(removePresentationItem(state, itemId)),
     replacePresentationItem: (item) => apply(replacePresentationItem(state, item)),

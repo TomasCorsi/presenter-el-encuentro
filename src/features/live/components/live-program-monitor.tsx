@@ -46,7 +46,7 @@ export function LiveProgramMonitor({
   const videoOnAir = onAir?.content.kind === "video" ? onAir : null;
 
   return (
-    <section aria-labelledby="program-title" className="flex min-h-0 min-w-0 flex-col">
+    <section aria-labelledby="program-title" className="flex h-full min-h-0 min-w-0 flex-col">
       <div className={cn("flex items-center justify-between gap-2", compact ? "mb-1" : "mb-1.5")}>
         <h2
           id="program-title"
@@ -59,20 +59,25 @@ export function LiveProgramMonitor({
         </StatusBadge>
       </div>
 
-      <SlideSurface
-        slide={onAir}
-        tone="program"
-        live={Boolean(onAir)}
-        playback={videoOnAir ? (playback ?? undefined) : undefined}
-        transition={backgroundTransition}
-        emptyLabel={
-          programMode === "black"
-            ? "Salida en negro"
-            : programMode === "clear"
-              ? "Salida vacía"
-              : "Nada al aire"
-        }
-      />
+      <div
+        data-testid="program-monitor-viewport"
+        className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-sm bg-black/20 [container-type:size]"
+      >
+        <SlideSurface
+          slide={onAir}
+          tone="program"
+          live={Boolean(onAir)}
+          playback={videoOnAir ? (playback ?? undefined) : undefined}
+          transition={backgroundTransition}
+          emptyLabel={
+            programMode === "black"
+              ? "Salida en negro"
+              : programMode === "clear"
+                ? "Salida vacía"
+                : "Nada al aire"
+          }
+        />
+      </div>
 
       {videoOnAir && playback && onPlaybackCommand ? (
         <LiveVideoControls playback={playback} onCommand={onPlaybackCommand} />

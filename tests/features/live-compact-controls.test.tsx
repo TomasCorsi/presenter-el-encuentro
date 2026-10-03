@@ -7,7 +7,7 @@ if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 const React = await import("react");
 const { act } = await import("react");
 const { createRoot } = await import("react-dom/client");
-const { LiveOperationBar } = await import("@/features/live/components/live-operation-bar");
+const { LiveOperatorToolbar } = await import("@/features/live/components/live-operator-toolbar");
 
 describe("Live compact controls", () => {
   it("keeps every operational action visible in short mode", async () => {
@@ -15,7 +15,16 @@ describe("Live compact controls", () => {
     const root = createRoot(container);
     await act(async () => {
       root.render(
-        React.createElement(LiveOperationBar, {
+        React.createElement(LiveOperatorToolbar, {
+          showName: "Servicio",
+          itemCount: 4,
+          outdated: false,
+          activeProjectName: null,
+          outputStatus: "open",
+          outputMessage: null,
+          fullscreenSupported: true,
+          fullscreen: false,
+          fullscreenError: null,
           canPrevious: true,
           canNext: true,
           canTake: true,
@@ -26,6 +35,10 @@ describe("Live compact controls", () => {
           onToggleMode: () => undefined,
           onSearch: () => undefined,
           libraryOpen: true,
+          onReload: () => undefined,
+          onLoadActiveProject: () => undefined,
+          onOpenOutput: () => undefined,
+          onToggleFullscreen: () => undefined,
           compact: true,
           short: true,
         }),
@@ -35,6 +48,10 @@ describe("Live compact controls", () => {
     for (const label of ["Previous", "Next", "TAKE", "Clear", "Black", "Buscar"]) {
       expect(container.textContent).toContain(label);
     }
+    expect(container.textContent).toContain("Servicio");
+    expect(container.querySelector('[aria-label="Output abierto"]')).not.toBeNull();
+    expect(container.querySelector('button[title="Abrir Output"]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label="Pantalla completa"]')).not.toBeNull();
     expect(container.textContent).not.toContain("← anterior");
     await act(async () => root.unmount());
   });

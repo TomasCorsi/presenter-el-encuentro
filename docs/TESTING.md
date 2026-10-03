@@ -413,3 +413,41 @@ Pendiente manual: fluidez del scroll con un item de muchas slides, legibilidad
 en el ancho mínimo de card y contraste de los indicadores Preview/Program. El
 entorno de cierre no expuso apps ni browsers, por lo que no se registra PASS
 visual para este ajuste.
+
+## Fase 10.2 — Operator Workspace
+
+Quality Gate final del 2026-10-03:
+
+- `npx --yes bun test` con Bun 1.4.2: 356 PASS, 0 FAIL, 893 assertions y 58
+  archivos;
+- `npx tsc --noEmit`: PASS;
+- `npm run build`: PASS para client, SSR y Nitro/Cloudflare;
+- lint dirigido sobre los archivos de la fase: 0 errores y un warning
+  preexistente de Fast Refresh en `projects-context.tsx`; la regla global
+  Prettier/CRLF se excluyó para evitar un reformateo masivo;
+- Prettier check de los archivos nuevos: PASS.
+
+Cobertura verificada:
+
+- clic simple cambia Preview sin cambiar Program;
+- doble clic, Enter y Space seleccionan y ejecutan TAKE sobre la slide correcta,
+  sin publicar por error la selección anterior;
+- TAKE global usa el Preview actual; Previous/Next, Clear y Black conservan su
+  semántica;
+- Preview y Program pueden ser distintos o coincidir, y preparar Preview no
+  publica Output;
+- el reordenamiento incremental mantiene orden e IDs, Preview, Program,
+  `programMode`, `detachedProgramSlide`, playback de video y `staleExternal`,
+  sin absorber cambios externos ni modificar el Output si Program no cambia;
+- helpers responsive para 1366×768, 1920×855, 1600×900 y 1920×1080;
+- preferencias, resize y bounds del Library Dock, fullscreen y Slide Strip
+  horizontal con thumbnails visuales sin videos ni lecturas de bytes.
+
+Única regresión encontrada durante el gate: el test de `LivePreviewMonitor` no
+proveía el `MediaProvider` requerido por el componente real. Se corrigió sólo
+el harness del test con repositorio y storage en memoria; no fue necesario
+cambiar código de producción. La suite emite warnings preexistentes de React
+`act(...)` en `app-shell-providers.test.tsx`, pero ese test y la suite completa
+pasan.
+
+**Estado:** Fase 10.2 — Operator Workspace COMPLETADA (2026-10-03).

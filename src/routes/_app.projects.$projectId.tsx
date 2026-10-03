@@ -205,7 +205,9 @@ function ProjectDetailPage() {
             songs={songs}
             media={media}
             presets={presets}
-            onMove={(itemId, direction) => moveRundownItem(project.id, itemId, direction)}
+            onMove={async (itemId, direction) => {
+              await moveRundownItem(project.id, itemId, direction);
+            }}
             removeBlockReason={(itemId) => mediaRemovalBlockReason(presentationState, itemId)}
             onRemove={async (itemId) => {
               const blocked = mediaRemovalBlockReason(presentationState, itemId);

@@ -115,6 +115,35 @@ export function reloadPresentation(
 }
 
 /**
+ * Reordena el runtime sin alterar ningun estado operativo.
+ *
+ * Esta operacion es deliberadamente mas estricta que una recarga: solo acepta
+ * los mismos items y las mismas slides. Asi el reorder de Live no puede
+ * incorporar cambios externos pendientes ni descartar una salida separada.
+ */
+export function reorderPresentation(
+  state: PresentationState,
+  items: PresentationItem[],
+): PresentationState {
+  if (items.length !== state.runtime.items.length) return state;
+
+  const currentSlidesByItem = new Map(
+    state.runtime.items.map((item) => [item.id, item.slides.map((slide) => slide.id)]),
+  );
+  const valid = items.every((item) => {
+    const currentSlideIds = currentSlidesByItem.get(item.id);
+    return (
+      currentSlideIds !== undefined &&
+      currentSlideIds.length === item.slides.length &&
+      currentSlideIds.every((slideId, index) => slideId === item.slides[index]?.id)
+    );
+  });
+  if (!valid) return state;
+
+  return { ...state, runtime: buildPresentationRuntime(items) };
+}
+
+/**
  * Alta INCREMENTAL de un item al final del show (ADR-043).
  *
  * A diferencia de `reloadPresentation`, no reconstruye el contenido de los

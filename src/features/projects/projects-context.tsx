@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  type ReactNode,
+} from "react";
 
 import type { BiblePassage } from "@/domain/bible/bible";
 import type { Project } from "@/domain/projects/project";
@@ -28,8 +36,12 @@ interface ProjectsContextValue extends ProjectsState {
   addPassageToProject(projectId: string, passage: BiblePassage): Promise<Project>;
   addMediaToProject(projectId: string, media: { id: string; name: string }): Promise<Project>;
   removeRundownItem(projectId: string, itemId: string): Promise<Project>;
-  moveRundownItem(projectId: string, itemId: string, direction: "up" | "down"): Promise<void>;
-  setRundownItemPreset(projectId: string, itemId: string, presetId: string | undefined): Promise<void>;
+  moveRundownItem(projectId: string, itemId: string, direction: "up" | "down"): Promise<Project>;
+  setRundownItemPreset(
+    projectId: string,
+    itemId: string,
+    presetId: string | undefined,
+  ): Promise<void>;
   setRundownItemBackground(
     projectId: string,
     itemId: string,
@@ -96,70 +108,78 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
-  const run = useCallback(async <T,>(operation: () => Promise<T>): Promise<T> => {
-    try {
-      const result = await operation();
-      await refresh();
-      return result;
-    } catch (error) {
-      dispatch({ type: "failed", message: errorMessage(error) });
-      throw error;
-    }
-  }, [refresh]);
+  const run = useCallback(
+    async <T,>(operation: () => Promise<T>): Promise<T> => {
+      try {
+        const result = await operation();
+        await refresh();
+        return result;
+      } catch (error) {
+        dispatch({ type: "failed", message: errorMessage(error) });
+        throw error;
+      }
+    },
+    [refresh],
+  );
 
-  const value = useMemo<ProjectsContextValue>(() => ({
-    ...state,
-    activeProject: state.projects.find((project) => project.id === state.activeProjectId) ?? null,
-    createProject: (name) => {
-      if (!service) return Promise.reject(new Error("El almacenamiento local no está disponible."));
-      return run(() => service.create({ name }));
-    },
-    renameProject: async (id, name) => {
-      if (!service) throw new Error("El almacenamiento local no está disponible.");
-      await run(() => service.rename(id, name));
-    },
-    duplicateProject: (id) => {
-      if (!service) return Promise.reject(new Error("El almacenamiento local no está disponible."));
-      return run(() => service.duplicate(id));
-    },
-    deleteProject: async (id) => {
-      if (!service) throw new Error("El almacenamiento local no está disponible.");
-      await run(() => service.delete(id));
-    },
-    setActiveProject: async (id) => {
-      if (!service) throw new Error("El almacenamiento local no está disponible.");
-      await run(() => service.setActiveProject(id));
-    },
-    addSongToProject: async (projectId, song) => {
-      if (!service) throw new Error("El almacenamiento local no está disponible.");
-      return run(() => service.addSong(projectId, song));
-    },
-    addPassageToProject: async (projectId, passage) => {
-      if (!service) throw new Error("El almacenamiento local no está disponible.");
-      return run(() => service.addPassage(projectId, passage));
-    },
-    addMediaToProject: async (projectId, media) => {
-      if (!service) throw new Error("El almacenamiento local no está disponible.");
-      return run(() => service.addMedia(projectId, media));
-    },
-    removeRundownItem: async (projectId, itemId) => {
-      if (!service) throw new Error("El almacenamiento local no está disponible.");
-      return run(() => service.removeRundownItem(projectId, itemId));
-    },
-    moveRundownItem: async (projectId, itemId, direction) => {
-      if (!service) throw new Error("El almacenamiento local no está disponible.");
-      await run(() => service.moveRundownItem(projectId, itemId, direction));
-    },
-    setRundownItemPreset: async (projectId, itemId, presetId) => {
-      if (!service) throw new Error("El almacenamiento local no está disponible.");
-      await run(() => service.setRundownItemPreset(projectId, itemId, presetId));
-    },
-    setRundownItemBackground: async (projectId, itemId, background) => {
-      if (!service) throw new Error("El almacenamiento local no estÃ¡ disponible.");
-      return run(() => service.setRundownItemBackground(projectId, itemId, background));
-    },
-    clearError: () => dispatch({ type: "clearError" }),
-  }), [run, service, state]);
+  const value = useMemo<ProjectsContextValue>(
+    () => ({
+      ...state,
+      activeProject: state.projects.find((project) => project.id === state.activeProjectId) ?? null,
+      createProject: (name) => {
+        if (!service)
+          return Promise.reject(new Error("El almacenamiento local no está disponible."));
+        return run(() => service.create({ name }));
+      },
+      renameProject: async (id, name) => {
+        if (!service) throw new Error("El almacenamiento local no está disponible.");
+        await run(() => service.rename(id, name));
+      },
+      duplicateProject: (id) => {
+        if (!service)
+          return Promise.reject(new Error("El almacenamiento local no está disponible."));
+        return run(() => service.duplicate(id));
+      },
+      deleteProject: async (id) => {
+        if (!service) throw new Error("El almacenamiento local no está disponible.");
+        await run(() => service.delete(id));
+      },
+      setActiveProject: async (id) => {
+        if (!service) throw new Error("El almacenamiento local no está disponible.");
+        await run(() => service.setActiveProject(id));
+      },
+      addSongToProject: async (projectId, song) => {
+        if (!service) throw new Error("El almacenamiento local no está disponible.");
+        return run(() => service.addSong(projectId, song));
+      },
+      addPassageToProject: async (projectId, passage) => {
+        if (!service) throw new Error("El almacenamiento local no está disponible.");
+        return run(() => service.addPassage(projectId, passage));
+      },
+      addMediaToProject: async (projectId, media) => {
+        if (!service) throw new Error("El almacenamiento local no está disponible.");
+        return run(() => service.addMedia(projectId, media));
+      },
+      removeRundownItem: async (projectId, itemId) => {
+        if (!service) throw new Error("El almacenamiento local no está disponible.");
+        return run(() => service.removeRundownItem(projectId, itemId));
+      },
+      moveRundownItem: (projectId, itemId, direction) => {
+        if (!service) throw new Error("El almacenamiento local no está disponible.");
+        return run(() => service.moveRundownItem(projectId, itemId, direction));
+      },
+      setRundownItemPreset: async (projectId, itemId, presetId) => {
+        if (!service) throw new Error("El almacenamiento local no está disponible.");
+        await run(() => service.setRundownItemPreset(projectId, itemId, presetId));
+      },
+      setRundownItemBackground: async (projectId, itemId, background) => {
+        if (!service) throw new Error("El almacenamiento local no estÃ¡ disponible.");
+        return run(() => service.setRundownItemBackground(projectId, itemId, background));
+      },
+      clearError: () => dispatch({ type: "clearError" }),
+    }),
+    [run, service, state],
+  );
 
   return <ProjectsContext.Provider value={value}>{children}</ProjectsContext.Provider>;
 }

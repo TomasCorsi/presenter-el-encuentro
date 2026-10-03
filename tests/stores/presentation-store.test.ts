@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import type { PresentationItem } from "@/domain/presentation/presentation";
+import { getProgramOutput } from "@/domain/presentation/presentation-selectors";
 import { createPresentationStore } from "@/stores/presentation-store";
 
 function item(id: string, slideCount: number): PresentationItem {
@@ -119,6 +120,22 @@ describe("createPresentationStore", () => {
 
     store.next();
     expect(store.getState().previewSlideId).toBe("b:s0");
+    expect(store.getState().programSlideId).toBe("a:s1");
+  });
+
+  it("mantiene Preview separado de Program hasta TAKE y Preview no cambia Output", () => {
+    const store = createPresentationStore();
+    store.loadPresentation([item("a", 2)]);
+    store.take();
+    const outputBefore = getProgramOutput(store.getState());
+
+    store.selectSlide("a:s1");
+    expect(store.getState().previewSlideId).toBe("a:s1");
+    expect(store.getState().programSlideId).toBe("a:s0");
+    expect(getProgramOutput(store.getState())).toEqual(outputBefore);
+
+    store.take();
+    expect(store.getState().previewSlideId).toBe("a:s1");
     expect(store.getState().programSlideId).toBe("a:s1");
   });
 });

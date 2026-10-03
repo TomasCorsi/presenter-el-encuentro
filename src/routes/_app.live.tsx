@@ -22,29 +22,31 @@ import type { Project } from "@/domain/projects/project";
 import type { Song } from "@/domain/songs/song";
 import {
   getPreviewItem,
+  getPreviewSlide,
   getProgramItem,
   getProgramSlide,
   isProgramDetached,
   getNextSlide,
   getPreviousSlide,
 } from "@/domain/presentation/presentation-selectors";
-import { LiveLibraryDock, type LibraryTab } from "@/features/live/components/live-library-dock";
+import { LiveLibraryDock } from "@/features/live/components/live-library-dock";
+import { LiveOperatorToolbar } from "@/features/live/components/live-operator-toolbar";
+import { LivePreviewMonitor } from "@/features/live/components/live-preview-monitor";
 import { LiveProgramMonitor } from "@/features/live/components/live-program-monitor";
-import { LiveOperationBar } from "@/features/live/components/live-operation-bar";
 import { LiveRundown } from "@/features/live/components/live-rundown";
-import { LiveShowBar } from "@/features/live/components/live-show-bar";
 import {
   appendToLiveSession,
   buildAppendedItem,
   buildReplacementItem,
   createLiveSession,
   isLiveSessionOutdated,
+  moveInLiveSession,
   reloadLiveSession,
   removeFromLiveSession,
   replaceInLiveSession,
   type LiveSession,
 } from "@/features/live/live-session";
-import { LiveSlideGrid } from "@/features/live/components/live-slide-grid";
+import { LiveSlideStrip } from "@/features/live/components/live-slide-strip";
 import {
   LiveVideoControls,
   type VideoPlaybackCommand,
@@ -59,6 +61,7 @@ import {
   usePresentationStore,
 } from "@/features/presentation/presentation-context";
 import { usePresets } from "@/features/presets/presets-context";
+import { resolvePreset } from "@/domain/presets/preset-resolution";
 import { useProjects } from "@/features/projects/projects-context";
 import { useSongs } from "@/features/songs/songs-context";
 import { getQuickBackgroundTarget } from "@/features/live/background-target";
@@ -76,41 +79,17 @@ import {
 } from "@/features/live/library-dock-height";
 import { useLiveFullscreen } from "@/features/live/use-live-fullscreen";
 import { useLiveLayout } from "@/features/live/use-live-layout";
+import {
+  LIBRARY_PREFERENCE_KEY,
+  defaultLibraryPreference,
+  readLibraryPreference,
+  type LibraryPreference,
+} from "@/features/live/library-preference";
 import { cn } from "@/lib/utils";
 
 const TITLE = "Live — Consola de operación en vivo";
 const DESCRIPTION =
   "Consola de operación en directo: rundown, slides, program, controles fijos y biblioteca de Songs y Bible.";
-
-/** Preferencia LOCAL del puesto de trabajo; no forma parte del Project. */
-const LIBRARY_PREFERENCE_KEY = "broadcast-control.live.library";
-
-interface LibraryPreference {
-  open: boolean;
-  tab: LibraryTab;
-  versionId: string | null;
-}
-
-const DEFAULT_LIBRARY: LibraryPreference = { open: true, tab: "songs", versionId: null };
-
-function readLibraryPreference(): LibraryPreference {
-  if (typeof window === "undefined") return DEFAULT_LIBRARY;
-  try {
-    const raw = window.localStorage.getItem(LIBRARY_PREFERENCE_KEY);
-    if (!raw) return DEFAULT_LIBRARY;
-    const parsed = JSON.parse(raw) as Partial<LibraryPreference>;
-    return {
-      open: typeof parsed.open === "boolean" ? parsed.open : DEFAULT_LIBRARY.open,
-      tab:
-        parsed.tab === "bible" || parsed.tab === "media" || parsed.tab === "backgrounds"
-          ? parsed.tab
-          : "songs",
-      versionId: typeof parsed.versionId === "string" ? parsed.versionId : null,
-    };
-  } catch {
-    return DEFAULT_LIBRARY;
-  }
-}
 
 export const Route = createFileRoute("/_app/live")({
   head: () => ({
@@ -136,6 +115,7 @@ function LiveConsole() {
     addPassageToProject,
     addMediaToProject,
     removeRundownItem,
+    moveRundownItem,
     setRundownItemBackground,
   } = useProjects();
   const { refreshVersions } = useBible();
@@ -152,7 +132,9 @@ function LiveConsole() {
   const [backgroundTransition, setBackgroundTransition] = useState<BackgroundTransition>("cut");
 
   // Preferencias locales del dock: se leen tras el montaje para no romper SSR.
-  const [library, setLibrary] = useState<LibraryPreference>(DEFAULT_LIBRARY);
+  const [library, setLibrary] = useState<LibraryPreference>(() =>
+    defaultLibraryPreference("compact"),
+  );
   const [preferredDockHeight, setPreferredDockHeight] = useState(
     LIBRARY_DOCK_DEFAULT_HEIGHT.desktop,
   );
@@ -172,10 +154,8 @@ function LiveConsole() {
       ),
     [mediaAssets],
   );
-  const handleGoLive = useCallback((slideId: string) => store.goLive(slideId), [store]);
-
   useEffect(() => {
-    setLibrary(readLibraryPreference());
+    setLibrary(readLibraryPreference(window.localStorage, layout.density));
     setPreferredDockHeight(
       readLibraryDockPreference(window.localStorage, LIBRARY_DOCK_DEFAULT_HEIGHT[layout.density]),
     );
@@ -429,6 +409,34 @@ function LiveConsole() {
     [mediaAssets, presets, removeRundownItem, showProject, songs, state.runtime.items, store],
   );
 
+  const handleMoveItem = useCallback(
+    (itemId: string, direction: "up" | "down") => {
+      if (!showProject || !session) return;
+      const wasOutdated = outdatedRef.current;
+      setBusy(true);
+      setStatus(null);
+      void (async () => {
+        try {
+          const project = await moveRundownItem(showProject.id, itemId, direction);
+          const sources = { project, songs, presets, media: mediaAssets };
+          const next = moveInLiveSession(session, {
+            ...sources,
+            itemId,
+            direction,
+            wasOutdated,
+          });
+          setSession(next);
+          store.reorderPresentation(next.snapshot.items);
+        } catch (error) {
+          setStatus(error instanceof Error ? error.message : "No se pudo reordenar el rundown.");
+        } finally {
+          setBusy(false);
+        }
+      })();
+    },
+    [mediaAssets, moveRundownItem, presets, session, showProject, songs, store],
+  );
+
   const handleApplyBackground = useCallback(
     async (background: RundownBackground | undefined): Promise<boolean> => {
       if (!showProject) return false;
@@ -482,6 +490,13 @@ function LiveConsole() {
   const onPrevious = useCallback(() => store.previous(), [store]);
   const onNext = useCallback(() => store.next(), [store]);
   const onTake = useCallback(() => store.take(), [store]);
+  const onTakeSlide = useCallback(
+    (slideId: string) => {
+      store.selectSlide(slideId);
+      store.take();
+    },
+    [store],
+  );
   const onBlack = useCallback(() => store.toggleProgramMode("black"), [store]);
   const onClear = useCallback(() => store.toggleProgramMode("clear"), [store]);
 
@@ -547,7 +562,9 @@ function LiveConsole() {
   }
 
   const previewItem = getPreviewItem(state);
+  const previewSlide = getPreviewSlide(state);
   const programItem = getProgramItem(state);
+  const previewPresetName = previewItem ? resolvePreset(previewItem.presetId, presets).name : null;
 
   return (
     <Page
@@ -564,15 +581,13 @@ function LiveConsole() {
               : "gap-2 py-4 lg:px-8 lg:py-4",
       )}
     >
-      <LiveShowBar
+      <LiveOperatorToolbar
         showName={showProject?.name ?? snapshot.projectName}
         itemCount={state.runtime.items.length}
         outdated={outdated}
         activeProjectName={changedActiveProject?.name ?? null}
         outputStatus={outputWindow.status}
         outputMessage={outputWindow.message}
-        compact={layout.compact}
-        short={layout.short}
         fullscreenSupported={fullscreen.supported}
         fullscreen={fullscreen.fullscreen}
         fullscreenError={fullscreen.error}
@@ -580,10 +595,6 @@ function LiveConsole() {
         onToggleFullscreen={() => void fullscreen.toggle()}
         onReload={reload}
         onLoadActiveProject={loadActiveProject}
-      />
-
-      {/* Controles SIEMPRE visibles: la barra nunca se desplaza con el scroll. */}
-      <LiveOperationBar
         canPrevious={
           getPreviousSlide(state) !== null ||
           (state.previewSlideId === null && state.runtime.navigableSlideIds.length > 0)
@@ -613,14 +624,21 @@ function LiveConsole() {
             "grid min-h-0 flex-1",
             layout.compact ? "gap-1.5" : "gap-2",
             layout.narrow || layout.compact
-              ? "lg:grid-cols-[clamp(150px,12vw,190px)_minmax(0,1fr)_clamp(300px,27vw,400px)]"
-              : "lg:grid-cols-[clamp(170px,14vw,240px)_minmax(0,1fr)_clamp(320px,30vw,520px)]",
+              ? "lg:grid-cols-[clamp(170px,13vw,190px)_minmax(0,1fr)_clamp(280px,25vw,320px)]"
+              : "lg:grid-cols-[clamp(200px,14vw,240px)_minmax(0,1fr)_clamp(340px,25vw,400px)]",
           )}
-          style={{ minHeight: LIVE_WORKSPACE_MIN_HEIGHT[layout.density] }}
+          style={{
+            minHeight: LIVE_WORKSPACE_MIN_HEIGHT[layout.density],
+            gridTemplateRows: layout.short
+              ? "minmax(0, 1fr) 140px"
+              : layout.compact
+                ? "minmax(0, 1fr) 150px"
+                : "minmax(0, 1fr) 170px",
+          }}
         >
           <section
             aria-labelledby="live-rundown-title"
-            className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-border"
+            className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-border lg:row-span-2"
           >
             <h2
               id="live-rundown-title"
@@ -642,18 +660,42 @@ function LiveConsole() {
                   previewItemId={state.previewItemId}
                   programItemId={programItem?.id ?? null}
                   onSelect={(itemId) => store.selectItem(itemId)}
+                  onMove={handleMoveItem}
                   onRemove={handleRemoveItem}
                   removeBlockReason={(itemId) => mediaRemovalBlockReason(state, itemId)}
                   canRemove={Boolean(showProject) && !busy}
+                  busy={busy}
                   compact={layout.compact}
                 />
               )}
             </div>
           </section>
 
+          <section className="min-h-0 min-w-0 overflow-hidden rounded-md border border-border bg-card p-2">
+            <LivePreviewMonitor
+              previewSlide={previewSlide}
+              previewItem={previewItem}
+              presetName={previewPresetName}
+              compact={layout.compact}
+            />
+          </section>
+
+          <div className="min-h-0 min-w-0 overflow-hidden rounded-md border border-border bg-card p-2">
+            <LiveProgramMonitor
+              programSlide={getProgramSlide(state)}
+              programItem={programItem}
+              programMode={state.programMode}
+              detached={isProgramDetached(state)}
+              playback={playback}
+              onPlaybackCommand={handlePlaybackCommand}
+              backgroundTransition={backgroundTransition}
+              compact={layout.compact}
+            />
+          </div>
+
           <section
             aria-labelledby="live-slides-title"
-            className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-border"
+            className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-border lg:col-span-2 lg:col-start-2"
           >
             <h2
               id="live-slides-title"
@@ -672,34 +714,22 @@ function LiveConsole() {
                   layout.compact && "xl:hidden",
                 )}
               >
-                un clic envía al aire
+                un clic prepara · doble clic envía al aire
               </span>
             </h2>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <LiveSlideGrid
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <LiveSlideStrip
                 item={previewItem}
                 previewSlideId={state.previewSlideId}
                 programSlideId={state.programSlideId}
                 backgroundThumbnails={backgroundThumbnails}
-                onGoLive={handleGoLive}
+                onSelect={(slideId) => store.selectSlide(slideId)}
+                onTake={onTakeSlide}
                 compact={layout.compact}
                 narrow={layout.narrow}
               />
             </div>
           </section>
-
-          <div className="min-h-0 min-w-0 overflow-y-auto">
-            <LiveProgramMonitor
-              programSlide={getProgramSlide(state)}
-              programItem={programItem}
-              programMode={state.programMode}
-              detached={isProgramDetached(state)}
-              playback={playback}
-              onPlaybackCommand={handlePlaybackCommand}
-              backgroundTransition={backgroundTransition}
-              compact={layout.compact}
-            />
-          </div>
         </div>
 
         <LiveLibraryDock

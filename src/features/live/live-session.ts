@@ -33,7 +33,12 @@ export interface LiveSessionSources {
   media: readonly MediaAsset[];
 }
 
-export function createLiveSession({ project, songs, presets, media }: LiveSessionSources): LiveSession {
+export function createLiveSession({
+  project,
+  songs,
+  presets,
+  media,
+}: LiveSessionSources): LiveSession {
   return { snapshot: buildLiveSnapshot(project, songs, presets, media), staleExternal: false };
 }
 
@@ -112,6 +117,41 @@ export function removeFromLiveSession(
     snapshot: {
       ...session.snapshot,
       items: session.snapshot.items.filter((item) => item.id !== itemId),
+      signature: presentationSignature(project, songs, presets, media),
+    },
+    staleExternal: session.staleExternal || wasOutdated,
+  };
+}
+
+export interface MoveInLiveSessionInput extends LiveSessionSources {
+  itemId: string;
+  direction: "up" | "down";
+  wasOutdated: boolean;
+}
+
+/**
+ * Reordena sólo los items congelados de la sesión. No reconstruye fuentes ni
+ * incorpora altas/bajas externas que el operador todavía no recargó.
+ */
+export function moveInLiveSession(
+  session: LiveSession,
+  { project, songs, presets, media, itemId, direction, wasOutdated }: MoveInLiveSessionInput,
+): LiveSession {
+  const items = [...session.snapshot.items];
+  const index = items.findIndex((item) => item.id === itemId);
+  const target = direction === "up" ? index - 1 : index + 1;
+  if (index < 0 || target < 0 || target >= items.length) return session;
+
+  const current = items[index];
+  const adjacent = items[target];
+  if (!current || !adjacent) return session;
+  items[index] = adjacent;
+  items[target] = current;
+
+  return {
+    snapshot: {
+      ...session.snapshot,
+      items: items.map((item, order) => ({ ...item, order })),
       signature: presentationSignature(project, songs, presets, media),
     },
     staleExternal: session.staleExternal || wasOutdated,

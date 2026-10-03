@@ -8,7 +8,8 @@ const React = await import("react");
 const { act } = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { MediaProvider } = await import("@/features/media/media-context");
-const { LiveSlideGrid } = await import("@/features/live/components/live-slide-grid");
+const { LiveSlideStrip } = await import("@/features/live/components/live-slide-strip");
+const { createPresentationStore } = await import("@/stores/presentation-store");
 const { createInMemoryMediaRepository } =
   await import("@/services/media/in-memory-media-repository");
 const { createInMemoryMediaStorage } = await import("@/services/media/in-memory-media-storage");
@@ -43,19 +44,20 @@ const item = {
   ],
 };
 
-describe("LiveSlideGrid visual thumbnails", () => {
+describe("LiveSlideStrip visual thumbnails", () => {
   it("keeps Preview and Program indicators outside the visual surface", async () => {
     const container = document.createElement("div");
     const root = createRoot(container);
 
     await act(async () => {
       root.render(
-        React.createElement(LiveSlideGrid, {
+        React.createElement(LiveSlideStrip, {
           item,
           previewSlideId: "song-item:verse",
           programSlideId: "song-item:verse",
           backgroundThumbnails: new Map([["video-bg", "data:image/jpeg;base64,STATIC"]]),
-          onGoLive: () => undefined,
+          onSelect: () => undefined,
+          onTake: () => undefined,
         }),
       );
     });
@@ -68,30 +70,37 @@ describe("LiveSlideGrid visual thumbnails", () => {
     expect(surface?.textContent).not.toContain("Preview");
     expect(container.querySelectorAll("video")).toHaveLength(0);
     expect(container.querySelector('img[src="data:image/jpeg;base64,STATIC"]')).not.toBeNull();
+    expect(card?.className).toContain("aspect-video");
+    expect(card?.className).not.toContain("h-full");
 
     await act(async () => root.unmount());
   });
 
-  it("preserves the goLive click and the existing Media card semantics", async () => {
-    const calls: string[] = [];
+  it("selects on one click, takes explicitly, and preserves Media card semantics", async () => {
+    const selections: string[] = [];
+    const takes: string[] = [];
     const container = document.createElement("div");
     const root = createRoot(container);
 
     await act(async () => {
       root.render(
-        React.createElement(LiveSlideGrid, {
+        React.createElement(LiveSlideStrip, {
           item,
           previewSlideId: null,
           programSlideId: null,
           backgroundThumbnails: new Map(),
-          onGoLive: (slideId: string) => calls.push(slideId),
+          onSelect: (slideId: string) => selections.push(slideId),
+          onTake: (slideId: string) => takes.push(slideId),
         }),
       );
     });
 
     const buttons = container.querySelectorAll("button");
     await act(async () => buttons[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
-    expect(calls).toEqual(["song-item:verse"]);
+    expect(selections).toEqual(["song-item:verse"]);
+    expect(takes).toEqual([]);
+    await act(async () => buttons[0]?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })));
+    expect(takes).toEqual(["song-item:verse"]);
     expect(buttons[1]?.textContent).toContain("Video");
     expect(buttons[1]?.querySelector('[data-testid="slide-thumbnail-surface"]')).toBeNull();
 
@@ -124,12 +133,13 @@ describe("LiveSlideGrid visual thumbnails", () => {
             fileStorage: storage,
             initialAssets: [],
           },
-          React.createElement(LiveSlideGrid, {
+          React.createElement(LiveSlideStrip, {
             item,
             previewSlideId: null,
             programSlideId: null,
             backgroundThumbnails: new Map([["video-bg", "data:image/jpeg;base64,STATIC"]]),
-            onGoLive: () => undefined,
+            onSelect: () => undefined,
+            onTake: () => undefined,
           }),
         ),
       );
@@ -138,6 +148,53 @@ describe("LiveSlideGrid visual thumbnails", () => {
 
     expect(getCalls).toBe(0);
     expect(getUrlCalls).toBe(0);
+    await act(async () => root.unmount());
+  });
+
+  it("takes the focused slide on Enter and Space without taking the previous selection", async () => {
+    const store = createPresentationStore();
+    store.loadPresentation([item]);
+    store.take();
+    const globalKeys: string[] = [];
+    const onWindowKeyDown = () => {
+      globalKeys.push("global");
+    };
+    window.addEventListener("keydown", onWindowKeyDown);
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        React.createElement(LiveSlideStrip, {
+          item,
+          previewSlideId: null,
+          programSlideId: null,
+          onSelect: (slideId: string) => store.selectSlide(slideId),
+          onTake: (slideId: string) => {
+            store.selectSlide(slideId);
+            store.take();
+          },
+        }),
+      );
+    });
+
+    const target = container.querySelectorAll("button")[1];
+    store.selectSlide("song-item:verse");
+    await act(async () =>
+      target?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })),
+    );
+    expect(store.getState().previewSlideId).toBe("song-item:media");
+    expect(store.getState().programSlideId).toBe("song-item:media");
+
+    store.selectSlide("song-item:verse");
+    await act(async () =>
+      target?.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true })),
+    );
+    expect(store.getState().previewSlideId).toBe("song-item:media");
+    expect(store.getState().programSlideId).toBe("song-item:media");
+    expect(globalKeys).toEqual([]);
+    expect(container.querySelector('[data-testid="live-slide-strip"]')).not.toBeNull();
+
+    window.removeEventListener("keydown", onWindowKeyDown);
     await act(async () => root.unmount());
   });
 });

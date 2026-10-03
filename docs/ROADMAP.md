@@ -11,10 +11,10 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Última fase completada: **Fase 10 — Media** (2026-09-24).
+- Última fase completada: **Fase 10.2 — Operator Workspace** (2026-10-03).
 - **Fase 10.1 — Media Preview + Backgrounds Dinámicos:** implementación y
   Quality Gate automatizado completos; validación manual en Chrome/Edge
-  pendiente por falta de navegador disponible en el entorno de cierre.
+  pendiente registrada como riesgo residual en `TESTING.md`.
 - Fases 9, 9.1 y los incrementos operativos 9.2/9.3 están implementados.
 - La Fase 11 no fue iniciada.
 - Backend: no conectado. Se decide en la Fase 13.
@@ -385,8 +385,36 @@ no se registran como PASS.
 - [ ] Quality Gate visual final en Chrome/Edge sobre Windows real.
 
 **Estado:** IMPLEMENTACIÓN COMPLETA / VALIDACIÓN MANUAL PENDIENTE (2026-09-25).
-No se avanza de fase hasta registrar el control visual pendiente en
-`TESTING.md`.
+El control visual pendiente permanece registrado en `TESTING.md` como riesgo
+residual histórico.
+
+---
+
+## Fase 10.2 — Operator Workspace
+
+- [x] Toolbar única con Project, estado de Output, Previous, Next, TAKE, Clear,
+      Black, Buscar, Abrir Output y Fullscreen.
+- [x] Preview visual dominante y Program siempre visible, ambos 16:9 y basados
+      en los renderers compartidos existentes.
+- [x] Slide Strip horizontal con Visual Slide Thumbnails, sin compresión y con
+      indicadores Preview/Program superpuestos.
+- [x] Interacción segura: clic prepara Preview; doble clic, Enter o Space
+      seleccionan la slide correcta y la envían a Program; TAKE usa el Preview
+      actual.
+- [x] Rundown tipo playlist con tipo, estados independientes, eliminación y
+      reordenamiento incremental.
+- [x] Reorder preserva IDs, Preview, Program, `programMode`, Program detached,
+      playback de video, `staleExternal` y el Output visual vigente.
+- [x] Library Dock existente preservado con resize, bounds, persistencia y
+      restauración; inicio colapsado en compact/short sin preferencia previa.
+- [x] Responsive notebook-first con perfil compact hasta 880 px, Preview
+      dominante, Program legible y sin scroll global.
+- [x] Componentes legacy `LiveShowBar`, `LiveOperationBar` y `LiveSlideGrid`
+      retirados sin referencias residuales.
+- [x] Quality Gate final: 356 tests PASS, typecheck PASS, build PASS y lint
+      dirigido sin errores.
+
+**Estado:** COMPLETADA (2026-10-03).
 
 ---
 

@@ -31,6 +31,7 @@ export function SlideSurface({
   playback,
   transition = "cut",
   className,
+  style,
   ...props
 }: SlideSurfaceProps) {
   const content = slide?.content;
@@ -38,15 +39,21 @@ export function SlideSurface({
 
   return (
     <div
+      data-testid="slide-surface"
       className={cn(
-        "aspect-video w-full overflow-hidden rounded-md border",
+        "aspect-video shrink-0 overflow-hidden rounded-md border bg-stage shadow-[0_8px_24px_rgba(0,0,0,0.28)]",
         tone === "program" ?
-          live ? "border-live"
-          : "border-live/40"
-        : "border-primary/40",
+          live ? "border-live/80 ring-1 ring-live/30"
+          : "border-live/50"
+        : "border-primary/60 ring-1 ring-primary/20",
         hasContent ? "bg-transparent" : "grid place-items-center bg-stage",
         className,
       )}
+      style={{
+        ...style,
+        width: "min(100cqw, 177.7778cqh)",
+        height: "min(100cqh, 56.25cqw)",
+      }}
       {...props}
     >
       {!hasContent || !content ? (
