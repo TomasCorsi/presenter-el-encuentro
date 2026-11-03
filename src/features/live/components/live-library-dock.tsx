@@ -3,12 +3,13 @@ import type { RefObject } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { BiblePassage } from "@/domain/bible/bible";
-import type { MediaAsset } from "@/domain/media/media";
+import type { MediaAsset, MediaCollection } from "@/domain/media/media";
 import type { Song } from "@/domain/songs/song";
 import type { BackgroundTransition } from "@/domain/output/output-snapshot";
 import type { PresentationItem } from "@/domain/presentation/presentation";
 import type { RundownBackground } from "@/domain/projects/rundown";
 import type { LibraryDockBounds } from "@/features/live/library-dock-height";
+import type { MediaLibraryPreferences } from "@/features/media/media-library-preferences";
 import { cn } from "@/lib/utils";
 
 import { LibraryBibleTab } from "./library-bible-tab";
@@ -36,6 +37,8 @@ export interface LiveLibraryDockProps {
   bibleVersionId: string | null;
   onBibleVersionChange(versionId: string): void;
   mediaAssets: readonly MediaAsset[];
+  mediaCollections: readonly MediaCollection[];
+  mediaPreferences: MediaLibraryPreferences;
   mediaLoading: boolean;
   /** Sin proyecto activo se puede buscar, pero no agregar. */
   canAdd: boolean;
@@ -44,6 +47,7 @@ export interface LiveLibraryDockProps {
   onAddSong(song: Song, mode: "rundown" | "live"): void;
   onAddPassage(passage: BiblePassage, mode: "rundown" | "live"): void;
   onAddMedia(asset: MediaAsset, mode: "rundown" | "live"): void;
+  onToggleMediaFavorite(mediaId: string): void;
   backgroundTarget: PresentationItem | null;
   onBackgroundTransitionChange(transition: BackgroundTransition): void;
   onApplyBackground(background: RundownBackground | undefined): Promise<boolean>;
@@ -78,6 +82,8 @@ export function LiveLibraryDock({
   bibleVersionId,
   onBibleVersionChange,
   mediaAssets,
+  mediaCollections,
+  mediaPreferences,
   mediaLoading,
   canAdd,
   busy,
@@ -85,6 +91,7 @@ export function LiveLibraryDock({
   onAddSong,
   onAddPassage,
   onAddMedia,
+  onToggleMediaFavorite,
   backgroundTarget,
   onBackgroundTransitionChange,
   onApplyBackground,
@@ -186,20 +193,26 @@ export function LiveLibraryDock({
           ) : tab === "media" ? (
             <LibraryMediaTab
               assets={mediaAssets}
+              collections={mediaCollections}
+              preferences={mediaPreferences}
               isLoading={mediaLoading}
               inputRef={inputRef}
               canAdd={canAdd}
               busy={busy}
               onAdd={onAddMedia}
+              onToggleFavorite={onToggleMediaFavorite}
             />
           ) : (
             <QuickBackgroundDeck
               assets={mediaAssets}
+              collections={mediaCollections}
+              mediaPreferences={mediaPreferences}
               inputRef={inputRef}
               target={backgroundTarget}
               busy={busy}
               onTransitionChange={onBackgroundTransitionChange}
               onApply={onApplyBackground}
+              onToggleFavorite={onToggleMediaFavorite}
             />
           )}
         </div>

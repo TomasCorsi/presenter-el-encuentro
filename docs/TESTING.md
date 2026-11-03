@@ -451,3 +451,212 @@ cambiar código de producción. La suite emite warnings preexistentes de React
 pasan.
 
 **Estado:** Fase 10.2 — Operator Workspace COMPLETADA (2026-10-03).
+
+## Fase 10.3 — Media Library organizada
+
+Gate final del 2026-10-08:
+
+- `npx --yes bun test` con Bun 1.4.2: 370 PASS, 0 FAIL, 923 assertions y 63
+  archivos;
+- `npx tsc --noEmit`: PASS;
+- lint dirigido sobre los archivos modificados y nuevos: 0 errores y 3 warnings
+  de Fast Refresh en `media-context.tsx`; la regla global Prettier/CRLF se
+  excluyó para no reformatear masivamente el repositorio;
+- `npm run build`: PASS para client, SSR y Nitro/Cloudflare. Solo se emitieron
+  warnings no bloqueantes de configuración de Vite/Rollup.
+- Chrome 153 headless real, con perfil temporal aislado: migración IndexedDB
+  v1→v2, OPFS, `/media`, Live Dock, Background Deck y responsive verificados.
+
+Cobertura agregada o extendida:
+
+- migración lógica de assets antiguos, normalización de tags, consulta combinada,
+  filtros y orden MRU;
+- migración/saneamiento de favoritos, recientes y densidad;
+- CRUD y unicidad de colecciones, desasignación y cambios de organización sin
+  modificar `presentationUpdatedAt`;
+- firma de Live inmune a colección/tags y sensible a cambios presentacionales;
+- usos detallados de contenido y backgrounds Song/Bible;
+- delete bulk bloqueado completamente por referencias y reporte de completados/
+  fallidos después de un error físico;
+- cards Media sin `<video>` ni apertura de bytes;
+- regresión completa de Presentation, Live, Output, backgrounds y storage.
+
+Durante el gate se estabilizó el harness de
+`tests/routing/app-shell-providers.test.tsx`: la instrumentación ahora pertenece
+a la instancia concreta de `localStorage`, no a su prototipo global, y espera el
+estado observable de los providers. No fue necesario cambiar código productivo
+por esa regresión de test.
+
+Validación real en navegador:
+
+- una base v1 con 302 assets abrió como v2 sin reimportar; `assets` y bytes OPFS
+  se conservaron, apareció `collections` y los campos nuevos se normalizaron;
+- drag & drop real de PNG, JPEG, WEBP, MP4 y WEBM dentro de una colección;
+- inspector de imagen/video, storage, usos, rename, tags y favoritos;
+- 307 cards, cero `<video>` en la grilla, consola sin errores y responsive en
+  1366×768, 1600×900 y 1920×1080;
+- bulk tags/favoritos y delete all-or-nothing por referencias;
+- eliminar una colección conserva y desasigna sus assets;
+- Preview no modifica recientes; importación, `+ Rundown`, `Al aire` y fondo sí;
+- Media Dock y Background Deck comparten favoritos/recientes y mantienen el
+  flujo Preview-first.
+
+El fallo físico posterior al preflight de borrado se cubre mediante test de
+servicio determinista (completados/fallidos); no se corrompió OPFS para simularlo
+manualmente. Pendiente funcional detectado: los tags aceptan y normalizan texto
+libre, pero no existe UI de autocompletado. Por la restricción de no agregar
+features durante el gate, no se agregó. El 2026-10-13 este punto se reclasificó
+explícitamente como pendiente no bloqueante y la Fase 10.3 quedó COMPLETADA.
+
+## Fase 11.1 — Stage Display
+
+Quality Gate automático final del 2026-10-13:
+
+- `bun test` global no estuvo disponible; `npx --yes bun test` con Bun 1.4.3:
+  388 PASS, 0 FAIL, 985 assertions y 67 archivos;
+- `npx tsc --noEmit`: PASS;
+- lint dirigido sobre los `.ts/.tsx` modificados: 0 errores y 3 warnings ya
+  conocidos de Fast Refresh en `media-context.tsx`; Prettier/CRLF se excluyó
+  para evitar un formateo masivo;
+- `git diff --check`: PASS;
+- `npm run build`: PASS para client, SSR y Nitro con preset
+  `cloudflare-module` y compatibilidad `2026-10-08`. `/output/stage` está
+  presente en los artefactos client y SSR. Los avisos de plugin timings,
+  `vite-tsconfig-paths` e `inlineDynamicImports` son no bloqueantes.
+
+Cobertura nueva o extendida:
+
+- current deriva de Program y nunca Preview; next permanece en el mismo item o
+  cruza items vacíos hasta la siguiente slide navegable;
+- show vacío, fin de show, Clear/Black y Program detached;
+- cues Song, Bible y Media sin estilos, playback, bytes ni video;
+- snapshots legacy sin `stage`, descarte seguro de proyección inválida e igualdad
+  sensible a cambios relevantes de Stage;
+- publisher late-open/hello con session y sequence, deduplicación de cambios de
+  Preview y publicación cuando cambia next;
+- retención del último snapshot durante stale, reloj con timers controlados y
+  ruta Stage estructuralmente read-only;
+- regresión de Main en Content/Clear/Black y aislamiento/reutilización de las
+  ventanas Main/Stage.
+
+No se realizó validación manual durante este cierre. Quedan pendientes Live con
+Main y Stage, Song, Bible, Media, Clear/Black, late-open, reload,
+stale/reconexión, fullscreen, popup blocking y las resoluciones objetivo.
+
+**Estado:** Fase 11.1 IMPLEMENTACIÓN COMPLETA / QUALITY GATE AUTOMÁTICO COMPLETO /
+VALIDACIÓN MANUAL PENDIENTE. Al momento de ese cierre, Fase 11.2 no estaba
+iniciada.
+
+## Fase 11.2 — Stream Output transparente
+
+Quality Gate automático final del 2026-10-16:
+
+- `npx --yes bun test` con Bun 1.4.3: 400 PASS, 0 FAIL, 1069 assertions y 74
+  archivos;
+- `npx tsc --noEmit`: PASS;
+- lint dirigido sobre los archivos nuevos y modificados de Stream: PASS, sin
+  errores; la regla global Prettier/CRLF se excluyó para evitar un formateo
+  masivo del repositorio;
+- `git diff --check`: PASS;
+- `npm run build`: PASS para client, SSR y Nitro con preset
+  `cloudflare-module`, compatibilidad `2026-10-13` y Nitro
+  `3.0.260603-beta`;
+- los artefactos incluyen `/output/main`, `/output/stage`, `/output/stream` y
+  `/api/output-relay`;
+- el endpoint SSE, sus headers y el hub en memoria quedaron exclusivamente en
+  el bundle servidor. Los assets públicos sólo contienen el transporte cliente
+  EventSource/fetch y no contienen la implementación server-only;
+- el build no emitió errores de SSE, EventSource ni APIs `Request`/`Response`.
+  Los avisos de timings, `vite-tsconfig-paths` e `inlineDynamicImports` son no
+  bloqueantes.
+
+Cobertura nueva o extendida:
+
+- superficie SSR y DOM con fondo transparente, lower third Song/Bible y
+  referencia mediante `secondaryText`;
+- Media, Clear, Black, ausencia de sesión y stale dejan la salida vacía;
+- backgrounds, transiciones, OPFS, MediaProvider, playback y chrome de
+  fullscreen quedan fuera de Stream;
+- ruta estructuralmente read-only y fuera del App Shell;
+- relay local limitado a loopback, validación de origin, límite de 256 KiB,
+  exclusión del emisor y limpieza de conexiones SSE;
+- transporte compuesto con aislamiento de fallos del relay respecto de
+  BroadcastChannel;
+- integración de `hello`, late-open, sesión, secuencia, actualización y `bye`
+  por relay, manteniendo Main en BroadcastChannel;
+- ventanas Main, Stage y Stream con nombres independientes.
+
+Durante el gate, dos pruebas del endpoint fallaron porque Happy DOM sustituía
+globalmente `Request` y descartaba headers construidos por el test. Se corrigió
+únicamente el harness con requests deterministas; no fue necesario cambiar el
+endpoint productivo. También se agregó una regresión integrada que demuestra el
+late-open de Stream sin degradar Main.
+
+Pendiente manual: validar alpha real y reconexión en OBS Browser Source y vMix
+Web Browser Input a 1920×1080 y 1280×720, incluyendo late-open, reload y caída/
+reinicio del servidor local. Window Capture de Chrome/Edge no es un modo alpha
+soportado.
+
+**Estado:** Fase 11.2 IMPLEMENTACIÓN COMPLETA / QUALITY GATE AUTOMÁTICO COMPLETO /
+BUILD PASS / VALIDACIÓN MANUAL OBS/VMIX PENDIENTE. La fase siguiente no fue
+iniciada.
+
+## Fase 12 — PWA + Offline
+
+Quality Gate automático final del 2026-11-03:
+
+- tests focalizados de IndexedDB, migración, caché PWA, Storage API y contrato
+  de providers: 28 PASS, 0 FAIL y 112 assertions en 5 archivos;
+- suite completa con Bun 1.4.4 vía `npx`: 414 PASS, 0 FAIL, 1148 assertions y
+  76 archivos;
+- `npx tsc --noEmit`: PASS;
+- lint dirigido: PASS, 0 errores y 8 warnings conocidos de Fast Refresh en
+  archivos Context; la regla Prettier/CRLF se excluyó para evitar reformateo
+  masivo;
+- `git diff --check`: PASS;
+- `npm run build`: PASS para client, SSR y Nitro con preset
+  `cloudflare-module`, compatibilidad `2026-10-29`;
+- el artefacto público contiene `manifest.webmanifest`, los cuatro iconos PWA y
+  `sw.js`; Workbox inyectó 115 entradas (975,71 KiB), incluidos chunks hashed,
+  rutas críticas y recursos esenciales;
+- el precache no contiene `/api`, `/api/output-relay` ni `/_serverFn`; el hub
+  del relay permanece sólo en el bundle servidor;
+- validación manual de navegador: no ejecutada.
+
+Cobertura añadida:
+
+- creación de `broadcast-control.app` con stores Projects, Songs, Presets y
+  meta, sin incluir Bible ni Media;
+- CRUD de los tres repositories y coherencia transaccional de
+  `activeProjectId`;
+- migración de los tres dominios, fallback Projects v1, payload corrupto,
+  transacción abortada, marcador atómico, merge por `updatedAt`, empate a favor
+  de IndexedDB, idempotencia y conservación byte a byte de las claves legacy;
+- estado degradado que rechaza escrituras cuando la fuente legacy es corrupta;
+- política Network Only para relay, APIs, server functions, métodos mutables,
+  recursos cross-origin y `blob:`;
+- manifest, iconos, registro client-only, worker waiting, cleanup de caches,
+  bloqueo de ventanas Live/Main/Stage/Stream y ausencia de migraciones dentro
+  del worker;
+- regresión completa de Projects, Songs, Presets, Media usages, Bible, Live,
+  Main, Stage, Stream, BroadcastChannel y relay.
+
+Durante el gate pre-build, el test arquitectónico de providers todavía buscaba
+los tags sin props anteriores a Fase 12. Se actualizó para verificar el
+bootstrap único y la inyección explícita de repositories. No se modificó
+comportamiento operativo.
+
+El primer build real detectó dos errores acotados al empaquetado PWA. Workbox no
+podía inyectar el manifest porque el marcador no aparecía literalmente como
+`self.__WB_MANIFEST`; después, el worker se generaba en el `dist` predeterminado
+en vez del directorio público de Nitro. Se corrigieron el marcador y el `outDir`
+oficial de `vite-plugin-pwa`. El build repetido generó el worker publicable y el
+precache completo; no fue necesario cambiar la arquitectura ni la política de
+caché.
+
+Pendiente manual: migración real desde perfiles con datos legacy, instalación
+Chrome/Edge, arranque y reload offline, Main/Stage offline, Stream transparente
+sin relay, persistencia/cuota y actualización con ventanas operativas.
+
+**Estado:** Fase 12 IMPLEMENTACIÓN COMPLETA / QUALITY GATE AUTOMÁTICO COMPLETO /
+BUILD PASS / VALIDACIÓN MANUAL PENDIENTE.

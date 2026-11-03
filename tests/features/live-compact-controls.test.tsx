@@ -22,6 +22,11 @@ describe("Live compact controls", () => {
           activeProjectName: null,
           outputStatus: "open",
           outputMessage: null,
+          stageOutputStatus: "closed",
+          stageOutputMessage: null,
+          streamOutputStatus: "closed",
+          streamOutputMessage: null,
+          streamRelayStatus: "connected",
           fullscreenSupported: true,
           fullscreen: false,
           fullscreenError: null,
@@ -38,6 +43,8 @@ describe("Live compact controls", () => {
           onReload: () => undefined,
           onLoadActiveProject: () => undefined,
           onOpenOutput: () => undefined,
+          onOpenStage: () => undefined,
+          onOpenStream: () => undefined,
           onToggleFullscreen: () => undefined,
           compact: true,
           short: true,
@@ -50,7 +57,7 @@ describe("Live compact controls", () => {
     }
     expect(container.textContent).toContain("Servicio");
     expect(container.querySelector('[aria-label="Output abierto"]')).not.toBeNull();
-    expect(container.querySelector('button[title="Abrir Output"]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label="Abrir salidas"]')).not.toBeNull();
     expect(container.querySelector('button[aria-label="Pantalla completa"]')).not.toBeNull();
     expect(container.textContent).not.toContain("← anterior");
     await act(async () => root.unmount());

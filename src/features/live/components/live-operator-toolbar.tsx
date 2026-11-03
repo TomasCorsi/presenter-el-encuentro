@@ -1,9 +1,16 @@
-import { ExternalLink, Maximize, Minimize, RefreshCw, Search } from "lucide-react";
+import { ExternalLink, Maximize, Minimize, MonitorUp, RefreshCw, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import type { ProgramMode } from "@/domain/presentation/presentation";
 import type { OutputWindowStatus } from "@/features/output/use-output-window";
+import type { StreamRelayStatus } from "@/services/output-sync/relay-output-transport";
 import { cn } from "@/lib/utils";
 
 import { LiveControls } from "./live-controls";
@@ -15,6 +22,11 @@ export interface LiveOperatorToolbarProps {
   activeProjectName: string | null;
   outputStatus: OutputWindowStatus;
   outputMessage: string | null;
+  stageOutputStatus: OutputWindowStatus;
+  stageOutputMessage: string | null;
+  streamOutputStatus: OutputWindowStatus;
+  streamOutputMessage: string | null;
+  streamRelayStatus: StreamRelayStatus;
   fullscreenSupported: boolean;
   fullscreen: boolean;
   fullscreenError: string | null;
@@ -33,6 +45,8 @@ export interface LiveOperatorToolbarProps {
   onReload(): void;
   onLoadActiveProject(): void;
   onOpenOutput(): void;
+  onOpenStage(): void;
+  onOpenStream(): void;
   onToggleFullscreen(): void;
 }
 
@@ -60,6 +74,11 @@ export function LiveOperatorToolbar({
   activeProjectName,
   outputStatus,
   outputMessage,
+  stageOutputStatus,
+  stageOutputMessage,
+  streamOutputStatus,
+  streamOutputMessage,
+  streamRelayStatus,
   fullscreenSupported,
   fullscreen,
   fullscreenError,
@@ -78,9 +97,19 @@ export function LiveOperatorToolbar({
   onReload,
   onLoadActiveProject,
   onOpenOutput,
+  onOpenStage,
+  onOpenStream,
   onToggleFullscreen,
 }: LiveOperatorToolbarProps) {
-  const statusMessage = fullscreenError ?? outputMessage;
+  const statusMessage =
+    fullscreenError ?? outputMessage ?? stageOutputMessage ?? streamOutputMessage;
+
+  const relayLabel: Record<StreamRelayStatus, string> = {
+    unsupported: "Sólo local",
+    connecting: "Conectando",
+    connected: "Relay listo",
+    disconnected: "Relay desconectado",
+  };
 
   return (
     <div
@@ -153,10 +182,43 @@ export function LiveOperatorToolbar({
               : OUTPUT_LABEL[outputStatus]
             : OUTPUT_LABEL[outputStatus]}
         </StatusBadge>
-        <Button variant="outline" size="sm" onClick={onOpenOutput} title="Abrir Output">
-          <ExternalLink />
-          {!compact && !short ? "Output" : null}
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" title="Abrir salidas" aria-label="Abrir salidas">
+              <MonitorUp />
+              {!compact && !short ? "Outputs" : null}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem onSelect={onOpenOutput}>
+              <ExternalLink />
+              <span className="flex-1">Abrir Main</span>
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {OUTPUT_LABEL[outputStatus]}
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={onOpenStage}>
+              <ExternalLink />
+              <span className="flex-1">Abrir Stage</span>
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {OUTPUT_LABEL[stageOutputStatus]}
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={onOpenStream}
+              disabled={streamRelayStatus === "unsupported"}
+            >
+              <ExternalLink />
+              <span className="flex-1">Abrir Stream</span>
+              <span
+                className="font-mono text-[10px] text-muted-foreground"
+                title={OUTPUT_LABEL[streamOutputStatus]}
+              >
+                {relayLabel[streamRelayStatus]}
+              </span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           variant="outline"
           size="sm"

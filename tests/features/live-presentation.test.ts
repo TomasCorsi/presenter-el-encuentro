@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import type { Project } from "@/domain/projects/project";
+import type { MediaAsset } from "@/domain/media/media";
 import type { Song } from "@/domain/songs/song";
 import { DEFAULT_PRESET_STYLE, type Preset } from "@/domain/presets/preset";
 import { buildLiveSnapshot, presentationSignature } from "@/features/live/live-presentation";
@@ -87,6 +88,46 @@ describe("presentationSignature", () => {
     const after = presentationSignature(p, [song("a", "2026-01-05T00:00:00.000Z")], []);
 
     expect(after).not.toBe(presentationSignature(p, songs, []));
+  });
+});
+
+describe("presentationSignature de Media", () => {
+  const mediaProject = {
+    id: "p-media",
+    workspaceId: "local-workspace",
+    name: "Media",
+    rundown: [{ id: "i1", type: "media", sourceId: "m1", title: "Media", order: 0 }],
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  } as Project;
+  const media: MediaAsset = {
+    id: "m1",
+    workspaceId: "local-media",
+    name: "Fondo",
+    kind: "image",
+    mimeType: "image/png",
+    sizeBytes: 10,
+    storage: "opfs",
+    tags: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    presentationUpdatedAt: "2026-01-01T00:00:00.000Z",
+  };
+
+  it("ignora organización y usa únicamente presentationUpdatedAt", () => {
+    const before = presentationSignature(mediaProject, [], [], [media]);
+    const organized = {
+      ...media,
+      collectionId: "c1",
+      tags: ["worship"],
+      updatedAt: "2026-01-09T00:00:00.000Z",
+    };
+    expect(presentationSignature(mediaProject, [], [], [organized])).toBe(before);
+    expect(
+      presentationSignature(mediaProject, [], [], [
+        { ...organized, presentationUpdatedAt: "2026-01-10T00:00:00.000Z" },
+      ]),
+    ).not.toBe(before);
   });
 });
 

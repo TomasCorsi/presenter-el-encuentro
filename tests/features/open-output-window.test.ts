@@ -2,6 +2,10 @@ import { describe, expect, it } from "bun:test";
 
 import {
   OUTPUT_MAIN_PATH,
+  OUTPUT_STAGE_PATH,
+  OUTPUT_STAGE_WINDOW_NAME,
+  OUTPUT_STREAM_PATH,
+  OUTPUT_STREAM_WINDOW_NAME,
   OUTPUT_WINDOW_NAME,
   openOutputWindow,
   rectFromScreen,
@@ -67,6 +71,30 @@ describe("openOutputWindow", () => {
     expect(names).toEqual([OUTPUT_WINDOW_NAME, OUTPUT_WINDOW_NAME]);
     expect(first.status === "opened" && second.status === "opened").toBe(true);
     expect(first.status === "opened" && first.window).toBe(target);
+  });
+
+  it("mantiene Main, Stage y Stream en ventanas independientes", () => {
+    const { target } = fakeWindow();
+    const targets: Array<[string, string]> = [];
+    const open: OpenWindowFn = (url, name) => {
+      targets.push([url, name]);
+      return target;
+    };
+
+    openOutputWindow({ open, url: OUTPUT_MAIN_PATH, name: OUTPUT_WINDOW_NAME });
+    openOutputWindow({ open, url: OUTPUT_STAGE_PATH, name: OUTPUT_STAGE_WINDOW_NAME });
+    openOutputWindow({ open, url: OUTPUT_STAGE_PATH, name: OUTPUT_STAGE_WINDOW_NAME });
+    openOutputWindow({ open, url: OUTPUT_STREAM_PATH, name: OUTPUT_STREAM_WINDOW_NAME });
+
+    expect(targets).toEqual([
+      [OUTPUT_MAIN_PATH, OUTPUT_WINDOW_NAME],
+      [OUTPUT_STAGE_PATH, OUTPUT_STAGE_WINDOW_NAME],
+      [OUTPUT_STAGE_PATH, OUTPUT_STAGE_WINDOW_NAME],
+      [OUTPUT_STREAM_PATH, OUTPUT_STREAM_WINDOW_NAME],
+    ]);
+    expect(OUTPUT_STAGE_WINDOW_NAME).not.toBe(OUTPUT_WINDOW_NAME);
+    expect(OUTPUT_STREAM_WINDOW_NAME).not.toBe(OUTPUT_WINDOW_NAME);
+    expect(OUTPUT_STREAM_WINDOW_NAME).not.toBe(OUTPUT_STAGE_WINDOW_NAME);
   });
 
   it("informa el bloqueo cuando el navegador no devuelve ventana", () => {

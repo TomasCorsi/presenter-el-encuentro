@@ -1,6 +1,10 @@
-import type { MediaAsset } from "@/domain/media/media";
+import type { MediaAsset, MediaCollection } from "@/domain/media/media";
 
-import { isMediaAsset, type MediaRepository } from "./media-repository";
+import {
+  parseMediaAsset,
+  parseMediaCollection,
+  type MediaRepository,
+} from "./media-repository";
 
 /**
  * Metadata de Media en IndexedDB (misma filosofía que Bible: la API nativa,
@@ -9,8 +13,19 @@ import { isMediaAsset, type MediaRepository } from "./media-repository";
  */
 
 const DB_NAME = "broadcast-control.media";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const ASSETS_STORE = "assets";
+const COLLECTIONS_STORE = "collections";
+
+/** Upgrade aditivo: nunca recrea el store de assets ni toca el DB separado de bytes. */
+export function upgradeMediaDatabase(database: IDBDatabase): void {
+  if (!database.objectStoreNames.contains(ASSETS_STORE)) {
+    database.createObjectStore(ASSETS_STORE, { keyPath: "id" });
+  }
+  if (!database.objectStoreNames.contains(COLLECTIONS_STORE)) {
+    database.createObjectStore(COLLECTIONS_STORE, { keyPath: "id" });
+  }
+}
 
 function request<T>(req: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -31,10 +46,7 @@ function openDatabase(factory: IDBFactory): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const open = factory.open(DB_NAME, DB_VERSION);
     open.onupgradeneeded = () => {
-      const db = open.result;
-      if (!db.objectStoreNames.contains(ASSETS_STORE)) {
-        db.createObjectStore(ASSETS_STORE, { keyPath: "id" });
-      }
+      upgradeMediaDatabase(open.result);
     };
     open.onsuccess = () => resolve(open.result);
     open.onerror = () =>
@@ -54,7 +66,9 @@ export function createIndexedDbMediaRepository(factory: IDBFactory): MediaReposi
       const values = await request(
         database.transaction(ASSETS_STORE).objectStore(ASSETS_STORE).getAll(),
       );
-      return values.filter(isMediaAsset);
+      return values
+        .map(parseMediaAsset)
+        .filter((asset): asset is MediaAsset => asset !== null);
     },
 
     async get(id) {
@@ -62,7 +76,7 @@ export function createIndexedDbMediaRepository(factory: IDBFactory): MediaReposi
       const value = await request(
         database.transaction(ASSETS_STORE).objectStore(ASSETS_STORE).get(id),
       );
-      return isMediaAsset(value) ? value : null;
+      return parseMediaAsset(value);
     },
 
     async put(asset: MediaAsset) {
@@ -72,10 +86,58 @@ export function createIndexedDbMediaRepository(factory: IDBFactory): MediaReposi
       await done(tx);
     },
 
+    async putMany(assets: readonly MediaAsset[]) {
+      if (assets.length === 0) return;
+      const database = await db();
+      const tx = database.transaction(ASSETS_STORE, "readwrite");
+      const store = tx.objectStore(ASSETS_STORE);
+      for (const asset of assets) store.put(asset);
+      await done(tx);
+    },
+
     async delete(id) {
       const database = await db();
       const tx = database.transaction(ASSETS_STORE, "readwrite");
       tx.objectStore(ASSETS_STORE).delete(id);
+      await done(tx);
+    },
+
+    async listCollections() {
+      const database = await db();
+      const values = await request(
+        database.transaction(COLLECTIONS_STORE).objectStore(COLLECTIONS_STORE).getAll(),
+      );
+      return values
+        .map(parseMediaCollection)
+        .filter((collection): collection is MediaCollection => collection !== null);
+    },
+
+    async getCollection(id) {
+      const database = await db();
+      const value = await request(
+        database.transaction(COLLECTIONS_STORE).objectStore(COLLECTIONS_STORE).get(id),
+      );
+      return parseMediaCollection(value);
+    },
+
+    async putCollection(collection: MediaCollection) {
+      const database = await db();
+      const tx = database.transaction(COLLECTIONS_STORE, "readwrite");
+      tx.objectStore(COLLECTIONS_STORE).put(collection);
+      await done(tx);
+    },
+
+    async deleteCollectionAndUnassign(id, updatedAt) {
+      const database = await db();
+      const tx = database.transaction([ASSETS_STORE, COLLECTIONS_STORE], "readwrite");
+      const assetsStore = tx.objectStore(ASSETS_STORE);
+      const values = await request(assetsStore.getAll());
+      for (const value of values) {
+        const asset = parseMediaAsset(value);
+        if (!asset || asset.collectionId !== id) continue;
+        assetsStore.put({ ...asset, collectionId: undefined, updatedAt });
+      }
+      tx.objectStore(COLLECTIONS_STORE).delete(id);
       await done(tx);
     },
   };

@@ -1,14 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect } from "react";
-
 import { MediaProvider } from "@/features/media/media-context";
-import { OutputOverlay } from "@/features/output/components/output-overlay";
+import { OutputFullscreenFrame } from "@/features/output/components/output-fullscreen-frame";
 import { OutputSurface } from "@/features/output/components/output-surface";
 import { OutputTestScreen } from "@/features/output/components/output-test-screen";
-import { useFullscreen } from "@/features/output/use-fullscreen";
-import { useIdleUi } from "@/features/output/use-idle-ui";
 import { useOutputSnapshot } from "@/features/output/use-output-snapshot";
-import { cn } from "@/lib/utils";
 
 interface OutputSearch {
   mode: "test" | undefined;
@@ -52,37 +47,9 @@ function OutputMainPage() {
 
 function OutputLiveScreen() {
   const { snapshot } = useOutputSnapshot();
-  const { idle } = useIdleUi();
-  const { fullscreen, enter } = useFullscreen();
-
-  const enterFullscreen = useCallback(() => {
-    void enter();
-  }, [enter]);
-
-  // Tecla F: tercera vía hacia pantalla completa, junto al botón y el doble
-  // clic. Nunca automática al cargar: el navegador la bloquearía.
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "f" && event.key !== "F") return;
-      if (event.ctrlKey || event.metaKey || event.altKey) return;
-      event.preventDefault();
-      void enter();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [enter]);
-
   return (
-    <div
-      className={cn("h-dvh w-full overflow-hidden", (idle || fullscreen) && "cursor-none")}
-      onDoubleClick={enterFullscreen}
-    >
+    <OutputFullscreenFrame>
       <OutputSurface snapshot={snapshot} />
-      <OutputOverlay
-        visible={!idle && !fullscreen}
-        onEnterFullscreen={enterFullscreen}
-        hint="F o doble clic"
-      />
-    </div>
+    </OutputFullscreenFrame>
   );
 }

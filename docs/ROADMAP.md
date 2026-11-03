@@ -11,14 +11,13 @@ No comenzar una fase nueva hasta validar la anterior.
 
 ## Estado actual
 
-- Última fase completada: **Fase 10.2 — Operator Workspace** (2026-10-03).
-- **Fase 10.1 — Media Preview + Backgrounds Dinámicos:** implementación y
-  Quality Gate automatizado completos; validación manual en Chrome/Edge
-  pendiente registrada como riesgo residual en `TESTING.md`.
-- Fases 9, 9.1 y los incrementos operativos 9.2/9.3 están implementados.
-- La Fase 11 no fue iniciada.
+- Última fase completada: **Fase 11.2 — Stream Output transparente**; su
+  validación manual OBS/vMix permanece pendiente y no se registra como PASS.
+- Fases 10.1, 10.2, 10.3, 11.1 y 11.2 tienen implementación y build completos
+  según sus respectivos gates documentados.
+- **Fase 12 — PWA + Offline:** implementación, Quality Gate automático y build
+  completos; la validación manual permanece pendiente.
 - Backend: no conectado. Se decide en la Fase 13.
-- Dependencias añadidas hasta la Fase 6: ninguna.
 - Renumeración: Rundown pasa a ser la Fase 5 y las fases posteriores se
   desplazan una posición (Live Mode → Fase 6, …, Supabase → Fase 13).
 - Implementado hasta ahora: Projects/Rundown, Songs, Presentation Engine,
@@ -418,26 +417,86 @@ residual histórico.
 
 ---
 
+## Fase 10.3 — Media Library organizada
+
+- [x] `MediaAsset` retrocompatible con colección, tags y revisión
+      `presentationUpdatedAt` separada de la metadata general.
+- [x] IndexedDB Media v2 con store `collections`, CRUD, unicidad normalizada y
+      desasignación transaccional al eliminar una colección.
+- [x] Preferencias locales compartidas de favoritos, actividad MRU y densidad,
+      con migración única desde Background Deck.
+- [x] Búsqueda AND por nombre/tags/colección, filtros y ordenamientos sin leer
+      bytes ni montar videos en la grilla.
+- [x] `/media` con sidebar/selector de colecciones, grid/compacto, importación a
+      colección, inspector lateral y selección múltiple.
+- [x] Bulk move/tags/favoritos/delete; preflight completo de referencias y
+      reporte explícito de resultados parciales tras fallos físicos.
+- [x] Media Dock y Quick Background Deck integrados con búsqueda, colecciones,
+      favoritos y actividad compartida.
+- [x] Firma de Live dependiente exclusivamente de `presentationUpdatedAt`.
+- [x] 370 tests PASS, typecheck PASS y lint dirigido sin errores.
+- [x] Build de producción PASS (client, SSR y Nitro/Cloudflare).
+- [x] Migración real v1→v2 y checks principales de `/media` y Live validados
+      en Chrome 153 sobre un perfil aislado con 302 assets legacy y bytes OPFS.
+- [ ] Autocompletado de tags: pendiente no bloqueante. La implementación actual
+      conserva un input libre normalizado y no ofrece sugerencias.
+
+**Estado:** COMPLETADA (2026-10-13). El autocompletado de tags fue retirado
+explícitamente del criterio bloqueante y permanece como mejora futura.
+
+---
+
 ## Fase 11 — Stage + Stream Outputs
 
-- [ ] `/output/stage`.
-- [ ] `/output/stream`.
-- [ ] Layouts independientes.
-- [ ] Current/next slide.
-- [ ] Clock.
+- [x] `/output/stage` read-only, fuera del App Shell.
+- [x] Proyección aditiva `stage?: StageProjection` en el protocolo existente.
+- [x] Current derivado de Program y next global navegable, sin usar Preview.
+- [x] Song, Bible y Media estático; Clear/Black conservan las cues visibles.
+- [x] Late-open, session/sequence, heartbeat, stale con último snapshot y reloj.
+- [x] Fullscreen compartido y ventanas Main/Stage independientes desde Live.
+- [x] `/output/stream` transparente, read-only y fuera del App Shell.
+- [x] Relay HTTP/SSE efímero para Browser Source/Web Browser Input en loopback.
+- [x] Lower third Song/Bible; Media, backgrounds, Clear y Black transparentes.
+- [x] Layout Stage independiente.
+- [x] Current/next slide para Stage.
+- [x] Clock local para Stage.
 - [ ] Countdown.
+
+**Estado Fase 11.1:** IMPLEMENTACIÓN COMPLETA / QUALITY GATE AUTOMÁTICO COMPLETO /
+VALIDACIÓN MANUAL PENDIENTE (2026-10-13). Client build, SSR build y Nitro con
+preset `cloudflare-module` pasan; suite, typecheck, lint dirigido y
+`git diff --check` también pasan. No se realizó ni se registra validación manual.
+Fase 11.2 / Stream implementada; quality gate automático y build completos.
+
+**Estado Fase 11.2:** IMPLEMENTACIÓN COMPLETA / QUALITY GATE AUTOMÁTICO COMPLETO /
+BUILD PASS / VALIDACIÓN MANUAL OBS/VMIX PENDIENTE (2026-10-16).
+La salida usa alpha real en Browser Source/Web Browser Input y un relay local de
+proceso único limitado a loopback. Media no se renderiza y Clear, Black y stale
+dejan el overlay transparente. Main y Stage permanecen independientes. Window
+Capture no está soportado para alpha. La fase siguiente no fue iniciada.
 
 ---
 
 ## Fase 12 — PWA + Offline
 
-- [ ] Manifest.
-- [ ] Service Worker.
-- [ ] Offline shell.
-- [ ] IndexedDB.
-- [ ] Cache strategy.
-- [ ] Download for offline.
-- [ ] Update strategy.
+- [x] Manifest instalable “Presenter El Encuentro” e iconos locales.
+- [x] Service Worker `injectManifest`, registrado únicamente en cliente.
+- [x] Offline shell y documentos críticos versionados.
+- [x] IndexedDB `broadcast-control.app` para Projects, Songs y Presets.
+- [x] Migración transaccional e idempotente sin borrar claves legacy.
+- [x] Bible, Media metadata y bytes OPFS conservan sus almacenes actuales.
+- [x] Matriz de caché explícita; APIs, relay/SSE y métodos mutables son Network Only.
+- [x] Main y Stage disponibles offline; Stream no simula el relay ausente.
+- [x] Actualizaciones en espera, sin reload automático y bloqueadas con ventanas operativas.
+- [x] Instalación, red y diagnósticos de almacenamiento en Settings.
+- [x] Build client/SSR/Nitro.
+- [ ] Validación manual de instalación, migración real y arranque offline.
+
+**Estado:** IMPLEMENTACIÓN COMPLETA / QUALITY GATE AUTOMÁTICO COMPLETO / BUILD
+PASS / VALIDACIÓN MANUAL PENDIENTE (2026-11-03). Client, SSR y Nitro con preset
+`cloudflare-module` pasan; el artefacto público contiene manifest, iconos y
+Service Worker `injectManifest` con los assets versionados. No se realizó ni se
+registra validación manual.
 
 ---
 

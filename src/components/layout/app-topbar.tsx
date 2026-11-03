@@ -1,15 +1,13 @@
+import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { StatusBadge } from "@/components/ui/status-badge";
-import {
-  CONNECTION_PLACEHOLDER,
-  USER_PLACEHOLDER,
-  WORKSPACE_PLACEHOLDER,
-} from "@/components/layout/shell-placeholders";
+import { USER_PLACEHOLDER, WORKSPACE_PLACEHOLDER } from "@/components/layout/shell-placeholders";
 import { useProjects } from "@/features/projects/projects-context";
+import { usePwa } from "@/features/pwa/pwa-context";
 
 /**
  * Barra superior del App Shell.
@@ -18,6 +16,7 @@ import { useProjects } from "@/features/projects/projects-context";
  */
 export function AppTopbar() {
   const { activeProject, loading } = useProjects();
+  const { network, update } = usePwa();
   const projectName = loading ? "Cargando…" : activeProject?.name ?? "Sin proyecto activo";
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-3 sm:px-5">
@@ -34,8 +33,13 @@ export function AppTopbar() {
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
-        <StatusBadge tone={CONNECTION_PLACEHOLDER.tone}>
-          {CONNECTION_PLACEHOLDER.label}
+        {update !== "current" ? (
+          <Link to="/settings" aria-label="Ver actualización disponible">
+            <StatusBadge tone="sync">Actualizar</StatusBadge>
+          </Link>
+        ) : null}
+        <StatusBadge tone={network === "online" ? "online" : "offline"}>
+          {network === "online" ? "Con red" : "Sin red"}
         </StatusBadge>
         <div className="h-5 w-px bg-border" aria-hidden="true" />
         <Button

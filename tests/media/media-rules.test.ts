@@ -19,8 +19,10 @@ function asset(overrides: Partial<MediaAsset> = {}): MediaAsset {
     mimeType: "image/png",
     sizeBytes: 2048,
     storage: "opfs",
+    tags: [],
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
+    presentationUpdatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };
 }

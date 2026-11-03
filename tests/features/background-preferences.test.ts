@@ -10,9 +10,6 @@ import type { PresentationItem } from "@/domain/presentation/presentation";
 import { getQuickBackgroundTarget } from "@/features/live/background-target";
 import {
   parseBackgroundPreferences,
-  recordRecentBackground,
-  sanitizeBackgroundPreferences,
-  toggleBackgroundFavorite,
 } from "@/features/live/background-preferences";
 
 function item(id: string, type: PresentationItem["type"]): PresentationItem {
@@ -26,19 +23,13 @@ function item(id: string, type: PresentationItem["type"]): PresentationItem {
 }
 
 describe("Quick Background Deck preferences", () => {
-  it("tolera storage invalido, alterna favoritos y mantiene MRU", () => {
-    const base = parseBackgroundPreferences("no-json");
-    const favorite = toggleBackgroundFavorite(base, "m1");
-    expect(favorite.favoriteIds).toEqual(["m1"]);
-    expect(toggleBackgroundFavorite(favorite, "m1").favoriteIds).toEqual([]);
-
-    let recent = favorite;
-    for (let index = 0; index < 14; index += 1) {
-      recent = recordRecentBackground(recent, `m${index}`);
-    }
-    expect(recent.recentIds).toHaveLength(12);
-    expect(recent.recentIds[0]).toBe("m13");
-    expect(sanitizeBackgroundPreferences(recent, ["m13", "m12"]).recentIds).toEqual(["m13", "m12"]);
+  it("tolera storage inválido y conserva sólo Cut/Fade", () => {
+    expect(parseBackgroundPreferences("no-json")).toEqual({ transition: "cut" });
+    expect(
+      parseBackgroundPreferences(
+        JSON.stringify({ favoriteIds: ["m1"], recentIds: ["m2"], transition: "fade" }),
+      ),
+    ).toEqual({ transition: "fade" });
   });
 });
 

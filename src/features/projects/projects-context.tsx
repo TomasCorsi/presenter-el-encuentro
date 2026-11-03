@@ -13,6 +13,7 @@ import type { Project } from "@/domain/projects/project";
 import type { RundownBackground } from "@/domain/projects/rundown";
 import { ProjectService } from "@/features/projects/project-service";
 import { createLocalStorageProjectRepository } from "@/services/projects/local-storage-project-repository";
+import type { ProjectRepository } from "@/services/projects/project-repository";
 
 interface ProjectsState {
   projects: Project[];
@@ -84,16 +85,22 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "No se pudo guardar el cambio localmente.";
 }
 
-export function ProjectsProvider({ children }: { children: ReactNode }) {
+export function ProjectsProvider({
+  children,
+  repository,
+}: {
+  children: ReactNode;
+  repository?: ProjectRepository;
+}) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const service = useMemo(() => {
     if (typeof window === "undefined") return null;
-    const repository = createLocalStorageProjectRepository(window.localStorage);
-    return new ProjectService(repository, {
+    const resolved = repository ?? createLocalStorageProjectRepository(window.localStorage);
+    return new ProjectService(resolved, {
       createId: () => crypto.randomUUID(),
       now: () => new Date().toISOString(),
     });
-  }, []);
+  }, [repository]);
 
   const refresh = useCallback(async () => {
     if (!service) return;

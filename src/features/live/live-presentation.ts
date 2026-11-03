@@ -24,10 +24,10 @@ export interface LiveSnapshot {
 }
 
 /**
- * Firma barata del origen: `updatedAt` del Project, de las Songs referenciadas
- * y de los Presets efectivos de cada item. No compara contenido en
- * profundidad, así que un guardado sin cambios reales puede producir un falso
- * positivo (riesgo aceptado).
+ * Firma barata del origen: `updatedAt` del Project, Songs y Presets efectivos,
+ * más `presentationUpdatedAt` de Media. La organización de biblioteca no marca
+ * Live stale. No compara contenido en profundidad, así que un guardado sin
+ * cambios reales puede producir un falso positivo (riesgo aceptado).
  */
 export function presentationSignature(
   project: Project,
@@ -43,13 +43,13 @@ export function presentationSignature(
     .map((item) => {
       const source =
         item.type === "media"
-          ? (mediaById.get(item.sourceId)?.updatedAt ?? "missing")
+          ? (mediaById.get(item.sourceId)?.presentationUpdatedAt ?? "missing")
           : item.type === "song"
             ? (songsById.get(item.sourceId)?.updatedAt ?? "missing")
             : "frozen";
       const preset = resolvePreset(item.presetId, presets);
       const backgroundSource = item.background
-        ? (mediaById.get(item.background.mediaId)?.updatedAt ?? "missing")
+        ? (mediaById.get(item.background.mediaId)?.presentationUpdatedAt ?? "missing")
         : "none";
       return [
         item.id,

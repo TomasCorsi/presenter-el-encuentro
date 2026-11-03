@@ -31,6 +31,26 @@ export interface MediaAsset {
   durationSeconds?: number | undefined;
   /** Miniatura pequeña (data URL JPEG) para grillas; nunca el archivo. */
   thumbnailDataUrl?: string | undefined;
+  /** Colección lógica principal. No representa una carpeta física. */
+  collectionId?: string | undefined;
+  /** Clasificación libre, normalizada por las reglas del dominio. */
+  tags: string[];
+  createdAt: string;
+  /** Última modificación de cualquier metadata de biblioteca. */
+  updatedAt: string;
+  /**
+   * Último cambio capaz de modificar una Presentation. Es la única revisión
+   * de Media que participa en la firma de Live; organización y preferencias
+   * no deben marcar el show como desactualizado.
+   */
+  presentationUpdatedAt: string;
+}
+
+/** Colección virtual de metadata. Los bytes continúan en MediaFileStorage. */
+export interface MediaCollection {
+  id: string;
+  workspaceId: string;
+  name: string;
   createdAt: string;
   updatedAt: string;
 }

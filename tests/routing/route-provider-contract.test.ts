@@ -17,10 +17,13 @@ async function read(path: string): Promise<string> {
 }
 
 describe("contrato de providers en rutas", () => {
-  it("el App Shell monta ProjectsProvider y SongsProvider", async () => {
+  it("el App Shell monta el bootstrap único e inyecta sus repositorios", async () => {
     const shell = await read(SHELL);
-    expect(shell).toContain("<ProjectsProvider>");
-    expect(shell).toContain("<SongsProvider>");
+    expect(shell).toContain("<LocalDataProvider>");
+    expect(shell).toContain("<ProjectsProvider repository={repositories.projects}>");
+    expect(shell).toContain("<SongsProvider repository={repositories.songs}>");
+    expect(shell).toContain("<PresetsProvider repository={repositories.presets}>");
+    expect(shell).toContain("<MediaProvider projectRepository={repositories.projects}>");
   });
 
   it("ninguna ruta hija vuelve a montar los providers de datos", async () => {

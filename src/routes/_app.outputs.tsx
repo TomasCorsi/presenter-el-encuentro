@@ -34,7 +34,7 @@ function OutputsPage() {
       <EmptyState
         icon={Clapperboard}
         title="Salida principal en uso"
-        description="La salida principal se abre desde Live. Elegí en qué pantalla se muestra desde Settings; stage y stream llegan más adelante."
+        description="Main, Stage y Stream se abren desde Live. La pantalla preferida de Main se configura desde Settings."
         actions={
           <Button asChild variant="outline">
             <Link to="/settings">Configurar pantalla del proyector</Link>

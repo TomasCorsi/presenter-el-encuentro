@@ -19,7 +19,10 @@ import { Route as AppPresetsRouteImport } from './routes/_app.presets'
 import { Route as AppProjectsRouteImport } from './routes/_app.projects'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppSongsRouteImport } from './routes/_app.songs'
+import { Route as ApiOutputRelayRouteImport } from './routes/api.output-relay'
 import { Route as OutputMainRouteImport } from './routes/output.main'
+import { Route as OutputStageRouteImport } from './routes/output.stage'
+import { Route as OutputStreamRouteImport } from './routes/output.stream'
 import { Route as AppBibleIndexRouteImport } from './routes/_app.bible.index'
 import { Route as AppBibleVersionIdRouteImport } from './routes/_app.bible.$versionId'
 import { Route as AppPresetsIndexRouteImport } from './routes/_app.presets.index'
@@ -78,9 +81,24 @@ const AppSongsRoute = AppSongsRouteImport.update({
   path: '/songs',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiOutputRelayRoute = ApiOutputRelayRouteImport.update({
+  id: '/api/output-relay',
+  path: '/api/output-relay',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OutputMainRoute = OutputMainRouteImport.update({
   id: '/output/main',
   path: '/output/main',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OutputStageRoute = OutputStageRouteImport.update({
+  id: '/output/stage',
+  path: '/output/stage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OutputStreamRoute = OutputStreamRouteImport.update({
+  id: '/output/stream',
+  path: '/output/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppBibleIndexRoute = AppBibleIndexRouteImport.update({
@@ -134,7 +152,10 @@ export interface FileRoutesByFullPath {
   '/projects': typeof AppProjectsRouteWithChildren
   '/settings': typeof AppSettingsRoute
   '/songs': typeof AppSongsRouteWithChildren
+  '/api/output-relay': typeof ApiOutputRelayRoute
   '/output/main': typeof OutputMainRoute
+  '/output/stage': typeof OutputStageRoute
+  '/output/stream': typeof OutputStreamRoute
   '/bible/$versionId': typeof AppBibleVersionIdRoute
   '/presets/$presetId': typeof AppPresetsPresetIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
@@ -149,7 +170,10 @@ export interface FileRoutesByTo {
   '/media': typeof AppMediaRoute
   '/outputs': typeof AppOutputsRoute
   '/settings': typeof AppSettingsRoute
+  '/api/output-relay': typeof ApiOutputRelayRoute
   '/output/main': typeof OutputMainRoute
+  '/output/stage': typeof OutputStageRoute
+  '/output/stream': typeof OutputStreamRoute
   '/': typeof AppIndexRoute
   '/bible/$versionId': typeof AppBibleVersionIdRoute
   '/presets/$presetId': typeof AppPresetsPresetIdRoute
@@ -171,7 +195,10 @@ export interface FileRoutesById {
   '/_app/projects': typeof AppProjectsRouteWithChildren
   '/_app/settings': typeof AppSettingsRoute
   '/_app/songs': typeof AppSongsRouteWithChildren
+  '/api/output-relay': typeof ApiOutputRelayRoute
   '/output/main': typeof OutputMainRoute
+  '/output/stage': typeof OutputStageRoute
+  '/output/stream': typeof OutputStreamRoute
   '/_app/': typeof AppIndexRoute
   '/_app/bible/$versionId': typeof AppBibleVersionIdRoute
   '/_app/presets/$presetId': typeof AppPresetsPresetIdRoute
@@ -194,7 +221,10 @@ export interface FileRouteTypes {
     | '/projects'
     | '/settings'
     | '/songs'
+    | '/api/output-relay'
     | '/output/main'
+    | '/output/stage'
+    | '/output/stream'
     | '/bible/$versionId'
     | '/presets/$presetId'
     | '/projects/$projectId'
@@ -209,7 +239,10 @@ export interface FileRouteTypes {
     | '/media'
     | '/outputs'
     | '/settings'
+    | '/api/output-relay'
     | '/output/main'
+    | '/output/stage'
+    | '/output/stream'
     | '/'
     | '/bible/$versionId'
     | '/presets/$presetId'
@@ -230,7 +263,10 @@ export interface FileRouteTypes {
     | '/_app/projects'
     | '/_app/settings'
     | '/_app/songs'
+    | '/api/output-relay'
     | '/output/main'
+    | '/output/stage'
+    | '/output/stream'
     | '/_app/'
     | '/_app/bible/$versionId'
     | '/_app/presets/$presetId'
@@ -244,7 +280,10 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  ApiOutputRelayRoute: typeof ApiOutputRelayRoute
   OutputMainRoute: typeof OutputMainRoute
+  OutputStageRoute: typeof OutputStageRoute
+  OutputStreamRoute: typeof OutputStreamRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -319,11 +358,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSongsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/output-relay': {
+      id: '/api/output-relay'
+      path: '/api/output-relay'
+      fullPath: '/api/output-relay'
+      preLoaderRoute: typeof ApiOutputRelayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/output/main': {
       id: '/output/main'
       path: '/output/main'
       fullPath: '/output/main'
       preLoaderRoute: typeof OutputMainRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/output/stage': {
+      id: '/output/stage'
+      path: '/output/stage'
+      fullPath: '/output/stage'
+      preLoaderRoute: typeof OutputStageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/output/stream': {
+      id: '/output/stream'
+      path: '/output/stream'
+      fullPath: '/output/stream'
+      preLoaderRoute: typeof OutputStreamRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/bible/': {
@@ -469,7 +529,10 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  ApiOutputRelayRoute: ApiOutputRelayRoute,
   OutputMainRoute: OutputMainRoute,
+  OutputStageRoute: OutputStageRoute,
+  OutputStreamRoute: OutputStreamRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

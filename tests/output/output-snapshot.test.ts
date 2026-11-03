@@ -6,6 +6,7 @@ import {
   toOutputSnapshot,
   type OutputSnapshot,
   type OutputSlide,
+  type StageProjection,
 } from "@/domain/output/output-snapshot";
 import { createInitialPlayback } from "@/domain/output/video-playback";
 import { DEFAULT_PRESET_STYLE } from "@/domain/presets/preset";
@@ -33,6 +34,18 @@ function snapshot(overrides: Partial<OutputSnapshot> = {}): OutputSnapshot {
     ...overrides,
   };
 }
+
+const stage: StageProjection = {
+  current: {
+    slideId: "song:1:slide:0",
+    itemId: "song:1",
+    itemTitle: "Song",
+    itemType: "song",
+    label: "Verse 1",
+    content: { kind: "text", lines: ["Línea uno"] },
+  },
+  next: null,
+};
 
 describe("toOutputSnapshot", () => {
   it("resuelve la slide con sus líneas", () => {
@@ -162,6 +175,27 @@ describe("snapshotsEqual", () => {
     expect(snapshotsEqual(snapshot(), snapshot({ slide: mediaSlide }))).toBe(false);
     expect(snapshotsEqual(snapshot(), snapshot({ backgroundTransition: "fade" }))).toBe(false);
   });
+
+  it("detecta cambios relevantes de la proyección Stage", () => {
+    const a = snapshot({ stage });
+    expect(snapshotsEqual(a, snapshot({ stage }))).toBe(true);
+    expect(
+      snapshotsEqual(
+        a,
+        snapshot({
+          stage: {
+            ...stage,
+            next: {
+              ...stage.current!,
+              slideId: "next",
+              content: { kind: "text", lines: ["Siguiente"] },
+            },
+          },
+        }),
+      ),
+    ).toBe(false);
+    expect(snapshotsEqual(a, snapshot())).toBe(false);
+  });
 });
 
 describe("parseOutputMessage", () => {
@@ -198,6 +232,25 @@ describe("parseOutputMessage", () => {
         color: DEFAULT_PRESET_STYLE.background.color,
       });
     }
+  });
+
+  it("acepta snapshots legacy sin stage y descarta una proyección Stage inválida", () => {
+    const legacy = snapshot();
+    delete legacy.stage;
+    const parsedLegacy = parseOutputMessage({ type: "snapshot", snapshot: legacy });
+    expect(parsedLegacy?.type).toBe("snapshot");
+    if (parsedLegacy?.type === "snapshot") expect(parsedLegacy.snapshot.stage).toBeUndefined();
+
+    const invalid = { ...snapshot(), stage: { current: { slideId: 4 }, next: null } };
+    const parsedInvalid = parseOutputMessage({ type: "snapshot", snapshot: invalid });
+    expect(parsedInvalid?.type).toBe("snapshot");
+    if (parsedInvalid?.type === "snapshot") expect(parsedInvalid.snapshot.stage).toBeUndefined();
+  });
+
+  it("valida y conserva una proyección Stage completa", () => {
+    const parsed = parseOutputMessage({ type: "update", snapshot: snapshot({ stage }) });
+    expect(parsed?.type).toBe("update");
+    if (parsed?.type === "update") expect(parsed.snapshot.stage).toEqual(stage);
   });
 
   it("rechaza mensajes inválidos sin lanzar", () => {

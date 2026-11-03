@@ -13,6 +13,42 @@ export interface OutputTransport {
   close(): void;
 }
 
+/**
+ * Replica cada publicacion en varios transportes y unifica sus entradas.
+ * Un transporte secundario defectuoso nunca debe impedir que BroadcastChannel
+ * siga atendiendo Main y Stage.
+ */
+export function createCompositeOutputTransport(
+  transports: readonly OutputTransport[],
+): OutputTransport {
+  return {
+    publish(message) {
+      for (const transport of transports) {
+        try {
+          transport.publish(message);
+        } catch {
+          // Cada transporte mantiene su propio estado de conexion.
+        }
+      }
+    },
+    subscribe(listener) {
+      const unsubscribes = transports.map((transport) => transport.subscribe(listener));
+      return () => {
+        for (const unsubscribe of unsubscribes) unsubscribe();
+      };
+    },
+    close() {
+      for (const transport of transports) {
+        try {
+          transport.close();
+        } catch {
+          // El resto de los transportes igualmente debe cerrarse.
+        }
+      }
+    },
+  };
+}
+
 /** Transporte real: BroadcastChannel del navegador. */
 export function createBroadcastTransport(): OutputTransport {
   const channel = new BroadcastChannel(OUTPUT_CHANNEL_NAME);

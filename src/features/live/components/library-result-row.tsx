@@ -1,10 +1,13 @@
 import { Eye, ListPlus, Radio } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 
 export interface LibraryResultRowProps {
   title: string;
   subtitle?: string | undefined;
+  leading?: ReactNode;
+  secondaryAction?: ReactNode;
   /** Sin proyecto activo las altas quedan deshabilitadas. */
   disabled: boolean;
   busy: boolean;
@@ -20,6 +23,8 @@ export interface LibraryResultRowProps {
 export function LibraryResultRow({
   title,
   subtitle,
+  leading,
+  secondaryAction,
   disabled,
   busy,
   onAdd,
@@ -28,12 +33,15 @@ export function LibraryResultRow({
 }: LibraryResultRowProps) {
   return (
     <li className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
+      {leading}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm text-foreground">{title}</span>
         {subtitle ? (
           <span className="block truncate text-xs text-muted-foreground">{subtitle}</span>
         ) : null}
       </span>
+
+      {secondaryAction}
 
       {onPreview ? (
         <Button variant="ghost" size="icon" onClick={onPreview} aria-label={`Preview de ${title}`}>

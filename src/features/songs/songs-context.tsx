@@ -4,6 +4,7 @@ import type { Song, SongSectionType } from "@/domain/songs/song";
 import type { UpdateSectionInput } from "@/domain/songs/song-rules";
 import { SongService } from "@/features/songs/song-service";
 import { createLocalStorageSongRepository } from "@/services/songs/local-storage-song-repository";
+import type { SongRepository } from "@/services/songs/song-repository";
 
 interface SongsState {
   songs: Song[];
@@ -50,16 +51,16 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "No se pudo guardar el cambio localmente.";
 }
 
-export function SongsProvider({ children }: { children: ReactNode }) {
+export function SongsProvider({ children, repository }: { children: ReactNode; repository?: SongRepository }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const service = useMemo(() => {
     if (typeof window === "undefined") return null;
-    const repository = createLocalStorageSongRepository(window.localStorage);
-    return new SongService(repository, {
+    const resolved = repository ?? createLocalStorageSongRepository(window.localStorage);
+    return new SongService(resolved, {
       createId: () => crypto.randomUUID(),
       now: () => new Date().toISOString(),
     });
-  }, []);
+  }, [repository]);
 
   const refresh = useCallback(async () => {
     if (!service) return;

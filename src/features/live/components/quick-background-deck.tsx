@@ -3,58 +3,67 @@ import { useEffect, useMemo, useState, type RefObject } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { BackgroundTransition } from "@/domain/output/output-snapshot";
-import type { MediaAsset } from "@/domain/media/media";
-import { searchMedia } from "@/domain/media/media-rules";
+import type { MediaAsset, MediaCollection } from "@/domain/media/media";
+import {
+  queryMediaLibrary,
+  type MediaCollectionFilter,
+} from "@/domain/media/media-rules";
 import type { RundownBackground } from "@/domain/projects/rundown";
 import type { PresentationItem } from "@/domain/presentation/presentation";
 import {
   BACKGROUND_PREFERENCES_KEY,
   DEFAULT_BACKGROUND_PREFERENCES,
   parseBackgroundPreferences,
-  recordRecentBackground,
-  sanitizeBackgroundPreferences,
-  toggleBackgroundFavorite,
   type BackgroundPreferences,
 } from "@/features/live/background-preferences";
+import type { MediaLibraryPreferences } from "@/features/media/media-library-preferences";
 import { cn } from "@/lib/utils";
 
 type Filter = "all" | "favorites" | "recent";
 
 export interface QuickBackgroundDeckProps {
   assets: readonly MediaAsset[];
+  collections: readonly MediaCollection[];
+  mediaPreferences: MediaLibraryPreferences;
   inputRef: RefObject<HTMLInputElement | null>;
   target: PresentationItem | null;
   busy: boolean;
   onTransitionChange(transition: BackgroundTransition): void;
   onApply(background: RundownBackground | undefined): Promise<boolean>;
+  onToggleFavorite(mediaId: string): void;
 }
 
 export function QuickBackgroundDeck({
   assets,
+  collections,
+  mediaPreferences,
   inputRef,
   target,
   busy,
   onTransitionChange,
   onApply,
+  onToggleFavorite,
 }: QuickBackgroundDeckProps) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [collectionId, setCollectionId] = useState<MediaCollectionFilter>("all");
   const [preferences, setPreferences] = useState<BackgroundPreferences>(
     DEFAULT_BACKGROUND_PREFERENCES,
   );
 
   useEffect(() => {
-    const parsed = parseBackgroundPreferences(
-      window.localStorage.getItem(BACKGROUND_PREFERENCES_KEY),
-    );
     setPreferences(
-      sanitizeBackgroundPreferences(
-        parsed,
-        assets.map((asset) => asset.id),
-      ),
+      parseBackgroundPreferences(window.localStorage.getItem(BACKGROUND_PREFERENCES_KEY)),
     );
-  }, [assets]);
+  }, []);
 
   const persist = (next: BackgroundPreferences) => {
     setPreferences(next);
@@ -62,23 +71,20 @@ export function QuickBackgroundDeck({
   };
 
   const visible = useMemo(() => {
-    const searched = searchMedia(assets, query);
-    if (filter === "favorites") {
-      return searched.filter((asset) => preferences.favoriteIds.includes(asset.id));
-    }
-    if (filter === "recent") {
-      const order = new Map(preferences.recentIds.map((id, index) => [id, index]));
-      return searched
-        .filter((asset) => order.has(asset.id))
-        .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
-    }
-    return searched;
-  }, [assets, filter, preferences.favoriteIds, preferences.recentIds, query]);
+    return queryMediaLibrary(assets, collections, {
+      query,
+      collectionId,
+      filter: filter === "favorites" ? "favorites" : filter === "recent" ? "recent" : "all",
+      favoriteIds: mediaPreferences.favoriteIds,
+      recentIds: mediaPreferences.recentIds,
+      sort: "name-asc",
+      limit: 60,
+    });
+  }, [assets, collectionId, collections, filter, mediaPreferences, query]);
 
   const apply = async (background: RundownBackground | undefined) => {
     if (!target || busy) return;
-    const saved = await onApply(background);
-    if (saved && background) persist(recordRecentBackground(preferences, background.mediaId));
+    await onApply(background);
   };
 
   return (
@@ -124,6 +130,14 @@ export function QuickBackgroundDeck({
             {entry === "all" ? "Todos" : entry === "favorites" ? "Favoritos" : "Recientes"}
           </Button>
         ))}
+        <Select value={collectionId} onValueChange={setCollectionId}>
+          <SelectTrigger className="h-8 w-40" aria-label="Colección de fondos"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            {collections.map((collection) => <SelectItem key={collection.id} value={collection.id}>{collection.name}</SelectItem>)}
+            <SelectItem value="unassigned">Sin colección</SelectItem>
+          </SelectContent>
+        </Select>
         <div className="relative min-w-40 flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -148,7 +162,7 @@ export function QuickBackgroundDeck({
           </span>
         </button>
         {visible.map((asset) => {
-          const favorite = preferences.favoriteIds.includes(asset.id);
+          const favorite = mediaPreferences.favoriteIds.includes(asset.id);
           return (
             <div
               key={asset.id}
@@ -181,7 +195,7 @@ export function QuickBackgroundDeck({
                 type="button"
                 className="absolute right-1 top-1 rounded bg-background/80 p-1"
                 aria-label={`${favorite ? "Quitar" : "Agregar"} ${asset.name} ${favorite ? "de" : "a"} favoritos`}
-                onClick={() => persist(toggleBackgroundFavorite(preferences, asset.id))}
+                onClick={() => onToggleFavorite(asset.id)}
               >
                 <Star className={cn("size-3", favorite && "fill-current text-primary")} />
               </button>

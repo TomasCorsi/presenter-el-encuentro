@@ -11,6 +11,8 @@ import {
 
 import {
   browserOpenWindow,
+  OUTPUT_MAIN_PATH,
+  OUTPUT_WINDOW_NAME,
   openOutputWindow,
   rectFromScreen,
   type OutputWindowLike,
@@ -35,6 +37,14 @@ export interface OutputWindowController {
   open(): Promise<void>;
 }
 
+export interface UseOutputWindowOptions {
+  url?: string;
+  name?: string;
+  /** Main usa la pantalla configurada; Stage se coloca manualmente. */
+  placement?: "audience" | "manual";
+  manualMessage?: string;
+}
+
 const BLOCKED_MESSAGE =
   "El navegador bloqueó la salida. Permití ventanas emergentes para este sitio y volvé a intentarlo.";
 const MANUAL_MESSAGE = "Mové esta ventana al proyector y presioná F para pantalla completa.";
@@ -48,7 +58,12 @@ const DISCONNECTED_MESSAGE = "Proyector desconectado. La salida actual no se mod
  * abierta. Nunca abre la salida en la pantalla principal cuando el proyector
  * configurado no aparece.
  */
-export function useOutputWindow(): OutputWindowController {
+export function useOutputWindow({
+  url = OUTPUT_MAIN_PATH,
+  name = OUTPUT_WINDOW_NAME,
+  placement = "audience",
+  manualMessage = MANUAL_MESSAGE,
+}: UseOutputWindowOptions = {}): OutputWindowController {
   const [status, setStatus] = useState<OutputWindowStatus>("closed");
   const [message, setMessage] = useState<string | null>(null);
   const [manualPlacement, setManualPlacement] = useState(false);
@@ -75,12 +90,8 @@ export function useOutputWindow(): OutputWindowController {
   }, []);
 
   const open = useCallback(async () => {
-    const support = detectWindowManagementSupport();
-    const fingerprint = readAudienceScreen(window.localStorage);
-
-    // Modo alternativo: sin API o sin proyector configurado, ventana suelta.
-    if (!support.hasApi || !fingerprint) {
-      const result = openOutputWindow({ rect: null, open: browserOpenWindow });
+    if (placement === "manual") {
+      const result = openOutputWindow({ url, name, rect: null, open: browserOpenWindow });
       if (result.status === "blocked") {
         setStatus("blocked");
         setMessage(BLOCKED_MESSAGE);
@@ -89,7 +100,25 @@ export function useOutputWindow(): OutputWindowController {
       windowRef.current = result.window;
       setStatus("open");
       setManualPlacement(true);
-      setMessage(MANUAL_MESSAGE);
+      setMessage(manualMessage);
+      return;
+    }
+
+    const support = detectWindowManagementSupport();
+    const fingerprint = readAudienceScreen(window.localStorage);
+
+    // Modo alternativo: sin API o sin proyector configurado, ventana suelta.
+    if (!support.hasApi || !fingerprint) {
+      const result = openOutputWindow({ url, name, rect: null, open: browserOpenWindow });
+      if (result.status === "blocked") {
+        setStatus("blocked");
+        setMessage(BLOCKED_MESSAGE);
+        return;
+      }
+      windowRef.current = result.window;
+      setStatus("open");
+      setManualPlacement(true);
+      setMessage(manualMessage);
       return;
     }
 
@@ -126,6 +155,8 @@ export function useOutputWindow(): OutputWindowController {
 
     const entry = entries[result.index]!;
     const opened = openOutputWindow({
+      url,
+      name,
       rect: rectFromScreen(entry.info),
       open: browserOpenWindow,
     });
@@ -140,7 +171,7 @@ export function useOutputWindow(): OutputWindowController {
     setManualPlacement(false);
     setStatus("open");
     setMessage(null);
-  }, []);
+  }, [manualMessage, name, placement, url]);
 
   return { status, message, manualPlacement, open };
 }

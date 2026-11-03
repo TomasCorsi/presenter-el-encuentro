@@ -4,6 +4,10 @@ import type { ScreenInfo } from "@/services/display/window-management";
 export const OUTPUT_WINDOW_NAME = "audience-main";
 export const OUTPUT_MAIN_PATH = "/output/main";
 export const OUTPUT_TEST_PATH = "/output/main?mode=test";
+export const OUTPUT_STAGE_WINDOW_NAME = "audience-stage";
+export const OUTPUT_STAGE_PATH = "/output/stage";
+export const OUTPUT_STREAM_WINDOW_NAME = "audience-stream";
+export const OUTPUT_STREAM_PATH = "/output/stream";
 
 export interface OutputWindowRect {
   left: number;

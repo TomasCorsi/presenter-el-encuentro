@@ -5,6 +5,7 @@ import { AppTopbar } from "@/components/layout/app-topbar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { BibleProvider } from "@/features/bible/bible-context";
 import { MediaProvider } from "@/features/media/media-context";
+import { LocalDataProvider, useLocalData } from "@/features/local-data/local-data-context";
 import { PresentationProvider } from "@/features/presentation/presentation-context";
 import { PresetsProvider } from "@/features/presets/presets-context";
 import { ProjectsProvider } from "@/features/projects/projects-context";
@@ -26,11 +27,20 @@ export const Route = createFileRoute("/_app")({
 function AppShell() {
   const liveRoute = useRouterState({ select: (state) => state.location.pathname === "/live" });
   return (
-    <ProjectsProvider>
-      <SongsProvider>
-        <PresetsProvider>
+    <LocalDataProvider>
+      <AppDataProviders liveRoute={liveRoute} />
+    </LocalDataProvider>
+  );
+}
+
+function AppDataProviders({ liveRoute }: { liveRoute: boolean }) {
+  const { repositories } = useLocalData();
+  return (
+    <ProjectsProvider repository={repositories.projects}>
+      <SongsProvider repository={repositories.songs}>
+        <PresetsProvider repository={repositories.presets}>
           <BibleProvider>
-            <MediaProvider>
+            <MediaProvider projectRepository={repositories.projects}>
               {/* El motor de presentación también vive en el shell: montarlo en
                   la ruta /live lo remontaría y lo expondría a duplicados de
                   módulo al dividirse el bundle de la ruta. */}

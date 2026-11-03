@@ -1,5 +1,6 @@
 import type { VideoPlaybackState } from "@/domain/output/video-playback";
 import type {
+  PresentationItemType,
   ProgramMode,
   ResolvedSlideBackground,
 } from "@/domain/presentation/presentation";
@@ -41,6 +42,22 @@ export interface OutputSlide {
 
 export type BackgroundTransition = "cut" | "fade";
 
+/** Referencia textual/Media liviana para la salida Stage. */
+export interface StageCue {
+  slideId: string;
+  itemId: string;
+  itemTitle: string;
+  itemType: PresentationItemType | null;
+  label?: string | undefined;
+  content: OutputSlideContent;
+  secondaryText?: string | undefined;
+}
+
+export interface StageProjection {
+  current: StageCue | null;
+  next: StageCue | null;
+}
+
 /** Estado completo que Output necesita para pintar Program. */
 export interface OutputSnapshot {
   sessionId: string;
@@ -49,6 +66,8 @@ export interface OutputSnapshot {
   backgroundTransition: BackgroundTransition;
   /** `null` en `clear`, `black` o Program vacío. */
   slide: OutputSlide | null;
+  /** Proyección aditiva y read-only para `/output/stage`. */
+  stage?: StageProjection | undefined;
 }
 
 export type OutputMessage =
@@ -73,6 +92,7 @@ export function toOutputSnapshot(
   sequence: number,
   playback: VideoPlaybackState | null = null,
   backgroundTransition: BackgroundTransition = "cut",
+  stage?: StageProjection,
 ): OutputSnapshot {
   const slide = output.slide;
   const style = normalizePresetStyle(slide?.style);
@@ -81,6 +101,7 @@ export function toOutputSnapshot(
     sequence,
     mode: output.mode,
     backgroundTransition,
+    stage,
     slide: slide
       ? {
           id: slide.id,
@@ -124,6 +145,24 @@ function contentsEqual(a: OutputSlideContent, b: OutputSlideContent): boolean {
   return a.mediaId === b.mediaId;
 }
 
+function cuesEqual(a: StageCue | null, b: StageCue | null): boolean {
+  if (a === null || b === null) return a === b;
+  return (
+    a.slideId === b.slideId &&
+    a.itemId === b.itemId &&
+    a.itemTitle === b.itemTitle &&
+    a.itemType === b.itemType &&
+    (a.label ?? null) === (b.label ?? null) &&
+    contentsEqual(a.content, b.content) &&
+    (a.secondaryText ?? null) === (b.secondaryText ?? null)
+  );
+}
+
+function stagesEqual(a?: StageProjection, b?: StageProjection): boolean {
+  if (!a || !b) return a === b;
+  return cuesEqual(a.current, b.current) && cuesEqual(a.next, b.next);
+}
+
 /**
  * Compara TODO lo que Output pinta: modo, id, contenido, estilo y estado de
  * reproducción. De la reproducción basta la revisión: cada cambio de Live la
@@ -132,6 +171,7 @@ function contentsEqual(a: OutputSlideContent, b: OutputSlideContent): boolean {
 export function snapshotsEqual(a: OutputSnapshot, b: OutputSnapshot): boolean {
   if (a.mode !== b.mode) return false;
   if (a.backgroundTransition !== b.backgroundTransition) return false;
+  if (!stagesEqual(a.stage, b.stage)) return false;
   if (a.slide === null || b.slide === null) return a.slide === b.slide;
   return (
     a.slide.id === b.slide.id &&
@@ -171,6 +211,56 @@ function parseBackground(
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+const PRESENTATION_ITEM_TYPES: readonly PresentationItemType[] = [
+  "song",
+  "bible",
+  "media",
+  "presentation",
+  "countdown",
+  "message",
+];
+
+function parseStageCue(value: unknown): StageCue | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Record<string, unknown>;
+  const content = parseContent(candidate["content"], undefined);
+  const itemType = candidate["itemType"];
+  if (
+    typeof candidate["slideId"] !== "string" ||
+    candidate["slideId"] === "" ||
+    typeof candidate["itemId"] !== "string" ||
+    candidate["itemId"] === "" ||
+    typeof candidate["itemTitle"] !== "string" ||
+    candidate["itemTitle"] === "" ||
+    (itemType !== null && !PRESENTATION_ITEM_TYPES.includes(itemType as PresentationItemType)) ||
+    !content
+  ) {
+    return null;
+  }
+  return {
+    slideId: candidate["slideId"],
+    itemId: candidate["itemId"],
+    itemTitle: candidate["itemTitle"],
+    itemType: itemType as PresentationItemType | null,
+    content,
+    label: typeof candidate["label"] === "string" ? candidate["label"] : undefined,
+    secondaryText:
+      typeof candidate["secondaryText"] === "string"
+        ? candidate["secondaryText"]
+        : undefined,
+  };
+}
+
+function parseStageProjection(value: unknown): StageProjection | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const candidate = value as Record<string, unknown>;
+  const current = candidate["current"] === null ? null : parseStageCue(candidate["current"]);
+  const next = candidate["next"] === null ? null : parseStageCue(candidate["next"]);
+  if (current === null && candidate["current"] !== null) return undefined;
+  if (next === null && candidate["next"] !== null) return undefined;
+  return { current, next };
 }
 
 /**
@@ -220,6 +310,7 @@ function parseSnapshot(value: unknown): OutputSnapshot | null {
     sequence: candidate["sequence"],
     mode,
     backgroundTransition,
+    stage: parseStageProjection(candidate["stage"]),
     slide:
       slide === null
         ? null

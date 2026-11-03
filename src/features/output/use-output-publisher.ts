@@ -1,11 +1,20 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { VideoPlaybackState } from "@/domain/output/video-playback";
 import type { BackgroundTransition } from "@/domain/output/output-snapshot";
+import { buildStageProjection } from "@/domain/output/stage-projection";
 import { getProgramOutput } from "@/domain/presentation/presentation-selectors";
 import { usePresentationStore } from "@/features/presentation/presentation-context";
 import { createOutputPublisher, type OutputPublisher } from "@/services/output-sync/output-publisher";
-import { createBroadcastTransport } from "@/services/output-sync/output-transport";
+import {
+  createRelayOutputTransport,
+  isLoopbackHostname,
+  type StreamRelayStatus,
+} from "@/services/output-sync/relay-output-transport";
+import {
+  createBroadcastTransport,
+  createCompositeOutputTransport,
+} from "@/services/output-sync/output-transport";
 
 /**
  * Conecta el Presentation Store de Live con el protocolo Output Sync.
@@ -19,8 +28,9 @@ import { createBroadcastTransport } from "@/services/output-sync/output-transpor
 export function useOutputPublisher(
   playback: VideoPlaybackState | null = null,
   backgroundTransition: BackgroundTransition = "cut",
-): void {
+): StreamRelayStatus {
   const store = usePresentationStore();
+  const [relayStatus, setRelayStatus] = useState<StreamRelayStatus>("connecting");
   const playbackRef = useRef(playback);
   playbackRef.current = playback;
   const transitionRef = useRef(backgroundTransition);
@@ -29,8 +39,16 @@ export function useOutputPublisher(
 
   useEffect(() => {
     const sessionId = crypto.randomUUID();
+    const broadcastTransport = createBroadcastTransport();
+    const relay = isLoopbackHostname(window.location.hostname)
+      ? createRelayOutputTransport()
+      : null;
+    setRelayStatus(relay ? relay.getStatus() : "unsupported");
+    const unsubscribeRelayStatus = relay?.subscribeStatus(setRelayStatus) ?? null;
     const publisher = createOutputPublisher(
-      createBroadcastTransport(),
+      relay
+        ? createCompositeOutputTransport([broadcastTransport, relay])
+        : broadcastTransport,
       sessionId,
       () => playbackRef.current,
       () => transitionRef.current,
@@ -38,21 +56,27 @@ export function useOutputPublisher(
     publisherRef.current = publisher;
 
     // Estado inicial: cualquier Output que abra ahora recibe el Program actual.
-    publisher.sync(getProgramOutput(store.getState()));
+    const initialState = store.getState();
+    publisher.sync(getProgramOutput(initialState), buildStageProjection(initialState));
 
     const unsubscribe = store.subscribe(() => {
-      publisher.sync(getProgramOutput(store.getState()));
+      const state = store.getState();
+      publisher.sync(getProgramOutput(state), buildStageProjection(state));
     });
 
     return () => {
       publisherRef.current = null;
       unsubscribe();
+      unsubscribeRelayStatus?.();
       publisher.close();
     };
   }, [store]);
 
   // Un cambio de reproducción no pasa por el store: publica por su cuenta.
   useEffect(() => {
-    publisherRef.current?.sync(getProgramOutput(store.getState()));
+    const state = store.getState();
+    publisherRef.current?.sync(getProgramOutput(state), buildStageProjection(state));
   }, [store, playback, backgroundTransition]);
+
+  return relayStatus;
 }

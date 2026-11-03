@@ -27,8 +27,10 @@ const media: MediaAsset[] = [
     sizeBytes: 10,
     storage: "opfs",
     thumbnailDataUrl: "data:image/jpeg;base64,AA==",
+    tags: [],
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
+    presentationUpdatedAt: "2026-01-01T00:00:00.000Z",
   },
   {
     id: "video-1",
@@ -38,8 +40,10 @@ const media: MediaAsset[] = [
     mimeType: "video/webm",
     sizeBytes: 20,
     storage: "opfs",
+    tags: [],
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
+    presentationUpdatedAt: "2026-01-01T00:00:00.000Z",
   },
 ];
 

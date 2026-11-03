@@ -57,6 +57,12 @@ import { useMedia } from "@/features/media/media-context";
 import { useOutputPublisher } from "@/features/output/use-output-publisher";
 import { useOutputWindow } from "@/features/output/use-output-window";
 import {
+  OUTPUT_STAGE_PATH,
+  OUTPUT_STAGE_WINDOW_NAME,
+  OUTPUT_STREAM_PATH,
+  OUTPUT_STREAM_WINDOW_NAME,
+} from "@/features/output/open-output-window";
+import {
   usePresentationState,
   usePresentationStore,
 } from "@/features/presentation/presentation-context";
@@ -121,7 +127,14 @@ function LiveConsole() {
   const { refreshVersions } = useBible();
   const { songs, hasLoaded: songsLoaded } = useSongs();
   const { presets, hasLoaded: presetsLoaded } = usePresets();
-  const { assets: mediaAssets, isLoading: mediaLoading } = useMedia();
+  const {
+    assets: mediaAssets,
+    collections: mediaCollections,
+    preferences: mediaPreferences,
+    isLoading: mediaLoading,
+    toggleFavorite: toggleMediaFavorite,
+    recordRecent: recordRecentMedia,
+  } = useMedia();
   const store = usePresentationStore();
   const state = usePresentationState();
   const layout = useLiveLayout();
@@ -233,8 +246,20 @@ function LiveConsole() {
 
   // Live es la autoridad del protocolo Output Sync: publica Program a
   // `/output/main` (ADR-027/028), incluido el estado de reproducción.
-  useOutputPublisher(playback, backgroundTransition);
+  const streamRelayStatus = useOutputPublisher(playback, backgroundTransition);
   const outputWindow = useOutputWindow();
+  const stageWindow = useOutputWindow({
+    url: OUTPUT_STAGE_PATH,
+    name: OUTPUT_STAGE_WINDOW_NAME,
+    placement: "manual",
+  });
+  const streamWindow = useOutputWindow({
+    url: OUTPUT_STREAM_PATH,
+    name: OUTPUT_STREAM_WINDOW_NAME,
+    placement: "manual",
+    manualMessage:
+      "Vista de inspección abierta. Para alpha real, cargá esta URL como Browser Source en OBS o Web Browser Input en vMix.",
+  });
 
   // Carga inicial del show: un único snapshot explícito por sesión.
   useEffect(() => {
@@ -307,13 +332,13 @@ function LiveConsole() {
       try {
         const project = await save();
         const rundownItem = [...project.rundown].sort((a, b) => a.order - b.order).at(-1);
-        if (!rundownItem) return;
+        if (!rundownItem) return false;
 
         const sources = { project, songs, presets, media: mediaAssets };
         const item = buildAppendedItem(sources, rundownItem.id);
         if (!item) {
           setStatus("No se pudo preparar el contenido para el show.");
-          return;
+          return false;
         }
 
         setSession((current) =>
@@ -324,8 +349,10 @@ function LiveConsole() {
         const first = item.slides[0];
         if (mode === "live" && first) store.goLive(first.id);
         setStatus(mode === "live" ? `${label} está al aire.` : `${label} se agregó al rundown.`);
+        return true;
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "No se pudo agregar el contenido.");
+        return false;
       } finally {
         setBusy(false);
       }
@@ -358,9 +385,11 @@ function LiveConsole() {
       if (!showProject) return;
       void appendFromLibrary(mode, asset.name, () =>
         addMediaToProject(showProject.id, { id: asset.id, name: asset.name }),
-      );
+      ).then((saved) => {
+        if (saved) recordRecentMedia([asset.id]);
+      });
     },
-    [addMediaToProject, appendFromLibrary, showProject],
+    [addMediaToProject, appendFromLibrary, recordRecentMedia, showProject],
   );
 
   /**
@@ -457,6 +486,7 @@ function LiveConsole() {
           current ? replaceInLiveSession(current, { ...sources, item, wasOutdated }) : current,
         );
         store.replacePresentationItem(item);
+        if (background) recordRecentMedia([background.mediaId]);
         setStatus(
           background ? `Fondo aplicado a ${target.title}.` : `Fondo quitado de ${target.title}.`,
         );
@@ -468,7 +498,7 @@ function LiveConsole() {
         setBusy(false);
       }
     },
-    [mediaAssets, presets, setRundownItemBackground, showProject, songs, store],
+    [mediaAssets, presets, recordRecentMedia, setRundownItemBackground, showProject, songs, store],
   );
 
   /** Comandos del video al aire: actualizan el estado autoritativo de Live. */
@@ -588,10 +618,17 @@ function LiveConsole() {
         activeProjectName={changedActiveProject?.name ?? null}
         outputStatus={outputWindow.status}
         outputMessage={outputWindow.message}
+        stageOutputStatus={stageWindow.status}
+        stageOutputMessage={stageWindow.message}
+        streamOutputStatus={streamWindow.status}
+        streamOutputMessage={streamWindow.message}
+        streamRelayStatus={streamRelayStatus}
         fullscreenSupported={fullscreen.supported}
         fullscreen={fullscreen.fullscreen}
         fullscreenError={fullscreen.error}
         onOpenOutput={() => void outputWindow.open()}
+        onOpenStage={() => void stageWindow.open()}
+        onOpenStream={() => void streamWindow.open()}
         onToggleFullscreen={() => void fullscreen.toggle()}
         onReload={reload}
         onLoadActiveProject={loadActiveProject}
@@ -749,6 +786,8 @@ function LiveConsole() {
           bibleVersionId={library.versionId}
           onBibleVersionChange={(versionId) => updateLibrary({ versionId })}
           mediaAssets={mediaAssets}
+          mediaCollections={mediaCollections}
+          mediaPreferences={mediaPreferences}
           mediaLoading={mediaLoading}
           canAdd={Boolean(showProject)}
           busy={busy}
@@ -756,6 +795,7 @@ function LiveConsole() {
           onAddSong={handleAddSong}
           onAddPassage={handleAddPassage}
           onAddMedia={handleAddMedia}
+          onToggleMediaFavorite={toggleMediaFavorite}
           backgroundTarget={getQuickBackgroundTarget(state)}
           onBackgroundTransitionChange={setBackgroundTransition}
           onApplyBackground={handleApplyBackground}

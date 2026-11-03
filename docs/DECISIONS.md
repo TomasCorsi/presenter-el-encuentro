@@ -961,3 +961,132 @@ ni transiciones. Ausencia o error deja visible el solid congelado del Preset.
 proporción mediante `cqh/cqw`, y los estados Preview/Program viven en el chrome
 externo. La fidelidad de un video queda limitada al frame generado al importar,
 a cambio de no activar múltiples decoders ni lecturas del almacenamiento.
+
+## ADR-053 — Organización lógica de Media separada de su revisión presentacional
+
+**Contexto.** Media necesita colecciones, tags, favoritos, actividad reciente y
+densidad de vista sin convertir esa organización local en cambios pendientes de
+Live ni mover los bytes ya administrados por `MediaFileStorage`.
+
+**Decisión.** `MediaAsset` separa `updatedAt`, que representa cualquier cambio de
+metadata, de `presentationUpdatedAt`, que es la única revisión incluida en la
+firma presentacional de Live. Rename y cambios que afectan la representación
+actualizan ambas; colección y tags actualizan solamente `updatedAt`; favoritos,
+actividad reciente y densidad no modifican el asset. Los assets anteriores se
+normalizan con `tags: []`, sin colección y con `presentationUpdatedAt = updatedAt`.
+
+Las colecciones son metadata lógica en el store IndexedDB `collections`; no son
+directorios ni modifican OPFS. Favoritos, MRU aproximado y modo de vista viven en
+`broadcast-control.media.preferences.v1`. Las referencias se derivan siempre de
+`findMediaUsage()`, incluyendo contenido y backgrounds Song/Bible.
+
+**Consecuencias.** El delete bulk realiza un preflight global all-or-nothing ante
+referencias. Una vez superado, OPFS e IndexedDB no pueden prometer atomicidad
+conjunta: el servicio informa assets completados y fallidos si aparece un error
+físico. Eliminar una colección sí elimina la colección y desasigna sus assets en
+una única transacción IndexedDB, sin borrar bytes.
+
+## ADR-054 — Stage es una proyección read-only aditiva de Program
+
+**Contexto.** El operador necesita una salida independiente con la cue actual y
+la siguiente, sin dar a Stage autoridad sobre Live ni alterar el comportamiento
+seguro de Main Output.
+
+**Decisión.** `OutputSnapshot` admite opcionalmente `stage?: StageProjection` sin
+cambiar canal, versión, sesión, secuencia ni heartbeat. Una función pura deriva
+`current` desde el Program subyacente y `next` desde la siguiente posición
+navegable global; Preview nunca participa. Clear y Black conservan las cues. Si
+Program está detached se conserva el contenido actual con el título de respaldo
+«Contenido al aire» y no se inventa una siguiente posición.
+
+`/output/stage` reutiliza el subscriber y el marco de fullscreen de Main, pero
+retiene en memoria el último snapshot durante stale. Es estrictamente observador:
+no importa comandos ni el Presentation Store. Song y Bible viajan congelados en
+la cue. Media usa únicamente metadata y `thumbnailDataUrl` del provider existente;
+no abre OPFS, no crea Blob URLs y no monta video.
+
+**Consecuencias.** Los snapshots legacy sin `stage` siguen siendo válidos y Main
+ignora el campo nuevo. `snapshotsEqual` incluye current/next para que una recarga
+o un cambio de orden relevante para Stage pueda publicarse aunque Main no cambie.
+Las ventanas Main y Stage tienen nombres independientes y se reutilizan por
+separado. Stage no persiste estado propio ni modifica playback.
+
+**Estado:** aceptada (Fase 11.1).
+
+## ADR-055 — Stream transparente usa un relay HTTP/SSE local
+
+**Contexto.** OBS Browser Source y vMix Web Browser Input pueden conservar el
+alpha de una página, pero se ejecutan en un contexto Chromium distinto del
+navegador de Live. Por eso no comparten `BroadcastChannel`, IndexedDB ni OPFS.
+Una captura de ventana normal tampoco convierte la transparencia CSS en alpha
+de la ventana nativa.
+
+**Decisión.** `/output/stream` es un overlay textual read-only con documento
+transparente. Live replica el protocolo Output existente por BroadcastChannel y
+por un relay HTTP/SSE efímero. El relay sólo se habilita en loopback, valida
+same-origin y mensajes, no persiste estado y requiere un único proceso local.
+No se agrega `StreamProjection`: Stream consume `mode`, texto, `secondaryText`
+y estilo ya congelados desde `OutputSnapshot`.
+
+Song y Bible se representan como lower third con safe area fija. Backgrounds,
+Media y playback no se montan. Clear, Black, falta de Program y stale dejan
+alpha cero. La fuente soportada es Browser Source/Web Browser Input; la ventana
+`audience-stream` sirve únicamente para inspección.
+
+**Consecuencias.** Main y Stage conservan exclusivamente su comportamiento
+actual. El relay queda deshabilitado en despliegues no loopback porque Nitro con
+target Cloudflare no garantiza memoria compartida ni afinidad de proceso. Media,
+audio, modo Full, transparencia nativa, Electron/Tauri y transportes remotos
+quedan fuera de Fase 11.2.
+
+**Estado:** aceptada (Fase 11.2).
+
+## ADR-056 — Persistencia de aplicación consolidada con migración no destructiva
+
+**Contexto.** Projects, Songs y Presets estaban detrás de repositories async,
+pero persistían colecciones completas en `localStorage`. Esto limita capacidad,
+transacciones y diagnóstico. Bible, Media metadata y bytes Media ya tienen
+almacenes especializados que no deben mezclarse ni reescribirse.
+
+**Decisión.** Crear IndexedDB `broadcast-control.app` v1 con stores `projects`,
+`songs`, `presets` y `meta`. Un bootstrap único ejecuta migraciones separadas por
+dominio. Entidades y marcador se escriben en la misma transacción; el merge se
+hace por ID y gana el `updatedAt` posterior, con preferencia por IndexedDB en
+empate. `activeProjectId` vive en `meta`.
+
+Las claves legacy nunca se borran. Un payload corrupto no se convierte en vacío
+ni se sobrescribe. Si la migración no puede completarse, el dominio usa una única
+fuente legacy durante esa sesión; si esa fuente es corrupta, queda degradado y
+rechaza escrituras para preservar el raw. Después del marcador, IndexedDB es
+autoritativo y no existe dual-write.
+
+**Consecuencias.** Los modelos e interfaces de repository no cambian. Bible,
+Media, OPFS y preferencias locales permanecen separados. No se agregan revisión
+de sync, tombstones, cola ni backend.
+
+**Estado:** aceptada (Fase 12).
+
+## ADR-057 — PWA versionada con actualización explícita y relay excluido
+
+**Contexto.** La aplicación debe iniciar offline sin arriesgar que una nueva
+versión recargue Live o mezcle HTML y chunks incompatibles durante un servicio.
+Además, Stream depende de un relay HTTP/SSE local que nunca puede satisfacerse
+desde caché.
+
+**Decisión.** Usar `vite-plugin-pwa` con `injectManifest`, documentos críticos y
+assets precacheados por versión, y navegación cacheada dentro de esa misma
+versión. `/api/*`, `/_serverFn/*`, `/api/output-relay`, métodos no GET y recursos
+cross-origin dinámicos son Network Only.
+
+El worker nuevo queda waiting. La aplicación informa la actualización, verifica
+clientes abiertos y bloquea activación mientras haya Live, Main, Stage o Stream.
+Sólo una acción explícita envía `SKIP_WAITING`; `controllerchange` recarga
+únicamente la pestaña iniciadora. El worker no ejecuta migraciones ni llama
+`clientsClaim`.
+
+**Consecuencias.** Main y Stage pueden cargar offline en el mismo dispositivo.
+Stream puede cargar el shell, pero queda transparente si no existe relay local.
+`navigator.onLine` se muestra sólo como conectividad informada por el navegador,
+no como health check de Internet. Persistencia reduce eviction; no es backup.
+
+**Estado:** aceptada (Fase 12).

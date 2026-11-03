@@ -27,8 +27,10 @@ const media: MediaAsset = {
   mimeType: "video/mp4",
   sizeBytes: 100,
   storage: "opfs",
+  tags: [],
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
+  presentationUpdatedAt: "2026-01-01T00:00:00.000Z",
 };
 
 function item(background = true): PresentationItem {
@@ -101,7 +103,7 @@ describe("Media usage by backgrounds", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     } as Project;
-    expect(findMediaUsage([project], media.id)).toEqual({
+    expect(findMediaUsage([project], media.id)).toMatchObject({
       occurrences: 3,
       projectNames: ["Domingo"],
     });

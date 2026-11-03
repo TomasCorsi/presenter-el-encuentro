@@ -2,145 +2,109 @@
 
 ## Objetivo
 
-Garantizar que una presentación preparada pueda continuar aunque Internet se corte.
+Permitir que una presentación preparada arranque y continúe en el mismo
+dispositivo aunque Internet no esté disponible, sin introducir todavía backend,
+sincronización ni backup.
 
-## Regla principal
+## Fuentes locales de verdad
 
-Live no depende de Supabase.
+| Datos | Persistencia |
+| --- | --- |
+| Projects, Songs, Presets | IndexedDB `broadcast-control.app` |
+| Traducciones Bible | IndexedDB `broadcast-control.bible` |
+| Metadata y colecciones Media | IndexedDB `broadcast-control.media` |
+| Bytes Media | OPFS; fallback IndexedDB Blob sólo para imágenes |
+| Preferencias del dispositivo | `localStorage` |
+| Sesión Live y protocolo Output | Memoria / BroadcastChannel |
+| Relay Stream | Memoria del servidor local |
 
-## Contenido local
+Las claves legacy de Projects, Songs y Presets se conservan como respaldo y no
+se escriben después de una migración exitosa. La sesión Live no se persiste.
 
-Guardar localmente:
+## Bootstrap y migraciones
 
-- Workspace activo.
-- Proyecto actual.
-- Canciones necesarias.
-- Biblia descargada.
-- Presets.
-- Configuración.
-- Estado de sesión.
-- Metadata de media.
-- Media marcada como offline-ready.
-- Cola de cambios pendientes.
+`LocalDataProvider` abre `broadcast-control.app` exclusivamente en cliente. Cada
+dominio migra de manera independiente y atómica: las entidades y su marcador se
+escriben en la misma transacción. Un JSON corrupto nunca equivale a una biblioteca
+vacía y nunca se sobrescribe. Los fallos dejan ese dominio degradado y se
+reintentan en el próximo arranque.
 
-## Capas
-
-```text
-UI
-↓
-Domain
-↓
-Repository
-↓
-IndexedDB
-↓
-Sync Engine
-↓
-Supabase
-```
-
-## Nunca hacer
-
-```text
-UI → Supabase directamente
-```
-
-para operaciones críticas de Live.
+El Service Worker no abre IndexedDB, no toca OPFS y no ejecuta migraciones.
 
 ## Service Worker
 
-Debe gestionar:
+La aplicación utiliza un worker personalizado mediante `injectManifest`.
 
-- App shell.
-- Assets estáticos.
-- Cache del runtime cuando corresponda.
-- Estrategia de actualización.
+Se precachean por versión:
 
-## IndexedDB
+- bundles JS/CSS con hash;
+- manifest, favicon e iconos;
+- documentos de rutas críticas, incluidos Main, Stage y Stream.
 
-Debe ser la fuente local de datos durante operación offline.
+Las navegaciones same-origin pueden conservarse en el cache de la versión
+activa. Si una ruta no está disponible, el fallback es el documento raíz de la
+misma versión. Una respuesta no exitosa no se guarda.
 
-## Media
+Nunca se cachean:
 
-Los archivos grandes deben tener estado:
+- `/api/output-relay`;
+- `/api/*` y `/_serverFn/*`;
+- SSE/EventSource;
+- POST, PUT, PATCH o DELETE;
+- recursos cross-origin dinámicos;
+- OPFS, IndexedDB o URLs `blob:`.
 
-```text
-Cloud only
-Downloading
-Offline ready
-Error
-```
+## Outputs
 
-El usuario debe poder descargar contenido antes del evento.
+- Main y Stage pueden cargar desde el cache y siguen observando BroadcastChannel
+  dentro del mismo origen.
+- Media se resuelve desde metadata IndexedDB y bytes OPFS locales.
+- Stream puede cargar su documento transparente, pero su relay requiere el
+  proceso servidor local. Sin relay queda transparente.
+- El worker nunca simula el relay ni snapshots Output.
 
-## Sync
+## Actualización segura
 
-Cuando vuelve la conexión:
+Una versión nueva se instala y queda waiting. No existe recarga automática ni
+`skipWaiting` automático.
 
-```text
-offline
-↓
-online
-↓
-procesar cola
-↓
-sincronizar
-```
+Al elegir “Aplicar actualización”:
 
-Sin bloquear:
+1. se consultan las ventanas abiertas;
+2. Live, Main, Stage o Stream bloquean la activación inmediata;
+3. la UI pide cerrar esas ventanas;
+4. en un contexto seguro se envía `SKIP_WAITING`;
+5. se espera `controllerchange`;
+6. sólo se recarga la pestaña que inició la operación.
 
-- Next.
-- Previous.
-- Clear.
-- Black.
-- Logo.
-- Outputs.
+Cerrar naturalmente todas las ventanas permite al navegador activar el worker
+nuevo sin interrumpir una operación en curso.
 
-## Conflictos
+## Instalación y almacenamiento
 
-Primera implementación:
+Settings informa instalación, versión, actualización, backend Media, estado de
+migraciones, persistencia y cuota. `navigator.onLine` sólo informa el estado de
+conectividad del navegador; no es un health check remoto.
 
-- Detectar cambios simultáneos.
-- No sobrescribir silenciosamente.
-- Marcar conflicto.
-- Resolver fuera de Live.
+`navigator.storage.persist()` reduce el riesgo de eviction automática, pero no
+es un backup. La aplicación advierte cerca del 80% de cuota y no bloquea Live.
 
-## Prueba crítica
+## Casos soportados
 
-Escenario obligatorio:
+- Primera carga online y posterior arranque offline.
+- Reload offline de rutas críticas precacheadas.
+- Arranque desde la PWA instalada.
+- Operación local de Projects, Songs, Presets, Bible y Media.
+- Main y Stage en el mismo dispositivo sin Internet.
+- Actualización diferida durante un servicio.
 
-1. Preparar un proyecto.
-2. Abrir Live.
-3. Desconectar Internet.
-4. Navegar slides.
-5. Usar Clear.
-6. Usar Black.
-7. Mostrar Logo.
-8. Abrir Main Output.
-9. Continuar presentación.
-10. Reconectar Internet.
-11. Verificar sincronización.
+No se promete offline si la primera visita no completó la instalación del
+worker y el precache.
 
----
+## Fuera de alcance
 
-## Nota de Fase 0 — restricciones del renderizado en servidor
-
-La aplicación se renderiza también en el servidor. Por lo tanto:
-
-- El Service Worker se registra solo en cliente, después de la hidratación.
-- IndexedDB, `localStorage` y `BroadcastChannel` nunca se tocan al importar un
-  módulo ni durante el render.
-- El cacheo no debe servir HTML obsoleto de forma agresiva; se define una
-  estrategia de actualización explícita en la Fase 11.
-
-Nada de esto se implementa en la Fase 0.
-
-## Fase 9 — Biblias instaladas
-
-Una Biblia importada queda guardada en IndexedDB del dispositivo y funciona
-sin Internet: listar traducciones, navegar, buscar referencias y crear
-pasajes. La importación es 100% local (lectura del archivo en el navegador);
-nada se sube a ningún servidor.
-
-Los pasajes ya agregados a un Project no dependen de IndexedDB: llevan su
-propio texto y se proyectan aunque la traducción se elimine (ADR-042).
+- Supabase, Auth y Sync.
+- Cola offline, retry y conflictos.
+- Backup/restore/exportación.
+- Cloud Media y migración entre PCs.
+- Persistencia de la sesión Live.

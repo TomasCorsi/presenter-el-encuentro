@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { Page, PageHeader } from "@/components/layout/page";
 import { AudienceScreenSettings } from "@/features/display/components/audience-screen-settings";
+import { ApplicationStorageSettings } from "@/features/pwa/components/application-storage-settings";
 
 const TITLE = "Settings — Plataforma de presentación en vivo";
 const DESCRIPTION =
@@ -29,7 +30,10 @@ function SettingsPage() {
         title="Settings"
         description="Preferencias del puesto de trabajo y del entorno."
       />
-      <AudienceScreenSettings />
+      <div className="space-y-6">
+        <ApplicationStorageSettings />
+        <AudienceScreenSettings />
+      </div>
     </Page>
   );
 }

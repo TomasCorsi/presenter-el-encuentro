@@ -20,6 +20,12 @@ function browserStorage(): Pick<Storage, "getItem" | "setItem"> | null {
   return typeof localStorage === "undefined" ? null : localStorage;
 }
 
+export function storagePersistenceWasRequested(
+  storage: Pick<Storage, "getItem"> | null = browserStorage(),
+): boolean {
+  return storage?.getItem(PERSIST_REQUESTED_KEY) === "1";
+}
+
 function browserStorageManager(): Pick<StorageManager, "persisted" | "persist"> | null {
   if (typeof navigator === "undefined" || !navigator.storage) return null;
   return navigator.storage;

@@ -66,29 +66,24 @@ Estado conceptual:
 
 ```ts
 type PresentationState = {
-  currentItemId: string | null
-  currentSlideId: string | null
-  nextSlideId: string | null
-  previousSlideId: string | null
-  isLive: boolean
-  isBlack: boolean
-  isClear: boolean
-  showLogo: boolean
-  activePresetId: string | null
-  activeOutputs: string[]
+  previewItemId: string | null
+  previewSlideId: string | null
+  programSlideId: string | null
+  programMode: "content" | "clear" | "black"
+  detachedProgramSlide: Slide | null
+  runtime: PresentationRuntime
 }
 ```
 
 Acciones principales:
 
 ```text
-goNext()
-goPrevious()
-goToSlide()
+nextLive()
+previousLive()
+selectSlide()
+take()
 clear()
 black()
-showLogo()
-hideLogo()
 ```
 
 ## Outputs
@@ -124,16 +119,16 @@ Supabase se utilizará para:
 
 ## Estrategia Local
 
-IndexedDB se utilizará para:
+- IndexedDB `broadcast-control.app`: Projects, Songs, Presets y metadata local
+  como `activeProjectId` y marcadores de migración.
+- IndexedDB `broadcast-control.bible`: traducciones, libros y capítulos.
+- IndexedDB `broadcast-control.media`: metadata y colecciones Media.
+- OPFS: bytes Media; IndexedDB Blob permanece como fallback sólo para imágenes.
+- `localStorage`: preferencias del dispositivo. Las claves legacy de Projects,
+  Songs y Presets se conservan read-only como respaldo de migración.
+- Memoria: sesión de Live, estado Output y relay Stream.
 
-- Proyecto actual.
-- Canciones.
-- Biblia descargada.
-- Presets.
-- Configuración.
-- Estado de sesión.
-- Metadata de medios.
-- Cola de sincronización.
+No existen todavía cola de sincronización, conflictos, cloud storage ni backup.
 
 ## Regla crítica
 
@@ -190,25 +185,26 @@ features → services → persistence
 
 Nunca al revés. Un componente jamás accede a IndexedDB ni a la nube directamente.
 
-### Projects en Fase 2
+### Persistencia de aplicación desde Fase 12
 
-La primera implementación concreta respeta este flujo:
+El flujo actual es:
 
 ```text
-UI → ProjectsProvider / ProjectService → ProjectRepository → localStorage temporal
+UI → Providers / Services → Repository async → broadcast-control.app (IndexedDB)
 ```
 
-El contrato del repository es asíncrono y contiene solo operaciones de
-persistencia. Reglas como validar, renombrar o duplicar pertenecen al dominio y
-al servicio. El adaptador de `localStorage` se reemplazará por IndexedDB sin
-modificar los componentes.
+Un bootstrap único abre y migra la base antes de entregar los repositorios a
+Projects, Songs y Presets. Cada migración escribe entidades y marcador en una
+misma transacción. Un payload corrupto nunca se convierte en colección vacía ni
+se sobrescribe. Ante un fallo, el dominio usa una fuente legacy coherente durante
+esa sesión o queda explícitamente degradado si el payload no es seguro.
 
-`ProjectsProvider` usa Context de React para compartir Projects y
-`activeProjectId` entre rutas y shell. No es el store global del Presentation
-Engine, que continúa diferido a la Fase 4 según ADR-008.
+`activeProjectId` vive en el store `meta`; borrar el proyecto activo limpia esa
+referencia dentro de la misma transacción. Bible y Media permanecen en sus DBs
+independientes, y los bytes Media no salen de OPFS.
 
-La carga desde `localStorage` ocurre después del montaje en cliente. SSR y el
-primer render usan estado de carga y nunca acceden a APIs del navegador.
+El bootstrap ocurre después del montaje en cliente. SSR nunca accede a
+IndexedDB, `localStorage`, StorageManager ni al Service Worker.
 
 ### Convención de rutas de outputs
 
@@ -242,8 +238,8 @@ handler de una server function.
 
 ## Backend
 
-Fase 0 no define ni conecta backend. La decisión de backend (Supabase u otra)
-pertenece a la Fase 12; hasta entonces ningún módulo asume su existencia.
+No hay backend conectado. Supabase/Auth pertenecen a la Fase 13; ningún módulo
+de Fase 12 asume su existencia.
 
 ## Presentation Engine en Fase 4
 
@@ -313,8 +309,8 @@ Live Store
 OutputPublisher — compara mode + slide.id + slide.lines
   ↓ OutputTransport (BroadcastChannel `broadcast-control.output.v1`)
 OutputSubscriber — vinculación de sesión, sequence, heartbeat 2 s / timeout 5 s
-  ↓
-/output/main — superficie fuera del App Shell, solo representa Program
+  ├→ /output/main — superficie segura fuera del App Shell, solo representa Program
+  └→ /output/stage — superficie read-only con current/next, reloj y estado de conexión
 ```
 
 Flujo unidireccional: Live es la única autoridad; Output nunca envía
@@ -322,6 +318,35 @@ comandos. El transporte es una interfaz (`OutputTransport`) con
 implementación BroadcastChannel en el navegador y en memoria para tests;
 los componentes React no acceden al canal. Sin sesión válida la superficie
 es negro puro (ADR-030).
+
+Desde Fase 11.1, el snapshot conserva el `ProgramOutput` existente y agrega de
+forma opcional `stage?: StageProjection`. `buildStageProjection` deriva current
+desde Program y next desde `runtime.navigableSlideIds`; Preview no participa.
+Main ignora esa proyección. Stage conserva el último snapshot visible durante
+stale, pero no publica mensajes operativos ni consulta storage para reconstruir
+Song/Bible. Para Media solo consume metadata y thumbnail estático del provider.
+
+### Stream Output transparente (Fase 11.2)
+
+```text
+Live / useOutputPublisher
+  ├─ BroadcastChannel ─────────────── Main + Stage
+  └─ HTTP POST /api/output-relay
+                  │
+                  └─ SSE ──────────── /output/stream en OBS/vMix
+```
+
+El transporte compuesto replica el mismo `OutputMessage`; no existe una
+proyección Stream ni una versión nueva del protocolo. El hub vive sólo en la
+memoria de un servidor loopback de proceso único, excluye al emisor y no guarda
+historial. `hello`, heartbeat, session y sequence siguen perteneciendo al
+publisher/subscriber existentes.
+
+`/output/stream` está fuera del App Shell y no monta `MediaProvider`, fondos,
+Media ni fullscreen chrome. Sólo una slide textual en modo Content produce DOM;
+Clear, Black, Media, stale o falta de sesión producen un canvas transparente.
+OBS debe usar Browser Source y vMix Web Browser Input. Window Capture no es un
+camino de alpha soportado.
 
 ## Providers del App Shell (Fase 7.1)
 
@@ -394,7 +419,32 @@ IndexedDB se instancia solo en cliente, después del montaje.
 
 ## Fase 10 — Cadena de Media
 
-`src/domain/media/` (tipos y reglas puras) → `src/services/media/` (repositorio, storages, caché de URLs por ventana, persistencia) → `src/features/media/media-service.ts` (coordinador) → `media-context.tsx` (`MediaProvider`, `useMedia`, `useMediaUrl`) montado en `_app.tsx` y `output.main.tsx`. `SlideContent` es unión discriminada `text | image | video`; `MediaSlideSurface` renderiza image/video en Live y Output. La firma de presentación incorpora los assets por `updatedAt` para baja incremental en Live.
+`src/domain/media/` (tipos y reglas puras) → `src/services/media/` (repositorio, storages, caché de URLs por ventana, persistencia) → `src/features/media/media-service.ts` (coordinador) → `media-context.tsx` (`MediaProvider`, `useMedia`, `useMediaUrl`) montado en `_app.tsx` y `output.main.tsx`. `SlideContent` es unión discriminada `text | image | video`; `MediaSlideSurface` renderiza image/video en Live y Output. La firma de presentación usa exclusivamente `presentationUpdatedAt`; colección, tags, favoritos y actividad reciente no marcan Live como stale.
+
+## Fase 12 — PWA y caché offline
+
+```text
+TanStack Start SSR
+  ↓ primera carga online
+Service Worker versionado
+  ├─ precache: bundles, manifest, iconos y documentos críticos
+  ├─ navegación: cache de la misma versión + fallback seguro
+  └─ Network Only: /api/*, /_serverFn/*, relay/SSE y métodos mutables
+```
+
+El worker no abre bases de datos ni ejecuta migraciones. `LocalDataProvider`
+realiza el bootstrap en cliente y entrega una sola instancia lógica de cada
+repository al App Shell. Las rutas Main, Stage y Stream permanecen fuera del
+shell y no disparan la migración de Projects.
+
+Una actualización se instala en estado waiting. No hay `skipWaiting` ni reload
+automático: Settings verifica las ventanas abiertas, bloquea la activación si
+existen Live/Main/Stage/Stream y, en contexto seguro, recarga sólo la pestaña que
+inició la actualización.
+
+El relay `/api/output-relay` siempre va a red. El service worker nunca intenta
+reconstruir SSE ni simular estado compartido; por eso Stream puede cargar su UI
+offline pero permanece transparente sin servidor local.
 
 ## Fase 10.1 — Preview y backgrounds dinámicos
 

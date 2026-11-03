@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
-import type { MediaAsset } from "@/domain/media/media";
+import type { MediaAsset, MediaCollection } from "@/domain/media/media";
 import type { ProjectRepository } from "@/services/projects/project-repository";
 import { createIndexedDbBlobMediaStorage } from "@/services/media/indexeddb-blob-media-storage";
 import { createIndexedDbMediaRepository } from "@/services/media/indexeddb-media-repository";
@@ -20,7 +20,6 @@ import {
   createBrowserOpfsMediaStorage,
   isOpfsAvailable,
 } from "@/services/media/opfs-media-storage";
-import { createLocalStorageProjectRepository } from "@/services/projects/local-storage-project-repository";
 import type { MediaFileStorage } from "@/services/media/media-file-storage";
 import type { MediaRepository } from "@/services/media/media-repository";
 import {
@@ -30,6 +29,17 @@ import {
 } from "@/services/media/storage-persistence";
 
 import { MediaService } from "./media-service";
+import {
+  DEFAULT_MEDIA_LIBRARY_PREFERENCES,
+  readMediaLibraryPreferences,
+  recordRecentMedia,
+  sanitizeMediaLibraryPreferences,
+  setMediaFavorite,
+  toggleMediaFavorite,
+  writeMediaLibraryPreferences,
+  type MediaLibraryPreferences,
+  type MediaLibraryViewMode,
+} from "./media-library-preferences";
 import { readVisualMediaInfo } from "./read-media-info";
 
 const MEDIA_WORKSPACE_ID = "local-media";
@@ -43,9 +53,15 @@ export interface MediaContextValue {
   /** Estado real informado por StorageManager; `null` mientras se consulta. */
   persistenceStatus: StoragePersistenceStatus | null;
   assets: MediaAsset[];
+  collections: MediaCollection[];
+  preferences: MediaLibraryPreferences;
   isLoading: boolean;
   /** Cargar/recargar la biblioteca. */
   refresh(): Promise<void>;
+  toggleFavorite(id: string): void;
+  setFavorites(ids: readonly string[], favorite: boolean): void;
+  recordRecent(ids: readonly string[]): void;
+  setViewMode(viewMode: MediaLibraryViewMode): void;
 }
 
 const MediaContext = createContext<MediaContextValue | null>(null);
@@ -59,6 +75,8 @@ export interface MediaProviderProps {
   fileStorage?: MediaFileStorage;
   /** Precargar assets (tests). */
   initialAssets?: MediaAsset[];
+  initialCollections?: MediaCollection[];
+  initialPreferences?: MediaLibraryPreferences;
 }
 
 /**
@@ -72,6 +90,8 @@ export function MediaProvider({
   repository,
   fileStorage,
   initialAssets,
+  initialCollections,
+  initialPreferences,
 }: MediaProviderProps) {
   const resolved = useMemo(() => {
     if (repository && fileStorage) return { repository, fileStorage };
@@ -91,13 +111,17 @@ export function MediaProvider({
 
   const resolvedProjects = useMemo<Pick<ProjectRepository, "list">>(() => {
     if (projectRepository) return projectRepository;
-    if (typeof window === "undefined") return { list: async () => [] };
-    return createLocalStorageProjectRepository(window.localStorage);
+    return { list: async () => [] };
   }, [projectRepository]);
 
   const [assets, setAssets] = useState<MediaAsset[]>(initialAssets ?? []);
+  const [collections, setCollections] = useState<MediaCollection[]>(initialCollections ?? []);
   const [isLoading, setIsLoading] = useState(initialAssets === undefined);
   const [persistenceStatus, setPersistenceStatus] = useState<StoragePersistenceStatus | null>(null);
+  const [preferences, setPreferences] = useState<MediaLibraryPreferences>(
+    initialPreferences ?? DEFAULT_MEDIA_LIBRARY_PREFERENCES,
+  );
+  const [preferencesLoaded, setPreferencesLoaded] = useState(initialPreferences !== undefined);
 
   const prepareStorage = useCallback(async () => {
     const status = await requestStoragePersistenceOnce();
@@ -127,6 +151,12 @@ export function MediaProvider({
   }, []);
 
   useEffect(() => {
+    if (initialPreferences !== undefined || typeof window === "undefined") return;
+    setPreferences(readMediaLibraryPreferences(window.localStorage));
+    setPreferencesLoaded(true);
+  }, [initialPreferences]);
+
+  useEffect(() => {
     const cache = urlCacheRef.current;
     return () => cache?.releaseAll();
   }, []);
@@ -134,7 +164,12 @@ export function MediaProvider({
   const refresh = async () => {
     setIsLoading(true);
     try {
-      setAssets(await service.list());
+      const [nextAssets, nextCollections] = await Promise.all([
+        service.list(),
+        service.listCollections(),
+      ]);
+      setAssets(nextAssets);
+      setCollections(nextCollections);
     } finally {
       setIsLoading(false);
     }
@@ -146,14 +181,44 @@ export function MediaProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [service]);
 
+  useEffect(() => {
+    if (!preferencesLoaded || isLoading) return;
+    setPreferences((current) => {
+      const next = sanitizeMediaLibraryPreferences(
+        current,
+        assets.map((asset) => asset.id),
+      );
+      if (typeof window !== "undefined") writeMediaLibraryPreferences(window.localStorage, next);
+      return next;
+    });
+  }, [assets, isLoading, preferencesLoaded]);
+
+  const updatePreferences = useCallback(
+    (update: (current: MediaLibraryPreferences) => MediaLibraryPreferences) => {
+      setPreferences((current) => {
+        const next = update(current);
+        if (typeof window !== "undefined") writeMediaLibraryPreferences(window.localStorage, next);
+        return next;
+      });
+    },
+    [],
+  );
+
   const value: MediaContextValue = {
     service,
     urlCache: urlCacheRef.current,
     storageKind: resolved.fileStorage.kind,
     persistenceStatus,
     assets,
+    collections,
+    preferences,
     isLoading,
     refresh,
+    toggleFavorite: (id) => updatePreferences((current) => toggleMediaFavorite(current, id)),
+    setFavorites: (ids, favorite) =>
+      updatePreferences((current) => setMediaFavorite(current, ids, favorite)),
+    recordRecent: (ids) => updatePreferences((current) => recordRecentMedia(current, ids)),
+    setViewMode: (viewMode) => updatePreferences((current) => ({ ...current, viewMode })),
   };
 
   return <MediaContext.Provider value={value}>{children}</MediaContext.Provider>;

@@ -57,7 +57,7 @@ function ProjectDetailPage() {
   } = useProjects();
   const { presets } = usePresets();
   const { songs, hasLoaded: songsLoaded } = useSongs();
-  const { assets: media, isLoading: mediaLoading } = useMedia();
+  const { assets: media, isLoading: mediaLoading, recordRecent: recordRecentMedia } = useMedia();
   const project = projects.find((item) => item.id === projectId);
 
   const usageBySongId = useMemo(() => {
@@ -188,6 +188,7 @@ function ProjectDetailPage() {
           }}
           onAddMedia={async (asset) => {
             await addMediaToProject(project.id, { id: asset.id, name: asset.name });
+            recordRecentMedia([asset.id]);
           }}
         />
 
@@ -217,6 +218,7 @@ function ProjectDetailPage() {
             onSetPreset={(itemId, presetId) => setRundownItemPreset(project.id, itemId, presetId)}
             onSetBackground={async (itemId, background) => {
               await setRundownItemBackground(project.id, itemId, background);
+              if (background) recordRecentMedia([background.mediaId]);
             }}
           />
         </section>

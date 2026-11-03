@@ -40,8 +40,10 @@ function media(id: string, kind: "image" | "video"): MediaAsset {
     mimeType: kind === "image" ? "image/png" : "video/webm",
     sizeBytes: 10,
     storage: "opfs",
+    tags: [],
     createdAt: "2026-09-17T00:00:00.000Z",
     updatedAt: "2026-09-17T00:00:00.000Z",
+    presentationUpdatedAt: "2026-09-17T00:00:00.000Z",
   };
 }
 
