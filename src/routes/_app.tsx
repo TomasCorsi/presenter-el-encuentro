@@ -11,6 +11,7 @@ import { PresetsProvider } from "@/features/presets/presets-context";
 import { ProjectsProvider } from "@/features/projects/projects-context";
 import { SongsProvider } from "@/features/songs/songs-context";
 import { appContentOverflowClass } from "@/features/live/live-layout";
+import { CloudProvider } from "@/features/cloud/cloud-context";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app")({
@@ -27,9 +28,11 @@ export const Route = createFileRoute("/_app")({
 function AppShell() {
   const liveRoute = useRouterState({ select: (state) => state.location.pathname === "/live" });
   return (
-    <LocalDataProvider>
-      <AppDataProviders liveRoute={liveRoute} />
-    </LocalDataProvider>
+    <CloudProvider>
+      <LocalDataProvider>
+        <AppDataProviders liveRoute={liveRoute} />
+      </LocalDataProvider>
+    </CloudProvider>
   );
 }
 

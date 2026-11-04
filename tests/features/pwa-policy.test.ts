@@ -22,6 +22,9 @@ describe("PWA cache policy", () => {
       expect(classifyRuntimeRequest({ url: `${origin}/projects`, method }, origin)).toBe("network-only");
     }
     expect(classifyRuntimeRequest({ url: "https://example.com/a.js", method: "GET" }, origin)).toBe("network-only");
+    for (const path of ["/auth/v1/token", "/rest/v1/projects", "/realtime/v1/websocket", "/storage/v1/object/media"]) {
+      expect(classifyRuntimeRequest({ url: `https://church.supabase.co${path}`, method: "GET" }, origin)).toBe("network-only");
+    }
     expect(classifyRuntimeRequest({ url: "blob:http://localhost/id", method: "GET" }, origin)).toBe("network-only");
   });
 

@@ -101,9 +101,17 @@ es un backup. La aplicación advierte cerca del 80% de cuota y no bloquea Live.
 No se promete offline si la primera visita no completó la instalación del
 worker y el precache.
 
+## Supabase opcional
+
+Fase 13 añade Auth y workspaces cloud sin incorporarlos al camino operativo.
+Projects, Songs y Presets continúan leyendo y escribiendo exclusivamente
+IndexedDB. Una sesión ausente, expirada o sin red no bloquea contenido ni Live.
+Los requests Supabase son cross-origin y Network Only; el Service Worker nunca
+cachea Auth, REST, Realtime, Storage, tokens o respuestas cloud.
+
 ## Fuera de alcance
 
-- Supabase, Auth y Sync.
+- Sync Engine de Supabase.
 - Cola offline, retry y conflictos.
 - Backup/restore/exportación.
 - Cloud Media y migración entre PCs.

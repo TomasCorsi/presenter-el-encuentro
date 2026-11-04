@@ -660,3 +660,77 @@ sin relay, persistencia/cuota y actualización con ventanas operativas.
 
 **Estado:** Fase 12 IMPLEMENTACIÓN COMPLETA / QUALITY GATE AUTOMÁTICO COMPLETO /
 BUILD PASS / VALIDACIÓN MANUAL PENDIENTE.
+
+La validación manual pendiente de Fase 12 fue aceptada temporalmente como riesgo
+conocido para permitir la implementación de Fase 13. No se la registra como PASS.
+
+## Fase 13 — Supabase opcional
+
+Cobertura creada:
+
+- configuración ausente/válida/inválida y cliente browser-only;
+- CloudProvider SSR-safe y no bloqueante;
+- signup, login, logout, recovery, sesión expirada y workspace bootstrap;
+- logout sin modificar almacenamiento local;
+- mappers Project/Song/Preset, límites y payloads versionados;
+- repositories ligados a un workspace y upsert compuesto;
+- contrato sin imports cloud en providers operativos ni Outputs;
+- Supabase Auth/REST/Realtime/Storage como Network Only;
+- migración SQL con RLS, grants, RPC, auditoría y constraints;
+- pgTAP de aislamiento same/cross-workspace y roles.
+
+El pgTAP puede ejecutarse contra Supabase real mediante el MCP oficial; no
+requiere Docker si existe acceso SQL remoto autenticado.
+
+Supabase cloud sync no es backup. La confirmación/recovery real requiere SMTP
+productivo. Media continúa completamente local.
+
+Resultados finales del 2026-11-04:
+
+- proyecto remoto verificado: `yadwnoqjexrrtklhfgcq`;
+- migración `phase13_cloud_foundation`: PASS;
+- tablas `profiles`, `workspaces`, `workspace_members`, `projects`, `songs` y
+  `presets`: PASS, todas con RLS;
+- catálogo: schema `private`, 17 policies, 8 triggers y 14 índices verificados;
+- funciones `SECURITY DEFINER` con `search_path=''`; helpers y triggers sin
+  ejecución pública/anon; grants mínimos verificados;
+- anon read/write: bloqueado con `42501` usando publishable key;
+- dos usuarios independientes: profile, workspace personal y membership owner;
+  segunda llamada al RPC devolvió el mismo workspace sin duplicados;
+- RLS real A/B: lectura, listado, update y delete cross-workspace bloqueados;
+- owner actualizó metadata; operator leyó contenido de su workspace pero no
+  pudo administrar metadata ni memberships;
+- Projects/Songs/Presets reales: `put/get/list/delete`, mapping, `schemaVersion`,
+  timestamps, workspace binding y errores normalizados: PASS;
+- identidad de entidades y auditoría protegidas con `22023`; constraints de
+  nombre/payload rechazaron con `23514`; `updated_by` y `cloud_updated_at`: PASS;
+- Auth login/logout, persistencia, refresh y reconnect: PASS;
+- signup real llegó a Auth pero no completó por rate limit de email; email
+  confirmation está activa; recovery end-to-end quedó pendiente por el mismo
+  `429 over_email_send_rate_limit`; SMTP productivo no fue validado;
+- pgTAP remoto: 15/15 PASS. Se corrigieron dos aserciones del harness: un UPDATE
+  ocultado por RLS modifica cero filas sin lanzar, y `updated_by` pertenece al
+  último editor (operator), no al owner que ejecuta la aserción después;
+- focalizados cloud/Auth/PWA: 20 PASS, 0 FAIL, 102 assertions, 5 archivos;
+- suite completa: 428 PASS, 0 FAIL, 1212 assertions, 80 archivos;
+- `npx tsc --noEmit`: PASS;
+- lint dirigido: PASS, 0 errores y 1 warning conocido de Fast Refresh;
+- `git diff --check`: PASS;
+- build client, SSR, PWA y Nitro `cloudflare-module` con compatibilidad
+  `2026-10-30`: PASS;
+- inspección de artefactos: sin secret keys, service-role, passwords ni
+  credenciales administrativas embebidas; URL y publishable key son las únicas
+  variables client permitidas;
+- `.env.local` continúa ignorado y no existe en el worktree;
+- los usuarios, workspaces y contenido QA se eliminaron al terminar; conteos
+  finales de las seis entidades de prueba: cero;
+- advisor: el acceso `authenticated` al RPC `SECURITY DEFINER` es intencional;
+  leaked-password protection está desactivado y queda como recomendación.
+
+IndexedDB continúa como autoridad operativa. No hubo import, download, merge,
+sync, dual-write ni cambio del `workspaceId` local; repositories cloud no están
+conectados a la UI operativa.
+
+**Estado:** FASE 13 COMPLETADA / MIGRACIÓN CLOUD PASS / RLS REAL PASS / pgTAP
+15/15 PASS / REPOSITORIES CLOUD PASS / AUTH BÁSICA REAL PASS / BUILD PASS /
+RECOVERY END-TO-END Y SMTP PRODUCTIVO PENDIENTES NO BLOQUEANTES.

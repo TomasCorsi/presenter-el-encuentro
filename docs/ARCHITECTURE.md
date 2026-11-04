@@ -236,10 +236,19 @@ navegador al importarse se cargan con `import()` dinámico o `React.lazy`.
 Los secretos y variables de entorno sin prefijo `VITE_` solo se leen dentro del
 handler de una server function.
 
-## Backend
+## Backend cloud opcional (Fase 13)
 
-No hay backend conectado. Supabase/Auth pertenecen a la Fase 13; ningún módulo
-de Fase 12 asume su existencia.
+Supabase aporta Auth, identidad, workspaces y tablas preparatorias para Projects,
+Songs y Presets. El cliente se crea únicamente en navegador y sólo bajo el App
+Shell. Configuración ausente o un fallo remoto no bloquean la aplicación.
+
+La ruta operativa permanece `UI → services → repositories locales → IndexedDB`.
+Los repositories cloud están separados y todavía no tienen consumidores en la
+UI. No existen dual-write, pull, push, cola, merge, conflictos o Realtime.
+Main, Stage y Stream no montan CloudProvider.
+
+Media, sus colecciones y bytes permanecen en IndexedDB/OPFS. Supabase Storage
+no se usa en esta fase.
 
 ## Presentation Engine en Fase 4
 

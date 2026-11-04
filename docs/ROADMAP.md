@@ -16,8 +16,13 @@ No comenzar una fase nueva hasta validar la anterior.
 - Fases 10.1, 10.2, 10.3, 11.1 y 11.2 tienen implementación y build completos
   según sus respectivos gates documentados.
 - **Fase 12 — PWA + Offline:** implementación, Quality Gate automático y build
-  completos; la validación manual permanece pendiente.
-- Backend: no conectado. Se decide en la Fase 13.
+  completos; la validación manual permanece pendiente y fue aceptada
+  temporalmente como riesgo conocido para iniciar Fase 13.
+- **Fase 13 — Supabase:** COMPLETADA. Infraestructura cloud opcional, migración
+  remota, RLS real, pgTAP, Auth básica y repositories validados contra el
+  proyecto `yadwnoqjexrrtklhfgcq`. IndexedDB continúa siendo la autoridad
+  operativa; recovery end-to-end y SMTP productivo quedan pendientes no
+  bloqueantes.
 - Renumeración: Rundown pasa a ser la Fase 5 y las fases posteriores se
   desplazan una posición (Live Mode → Fase 6, …, Supabase → Fase 13).
 - Implementado hasta ahora: Projects/Rundown, Songs, Presentation Engine,
@@ -502,12 +507,45 @@ registra validación manual.
 
 ## Fase 13 — Supabase
 
-- [ ] Auth.
-- [ ] Workspaces.
-- [ ] PostgreSQL.
-- [ ] Storage.
-- [ ] RLS.
-- [ ] Variables de entorno.
+- [x] Cliente browser-only opcional y variables públicas de entorno.
+- [x] Auth email/password, sesión, recovery y logout no destructivo.
+- [x] Perfil, workspace personal y memberships owner/operator.
+- [x] PostgreSQL para Projects, Songs y Presets con JSONB versionado.
+- [x] Repositories cloud separados, sin consumidores operativos ni dual-write.
+- [x] RLS, grants mínimos, auditoría, triggers e índices.
+- [x] Settings Cuenta/Nube y estado cloud no bloqueante.
+- [x] Tests app y pgTAP creados.
+- [x] Build client, SSR y Nitro `cloudflare-module`.
+- [x] pgTAP real remoto: 15/15 mediante MCP oficial, sin Docker.
+- [x] Supabase real: migración, RLS, Auth básica y repositories.
+- [ ] Recovery end-to-end y SMTP productivo (pendiente no bloqueante).
+
+**Estado:** FASE 13 COMPLETADA / MIGRACIÓN CLOUD PASS / RLS REAL PASS / pgTAP
+15/15 PASS / REPOSITORIES CLOUD PASS / AUTH BÁSICA REAL PASS / BUILD PASS.
+Supabase no sincroniza ni reemplaza IndexedDB. Media, Bible, preferencias,
+Live y Outputs permanecen locales. Supabase Storage y Realtime no se usan.
+
+Quality gate final del 2026-11-04:
+
+- proyecto verificado: `yadwnoqjexrrtklhfgcq`;
+- seis tablas con RLS, 17 policies, 8 triggers y 14 índices verificados;
+- anon bloqueado y aislamiento cross-workspace A/B: PASS;
+- RPC e idempotencia para dos usuarios independientes: PASS;
+- Projects/Songs/Presets `put/get/list/delete`: PASS contra cloud real;
+- Auth login/logout, persistencia, refresh y reconnect: PASS;
+- signup alcanzó Auth real pero quedó limitado por rate limit de email; recovery
+  end-to-end también quedó pendiente por `429 over_email_send_rate_limit`;
+- email confirmation activa; SMTP productivo no validado;
+- pgTAP remoto: 15/15 PASS;
+- tests focalizados cloud/Auth/PWA: 20 PASS, 0 FAIL, 102 assertions;
+- suite completa: 428 PASS, 0 FAIL, 1212 assertions en 80 archivos;
+- TypeScript, lint dirigido y `git diff --check`: PASS;
+- build client, SSR y Nitro `cloudflare-module`: PASS;
+- cliente Supabase browser-only y configuración ausente: SSR-safe.
+
+No se importaron datos locales, no se conectaron repositories cloud a providers
+operativos y todo el contenido QA remoto fue eliminado. Sync sigue reservado
+para Fase 14 y Supabase no es backup.
 
 ---
 

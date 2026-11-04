@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { USER_PLACEHOLDER, WORKSPACE_PLACEHOLDER } from "@/components/layout/shell-placeholders";
 import { useProjects } from "@/features/projects/projects-context";
 import { usePwa } from "@/features/pwa/pwa-context";
+import { useCloud } from "@/features/cloud/cloud-context";
 
 /**
  * Barra superior del App Shell.
@@ -17,6 +18,14 @@ import { usePwa } from "@/features/pwa/pwa-context";
 export function AppTopbar() {
   const { activeProject, loading } = useProjects();
   const { network, update } = usePwa();
+  const cloud = useCloud();
+  const cloudInitials = cloud.user?.email
+    ?.split("@", 1)[0]
+    ?.split(/[._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
   const projectName = loading ? "Cargando…" : activeProject?.name ?? "Sin proyecto activo";
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-3 sm:px-5">
@@ -43,17 +52,18 @@ export function AppTopbar() {
         </StatusBadge>
         <div className="h-5 w-px bg-border" aria-hidden="true" />
         <Button
-          type="button"
+          asChild
           variant="ghost"
           size="icon"
-          aria-label={`Perfil de ${USER_PLACEHOLDER.name}`}
           className="size-8 rounded-sm p-0"
         >
-          <Avatar className="size-8 rounded-sm border border-border">
-            <AvatarFallback className="rounded-sm bg-muted font-mono text-[11px] text-foreground">
-              {USER_PLACEHOLDER.initials}
-            </AvatarFallback>
-          </Avatar>
+          <Link to="/settings" aria-label={`Perfil de ${cloud.user?.email ?? USER_PLACEHOLDER.name}`}>
+            <Avatar className="size-8 rounded-sm border border-border">
+              <AvatarFallback className="rounded-sm bg-muted font-mono text-[11px] text-foreground">
+                {cloudInitials || USER_PLACEHOLDER.initials}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
         </Button>
       </div>
     </header>

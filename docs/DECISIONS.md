@@ -38,6 +38,11 @@ Reduce complejidad operativa y se integra bien con aplicaciones web modernas.
 
 Se deberá implementar RLS y separar cloud de runtime Live.
 
+La implementación de Fase 13 concreta esta separación: IndexedDB conserva la
+autoridad operativa; Supabase aporta Auth, workspace, esquema y adapters cloud
+sin dual-write. La primera vinculación, conflictos y tombstones pertenecen a
+Fase 14. Media y Supabase Storage quedan fuera hasta definir sync binario.
+
 ---
 
 ## ADR-003 — IndexedDB para persistencia local

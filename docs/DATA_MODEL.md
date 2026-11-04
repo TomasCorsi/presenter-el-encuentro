@@ -12,6 +12,18 @@ interface Workspace {
 }
 ```
 
+### Workspace cloud (Fase 13)
+
+El workspace cloud usa UUID y memberships `owner | operator`. No reemplaza
+`local-workspace` ni `local-media`, y todavía no existe mapping local→cloud.
+`profiles.personal_workspace_id` y el RPC idempotente
+`ensure_personal_workspace()` garantizan un workspace personal por usuario.
+
+Projects, Songs y Presets cloud conservan el ID textual del dominio y usan PK
+`(workspace_id, id)`. Los campos anidados viven en un payload JSONB con
+`schemaVersion: 1`; `workspaceId` nunca se duplica dentro del payload. Media y
+Bible no tienen tablas cloud en Fase 13.
+
 ## Project
 
 ```ts
