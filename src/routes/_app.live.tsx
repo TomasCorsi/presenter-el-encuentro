@@ -295,8 +295,8 @@ function LiveConsole() {
   const showProject = projects.find((project) => project.id === snapshot?.projectId) ?? null;
   const outdated = Boolean(
     session &&
-    showProject &&
-    isLiveSessionOutdated(session, { project: showProject, songs, presets, media: mediaAssets }),
+    (!showProject ||
+      isLiveSessionOutdated(session, { project: showProject, songs, presets, media: mediaAssets })),
   );
   // El handler necesita saber si YA había desfase antes de su propia alta.
   const outdatedRef = useRef(false);

@@ -12,6 +12,7 @@ import { DEFAULT_PRESET, type Preset, type PresetStyle } from "@/domain/presets/
 import { PresetService } from "@/features/presets/preset-service";
 import { createLocalStoragePresetRepository } from "@/services/presets/local-storage-preset-repository";
 import type { PresetRepository } from "@/services/presets/preset-repository";
+import type { LocalDataChangeBus } from "@/services/local-data/local-data-change-bus";
 
 interface PresetsState {
   presets: Preset[];
@@ -61,7 +62,15 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "No se pudo guardar el cambio localmente.";
 }
 
-export function PresetsProvider({ children, repository }: { children: ReactNode; repository?: PresetRepository }) {
+export function PresetsProvider({
+  children,
+  repository,
+  changes,
+}: {
+  children: ReactNode;
+  repository?: PresetRepository;
+  changes?: LocalDataChangeBus | null;
+}) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const service = useMemo(() => {
     if (typeof window === "undefined") return null;
@@ -84,6 +93,14 @@ export function PresetsProvider({ children, repository }: { children: ReactNode;
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(
+    () =>
+      changes?.subscribe((change) => {
+        if (change.entityType === "preset") void refresh();
+      }),
+    [changes, refresh],
+  );
 
   const run = useCallback(
     async <T,>(operation: (service: PresetService) => Promise<T>): Promise<T> => {

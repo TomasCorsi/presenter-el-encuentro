@@ -4,6 +4,7 @@ import { Page, PageHeader } from "@/components/layout/page";
 import { AudienceScreenSettings } from "@/features/display/components/audience-screen-settings";
 import { ApplicationStorageSettings } from "@/features/pwa/components/application-storage-settings";
 import { CloudAccountSettings } from "@/features/cloud/components/cloud-account-settings";
+import { SyncSettings } from "@/features/sync/components/sync-settings";
 
 const TITLE = "Settings — Plataforma de presentación en vivo";
 const DESCRIPTION =
@@ -33,6 +34,7 @@ function SettingsPage() {
       />
       <div className="space-y-6">
         <CloudAccountSettings />
+        <SyncSettings />
         <ApplicationStorageSettings />
         <AudienceScreenSettings />
       </div>

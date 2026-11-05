@@ -1071,6 +1071,31 @@ de sync, tombstones, cola ni backend.
 
 **Estado:** aceptada (Fase 12).
 
+## ADR-058 — Sync local-first con journal transaccional y CAS cloud
+
+**Contexto.** Fase 13 dejó Supabase validado pero desconectado del camino
+operativo. Un dual-write UI→local/cloud perdería cambios offline y podría alterar
+Live, mientras que timestamps no alcanzan para idempotencia ni concurrencia.
+
+**Decisión.** Mantener IndexedDB como autoridad operativa. `broadcast-control.app`
+sube a v2 con cuatro stores sync namespaced por usuario/workspace. Repositories
+locales escriben entidad+journal atómicamente. Un único Sync Engine ejecuta
+pull→flush→pull, checkpoints transaccionales, leases con expiración, coalescing y
+generation safety. Supabase usa revisión CAS, secuencia monotónica, operation ID
+y tombstones mediante un RPC `SECURITY INVOKER` sujeto a RLS.
+
+La primera vinculación siempre evalúa ambos lados y requiere confirmación. Las
+colisiones se aíslan; no hay LWW ni merge por campos. Unlink archiva y relink
+revalúa. Default Preset, Media, Bible, preferencias y `activeProjectId` no se
+sincronizan.
+
+**Consecuencias.** Offline no bloquea CRUD/Live. Sync no toca el runtime de
+presentación y un Project remoto eliminado sólo marca el show cargado como stale.
+Supabase replica, no respalda: deletes y conflictos también forman parte del
+estado. Realtime, service role, cleanup de tombstones y backup quedan fuera.
+
+**Estado:** aceptada (Fase 14).
+
 ## ADR-057 — PWA versionada con actualización explícita y relay excluido
 
 **Contexto.** La aplicación debe iniciar offline sin arriesgar que una nueva

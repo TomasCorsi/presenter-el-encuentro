@@ -229,13 +229,27 @@ interface OutputConfig {
 
 ```ts
 interface SyncMetadata {
-  entityType: string;
+  linkKey: string; // userId:cloudWorkspaceId
+  entityType: "project" | "song" | "preset";
   entityId: string;
-  localUpdatedAt: string;
-  cloudUpdatedAt?: string;
-  syncStatus: "synced" | "pending" | "conflict" | "error";
+  localRevision: number;
+  syncedLocalRevision: number;
+  cloudRevision: number | null;
+  lastSyncedFingerprint: string | null;
+  lastSyncedAt: string | null;
 }
 ```
+
+La metadata no forma parte de las entidades de negocio. IndexedDB v2 usa stores
+separados para vínculos, metadata, queue y conflictos. Una queue entry mantiene
+`operationId`, `generation`, payload/tombstone, revisión cloud esperada,
+attempts/retry y lease. Unlink archiva los registros; relink crea una evaluación
+nueva. `preset-default` está excluido de todos esos stores.
+
+Cloud agrega a cada Project/Song/Preset `sync_revision`, `sync_change_seq`,
+`last_operation_id` y `deleted_at`. `sync_change_seq` es el cursor técnico;
+`cloud_updated_at` queda como auditoría/visualización. Los deletes son tombstones
+y no existe cleanup físico en Fase 14.
 
 ## Nota
 

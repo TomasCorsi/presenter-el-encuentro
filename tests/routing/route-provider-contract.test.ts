@@ -20,9 +20,14 @@ describe("contrato de providers en rutas", () => {
   it("el App Shell monta el bootstrap único e inyecta sus repositorios", async () => {
     const shell = await read(SHELL);
     expect(shell).toContain("<LocalDataProvider>");
-    expect(shell).toContain("<ProjectsProvider repository={repositories.projects}>");
-    expect(shell).toContain("<SongsProvider repository={repositories.songs}>");
-    expect(shell).toContain("<PresetsProvider repository={repositories.presets}>");
+    expect(shell).toContain("<SyncProvider>");
+    expect(shell).toContain(
+      "<ProjectsProvider repository={repositories.projects} changes={changes}>",
+    );
+    expect(shell).toContain("<SongsProvider repository={repositories.songs} changes={changes}>");
+    expect(shell).toContain(
+      "<PresetsProvider repository={repositories.presets} changes={changes}>",
+    );
     expect(shell).toContain("<MediaProvider projectRepository={repositories.projects}>");
   });
 

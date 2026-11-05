@@ -1,10 +1,19 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  type ReactNode,
+} from "react";
 
 import type { Song, SongSectionType } from "@/domain/songs/song";
 import type { UpdateSectionInput } from "@/domain/songs/song-rules";
 import { SongService } from "@/features/songs/song-service";
 import { createLocalStorageSongRepository } from "@/services/songs/local-storage-song-repository";
 import type { SongRepository } from "@/services/songs/song-repository";
+import type { LocalDataChangeBus } from "@/services/local-data/local-data-change-bus";
 
 interface SongsState {
   songs: Song[];
@@ -30,9 +39,7 @@ interface SongsContextValue extends SongsState {
 }
 
 type Action =
-  | { type: "loaded"; songs: Song[] }
-  | { type: "failed"; message: string }
-  | { type: "clearError" };
+  { type: "loaded"; songs: Song[] } | { type: "failed"; message: string } | { type: "clearError" };
 
 const initialState: SongsState = { songs: [], loading: true, hasLoaded: false, error: null };
 const SongsContext = createContext<SongsContextValue | null>(null);
@@ -51,7 +58,15 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "No se pudo guardar el cambio localmente.";
 }
 
-export function SongsProvider({ children, repository }: { children: ReactNode; repository?: SongRepository }) {
+export function SongsProvider({
+  children,
+  repository,
+  changes,
+}: {
+  children: ReactNode;
+  repository?: SongRepository;
+  changes?: LocalDataChangeBus | null;
+}) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const service = useMemo(() => {
     if (typeof window === "undefined") return null;
@@ -75,32 +90,50 @@ export function SongsProvider({ children, repository }: { children: ReactNode; r
     void refresh();
   }, [refresh]);
 
-  const run = useCallback(async <T,>(operation: (service: SongService) => Promise<T>): Promise<T> => {
-    if (!service) throw new Error("El almacenamiento local no está disponible.");
-    try {
-      const result = await operation(service);
-      await refresh();
-      return result;
-    } catch (error) {
-      dispatch({ type: "failed", message: errorMessage(error) });
-      throw error;
-    }
-  }, [refresh, service]);
+  useEffect(
+    () =>
+      changes?.subscribe((change) => {
+        if (change.entityType === "song") void refresh();
+      }),
+    [changes, refresh],
+  );
 
-  const value = useMemo<SongsContextValue>(() => ({
-    ...state,
-    createSong: (title, author) => run((service) => service.create({ title, author })),
-    renameSong: (id, title) => run((service) => service.rename(id, title)),
-    updateAuthor: (id, author) => run((service) => service.updateAuthor(id, author)),
-    duplicateSong: (id) => run((service) => service.duplicate(id)),
-    deleteSong: async (id) => { await run((service) => service.delete(id)); },
-    saveSong: (draft) => run((service) => service.save(draft)),
-    addSection: (id, type) => run((service) => service.addSection(id, type)),
-    updateSection: (id, sectionId, input) => run((service) => service.updateSection(id, sectionId, input)),
-    removeSection: (id, sectionId) => run((service) => service.removeSection(id, sectionId)),
-    moveSection: (id, sectionId, direction) => run((service) => service.moveSection(id, sectionId, direction)),
-    clearError: () => dispatch({ type: "clearError" }),
-  }), [run, state]);
+  const run = useCallback(
+    async <T,>(operation: (service: SongService) => Promise<T>): Promise<T> => {
+      if (!service) throw new Error("El almacenamiento local no está disponible.");
+      try {
+        const result = await operation(service);
+        await refresh();
+        return result;
+      } catch (error) {
+        dispatch({ type: "failed", message: errorMessage(error) });
+        throw error;
+      }
+    },
+    [refresh, service],
+  );
+
+  const value = useMemo<SongsContextValue>(
+    () => ({
+      ...state,
+      createSong: (title, author) => run((service) => service.create({ title, author })),
+      renameSong: (id, title) => run((service) => service.rename(id, title)),
+      updateAuthor: (id, author) => run((service) => service.updateAuthor(id, author)),
+      duplicateSong: (id) => run((service) => service.duplicate(id)),
+      deleteSong: async (id) => {
+        await run((service) => service.delete(id));
+      },
+      saveSong: (draft) => run((service) => service.save(draft)),
+      addSection: (id, type) => run((service) => service.addSection(id, type)),
+      updateSection: (id, sectionId, input) =>
+        run((service) => service.updateSection(id, sectionId, input)),
+      removeSection: (id, sectionId) => run((service) => service.removeSection(id, sectionId)),
+      moveSection: (id, sectionId, direction) =>
+        run((service) => service.moveSection(id, sectionId, direction)),
+      clearError: () => dispatch({ type: "clearError" }),
+    }),
+    [run, state],
+  );
 
   return <SongsContext.Provider value={value}>{children}</SongsContext.Provider>;
 }

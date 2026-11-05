@@ -72,6 +72,7 @@ export interface CloudProviderProps {
 }
 
 const CloudContext = createContext<CloudRuntimeValue | null>(null);
+const CloudSyncClientContext = createContext<SupabaseClient | null>(null);
 
 const DEFAULT_CLOUD_ENVIRONMENT: CloudEnvironment = {
   VITE_SUPABASE_URL: import.meta.env["VITE_SUPABASE_URL"],
@@ -117,6 +118,7 @@ export function CloudProvider({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [syncClient, setSyncClient] = useState<SupabaseClient | null>(null);
 
   const applyAnonymous = useCallback((expired = false) => {
     setAuth(expired ? "expired" : "anonymous");
@@ -126,78 +128,89 @@ export function CloudProvider({
     setRecovery(false);
   }, []);
 
-  const resolveSession = useCallback(async (client: SupabaseClient, session: Session | null) => {
-    const operation = ++operationRef.current;
-    if (!session) {
-      applyAnonymous(false);
-      return;
-    }
-    setAuth("authenticated");
-    setUser({ id: session.user.id, email: session.user.email ?? null });
-    setReachability(navigator.onLine ? "checking" : "unreachable");
-    if (!navigator.onLine) return;
-    try {
-      const response = await timeout(client.rpc("ensure_personal_workspace"), timeoutMs);
-      if (operation !== operationRef.current) return;
-      if (response.error) throw response.error;
-      setIdentity(bootstrapSchema.parse(response.data));
-      setReachability("reachable");
-      setError(null);
-    } catch (reason) {
-      if (operation !== operationRef.current) return;
-      const candidate = reason as { status?: unknown; code?: unknown };
-      if (candidate?.status === 401 || candidate?.code === "PGRST301") {
-        applyAnonymous(true);
-      } else {
-        setReachability("unreachable");
-        setError(reason instanceof Error ? reason.message : "No se pudo resolver el workspace cloud.");
+  const resolveSession = useCallback(
+    async (client: SupabaseClient, session: Session | null) => {
+      const operation = ++operationRef.current;
+      if (!session) {
+        applyAnonymous(false);
+        return;
       }
-    }
-  }, [applyAnonymous, timeoutMs]);
+      setAuth("authenticated");
+      setUser({ id: session.user.id, email: session.user.email ?? null });
+      setReachability(navigator.onLine ? "checking" : "unreachable");
+      if (!navigator.onLine) return;
+      try {
+        const response = await timeout(client.rpc("ensure_personal_workspace"), timeoutMs);
+        if (operation !== operationRef.current) return;
+        if (response.error) throw response.error;
+        setIdentity(bootstrapSchema.parse(response.data));
+        setReachability("reachable");
+        setError(null);
+      } catch (reason) {
+        if (operation !== operationRef.current) return;
+        const candidate = reason as { status?: unknown; code?: unknown };
+        if (candidate?.status === 401 || candidate?.code === "PGRST301") {
+          applyAnonymous(true);
+        } else {
+          setReachability("unreachable");
+          setError(
+            reason instanceof Error ? reason.message : "No se pudo resolver el workspace cloud.",
+          );
+        }
+      }
+    },
+    [applyAnonymous, timeoutMs],
+  );
 
   useEffect(() => {
     if (configuration.state !== "configured") return;
     let active = true;
     let unsubscribe: (() => void) | undefined;
-    void createClient(configuration).then(async (client) => {
-      if (!active) return;
-      clientRef.current = client;
-      const subscription = client.auth.onAuthStateChange((event, session) => {
+    void createClient(configuration)
+      .then(async (client) => {
         if (!active) return;
-        if (event === "PASSWORD_RECOVERY") setRecovery(true);
-        if (event === "SIGNED_OUT") {
-          const expired = !explicitLogoutRef.current;
-          explicitLogoutRef.current = false;
-          applyAnonymous(expired);
-          return;
+        clientRef.current = client;
+        setSyncClient(client);
+        const subscription = client.auth.onAuthStateChange((event, session) => {
+          if (!active) return;
+          if (event === "PASSWORD_RECOVERY") setRecovery(true);
+          if (event === "SIGNED_OUT") {
+            const expired = !explicitLogoutRef.current;
+            explicitLogoutRef.current = false;
+            applyAnonymous(expired);
+            return;
+          }
+          if (session) {
+            explicitLogoutRef.current = false;
+            void resolveSession(client, session);
+          }
+        });
+        unsubscribe = () => subscription.data.subscription.unsubscribe();
+        try {
+          const { data, error: sessionError } = await client.auth.getSession();
+          if (sessionError) throw sessionError;
+          if (active) await resolveSession(client, data.session);
+        } catch (reason) {
+          if (!active) return;
+          setAuth("error");
+          setReachability("unreachable");
+          setError(reason instanceof Error ? reason.message : "No se pudo iniciar Supabase.");
         }
-        if (session) {
-          explicitLogoutRef.current = false;
-          void resolveSession(client, session);
-        }
-      });
-      unsubscribe = () => subscription.data.subscription.unsubscribe();
-      try {
-        const { data, error: sessionError } = await client.auth.getSession();
-        if (sessionError) throw sessionError;
-        if (active) await resolveSession(client, data.session);
-      } catch (reason) {
+      })
+      .catch((reason: unknown) => {
         if (!active) return;
         setAuth("error");
         setReachability("unreachable");
-        setError(reason instanceof Error ? reason.message : "No se pudo iniciar Supabase.");
-      }
-    }).catch((reason: unknown) => {
-      if (!active) return;
-      setAuth("error");
-      setReachability("unreachable");
-      setError(reason instanceof Error ? reason.message : "No se pudo crear el cliente Supabase.");
-    });
+        setError(
+          reason instanceof Error ? reason.message : "No se pudo crear el cliente Supabase.",
+        );
+      });
     return () => {
       active = false;
       operationRef.current += 1;
       unsubscribe?.();
       clientRef.current = null;
+      setSyncClient(null);
     };
   }, [applyAnonymous, configuration, createClient, resolveSession]);
 
@@ -237,64 +250,95 @@ export function CloudProvider({
     }
   }, []);
 
-  const value = useMemo<CloudRuntimeValue>(() => ({
-    configuration,
-    auth,
-    reachability,
-    user,
-    identity,
-    recovery,
-    busy,
-    error,
-    notice,
-    signUp: (email, password) => run(async (client) => {
-      const { data, error: signUpError } = await client.auth.signUp({ email, password });
-      if (signUpError) throw new Error("No se pudo crear la cuenta con esos datos.");
-      if (data.session) await resolveSession(client, data.session);
-      else setNotice("Revisá tu email para confirmar la cuenta.");
+  const value = useMemo<CloudRuntimeValue>(
+    () => ({
+      configuration,
+      auth,
+      reachability,
+      user,
+      identity,
+      recovery,
+      busy,
+      error,
+      notice,
+      signUp: (email, password) =>
+        run(async (client) => {
+          const { data, error: signUpError } = await client.auth.signUp({ email, password });
+          if (signUpError) throw new Error("No se pudo crear la cuenta con esos datos.");
+          if (data.session) await resolveSession(client, data.session);
+          else setNotice("Revisá tu email para confirmar la cuenta.");
+        }),
+      signIn: (email, password) =>
+        run(async (client) => {
+          const { data, error: signInError } = await client.auth.signInWithPassword({
+            email,
+            password,
+          });
+          if (signInError) throw new Error("No se pudo iniciar sesión. Verificá tus credenciales.");
+          await resolveSession(client, data.session);
+        }),
+      requestPasswordRecovery: (email) =>
+        run(async (client) => {
+          const { error: recoveryError } = await client.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/settings`,
+          });
+          if (recoveryError) throw recoveryError;
+          setNotice("Si la cuenta existe, recibirás instrucciones por email.");
+        }),
+      updatePassword: (password) =>
+        run(async (client) => {
+          const { error: passwordError } = await client.auth.updateUser({ password });
+          if (passwordError) throw passwordError;
+          setRecovery(false);
+          setNotice("Contraseña actualizada.");
+        }),
+      signOut: () =>
+        run(async (client) => {
+          explicitLogoutRef.current = true;
+          const { error: signOutError } = await client.auth.signOut({ scope: "local" });
+          if (signOutError) {
+            explicitLogoutRef.current = false;
+            throw signOutError;
+          }
+          applyAnonymous(false);
+        }),
+      retry: () =>
+        run(async (client) => {
+          const { data, error: sessionError } = await client.auth.getSession();
+          if (sessionError) throw sessionError;
+          await resolveSession(client, data.session);
+        }),
     }),
-    signIn: (email, password) => run(async (client) => {
-      const { data, error: signInError } = await client.auth.signInWithPassword({ email, password });
-      if (signInError) throw new Error("No se pudo iniciar sesión. Verificá tus credenciales.");
-      await resolveSession(client, data.session);
-    }),
-    requestPasswordRecovery: (email) => run(async (client) => {
-      const { error: recoveryError } = await client.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/settings`,
-      });
-      if (recoveryError) throw recoveryError;
-      setNotice("Si la cuenta existe, recibirás instrucciones por email.");
-    }),
-    updatePassword: (password) => run(async (client) => {
-      const { error: passwordError } = await client.auth.updateUser({ password });
-      if (passwordError) throw passwordError;
-      setRecovery(false);
-      setNotice("Contraseña actualizada.");
-    }),
-    signOut: () => run(async (client) => {
-      explicitLogoutRef.current = true;
-      const { error: signOutError } = await client.auth.signOut({ scope: "local" });
-      if (signOutError) {
-        explicitLogoutRef.current = false;
-        throw signOutError;
-      }
-      applyAnonymous(false);
-    }),
-    retry: () => run(async (client) => {
-      const { data, error: sessionError } = await client.auth.getSession();
-      if (sessionError) throw sessionError;
-      await resolveSession(client, data.session);
-    }),
-  }), [
-    applyAnonymous, auth, busy, configuration, error, identity, notice, reachability,
-    recovery, resolveSession, run, user,
-  ]);
+    [
+      applyAnonymous,
+      auth,
+      busy,
+      configuration,
+      error,
+      identity,
+      notice,
+      reachability,
+      recovery,
+      resolveSession,
+      run,
+      user,
+    ],
+  );
 
-  return <CloudContext.Provider value={value}>{children}</CloudContext.Provider>;
+  return (
+    <CloudSyncClientContext.Provider value={syncClient}>
+      <CloudContext.Provider value={value}>{children}</CloudContext.Provider>
+    </CloudSyncClientContext.Provider>
+  );
 }
 
 export function useCloud(): CloudRuntimeValue {
   const value = useContext(CloudContext);
   if (!value) throw new Error("useCloud debe utilizarse dentro de CloudProvider.");
   return value;
+}
+
+/** Infraestructura interna: sólo SyncProvider debe consumir este cliente. */
+export function useCloudSyncClient(): SupabaseClient | null {
+  return useContext(CloudSyncClientContext);
 }

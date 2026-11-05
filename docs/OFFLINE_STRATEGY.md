@@ -101,18 +101,26 @@ es un backup. La aplicación advierte cerca del 80% de cuota y no bloquea Live.
 No se promete offline si la primera visita no completó la instalación del
 worker y el precache.
 
-## Supabase opcional
+## Supabase y Sync opcionales
 
-Fase 13 añade Auth y workspaces cloud sin incorporarlos al camino operativo.
 Projects, Songs y Presets continúan leyendo y escribiendo exclusivamente
-IndexedDB. Una sesión ausente, expirada o sin red no bloquea contenido ni Live.
+IndexedDB. Con vínculo activo, la misma transacción agrega/coalesce una operación
+durable; sin sesión o sin red, CRUD, Live y Outputs siguen funcionando. Al volver
+la conectividad se reanuda por eventos (boot, auth, online, visible, pageshow,
+enqueue, retry due o acción manual), sin polling constante.
+
 Los requests Supabase son cross-origin y Network Only; el Service Worker nunca
-cachea Auth, REST, Realtime, Storage, tokens o respuestas cloud.
+cachea Auth, REST, Realtime, Storage, tokens o respuestas cloud. La cola no
+depende de Background Sync API. Reintentos transitorios usan backoff 5 s × 2^n,
+tope de 15 minutos, jitter ±20 %, `Retry-After` y máximo 10 intentos. Offline no
+incrementa intentos; auth pausa y validación queda como error manual.
 
 ## Fuera de alcance
 
-- Sync Engine de Supabase.
-- Cola offline, retry y conflictos.
 - Backup/restore/exportación.
 - Cloud Media y migración entre PCs.
 - Persistencia de la sesión Live.
+- Realtime y cleanup físico de tombstones.
+
+Sync no es backup: replica cambios y también deletes/conflictos. Unlink archiva
+estado sync sin borrar datos locales o cloud.

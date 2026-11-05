@@ -24,42 +24,73 @@ import { createIndexedDbSongRepository } from "@/services/songs/indexeddb-song-r
 
 class MemoryStorage {
   readonly values = new Map<string, string>();
-  getItem(key: string) { return this.values.get(key) ?? null; }
-  setItem(key: string, value: string) { this.values.set(key, value); }
+  getItem(key: string) {
+    return this.values.get(key) ?? null;
+  }
+  setItem(key: string, value: string) {
+    this.values.set(key, value);
+  }
 }
 
 const timestamp = "2026-10-16T12:00:00.000Z";
 
 function project(id = "project-1", updatedAt = timestamp): Project {
-  return { id, workspaceId: "local-workspace", name: `Proyecto ${id}`, rundown: [], createdAt: timestamp, updatedAt };
+  return {
+    id,
+    workspaceId: "local-workspace",
+    name: `Proyecto ${id}`,
+    rundown: [],
+    createdAt: timestamp,
+    updatedAt,
+  };
 }
 
 function song(id = "song-1", updatedAt = timestamp): Song {
   return {
-    id, workspaceId: "local-workspace", title: `Canción ${id}`,
-    sections: [{ id: `${id}-section`, type: "verse", label: "Verso 1", content: "Texto", order: 0 }],
-    createdAt: timestamp, updatedAt,
+    id,
+    workspaceId: "local-workspace",
+    title: `Canción ${id}`,
+    sections: [
+      { id: `${id}-section`, type: "verse", label: "Verso 1", content: "Texto", order: 0 },
+    ],
+    createdAt: timestamp,
+    updatedAt,
   };
 }
 
 function preset(id = "preset-1", updatedAt = timestamp): Preset {
   return {
-    id, workspaceId: "local-workspace", name: `Preset ${id}`,
-    style: structuredClone(DEFAULT_PRESET_STYLE), createdAt: timestamp, updatedAt,
+    id,
+    workspaceId: "local-workspace",
+    name: `Preset ${id}`,
+    style: structuredClone(DEFAULT_PRESET_STYLE),
+    createdAt: timestamp,
+    updatedAt,
   };
 }
 
 async function metaValue(factory: IDBFactory, key: string): Promise<unknown> {
   const database = await openApplicationDatabase(factory);
-  return (await idbRequest<{ key: string; value: unknown } | undefined>(
-    database.transaction(APPLICATION_STORES.meta).objectStore(APPLICATION_STORES.meta).get(key),
-  ))?.value;
+  return (
+    await idbRequest<{ key: string; value: unknown } | undefined>(
+      database.transaction(APPLICATION_STORES.meta).objectStore(APPLICATION_STORES.meta).get(key),
+    )
+  )?.value;
 }
 
 describe("broadcast-control.app", () => {
   it("crea únicamente los stores de aplicación", async () => {
     const database = await openApplicationDatabase(new IDBFactory());
-    expect([...database.objectStoreNames]).toEqual(["meta", "presets", "projects", "songs"]);
+    expect([...database.objectStoreNames]).toEqual([
+      "meta",
+      "presets",
+      "projects",
+      "songs",
+      "sync_conflicts",
+      "sync_entities",
+      "sync_links",
+      "sync_queue",
+    ]);
     expect(database.objectStoreNames.contains("media")).toBeFalse();
     expect(database.objectStoreNames.contains("bible")).toBeFalse();
   });
@@ -98,7 +129,11 @@ describe("migración localStorage → IndexedDB", () => {
   it("migra los tres dominios, activeProjectId y conserva exactamente legacy", async () => {
     const factory = new IDBFactory();
     const storage = new MemoryStorage();
-    const rawProjects = JSON.stringify({ version: 2, projects: [project()], activeProjectId: "project-1" });
+    const rawProjects = JSON.stringify({
+      version: 2,
+      projects: [project()],
+      activeProjectId: "project-1",
+    });
     const rawSongs = JSON.stringify({ version: 1, songs: [song()] });
     const rawPresets = JSON.stringify({ version: 1, presets: [preset()] });
     storage.setItem(PROJECTS_V2_KEY, rawProjects);
@@ -138,8 +173,15 @@ describe("migración localStorage → IndexedDB", () => {
   it("no escribe entidades ni marcador si la transacción falla", async () => {
     const factory = new IDBFactory();
     const storage = new MemoryStorage();
-    storage.setItem(PROJECTS_V2_KEY, JSON.stringify({ version: 2, projects: [project()], activeProjectId: null }));
-    await expect(migrateProjects(factory, storage, () => { throw new Error("fallo simulado"); })).rejects.toThrow("fallo simulado");
+    storage.setItem(
+      PROJECTS_V2_KEY,
+      JSON.stringify({ version: 2, projects: [project()], activeProjectId: null }),
+    );
+    await expect(
+      migrateProjects(factory, storage, () => {
+        throw new Error("fallo simulado");
+      }),
+    ).rejects.toThrow("fallo simulado");
     expect(await createIndexedDbProjectRepository(factory).list()).toEqual([]);
     expect(await metaValue(factory, MIGRATION_MARKERS.projects)).toBeUndefined();
   });
@@ -164,21 +206,27 @@ describe("migración localStorage → IndexedDB", () => {
     await repository.create({ ...project("newer", "2026-10-16T14:00:00.000Z"), name: "IDB newer" });
     await repository.create({ ...project("tie"), name: "IDB tie" });
     const storage = new MemoryStorage();
-    storage.setItem(PROJECTS_V2_KEY, JSON.stringify({
-      version: 2,
-      projects: [
-        { ...project("newer", "2026-10-16T13:00:00.000Z"), name: "Legacy older" },
-        { ...project("tie"), name: "Legacy tie" },
-        project("only-legacy"),
-      ],
-      activeProjectId: "only-legacy",
-    }));
+    storage.setItem(
+      PROJECTS_V2_KEY,
+      JSON.stringify({
+        version: 2,
+        projects: [
+          { ...project("newer", "2026-10-16T13:00:00.000Z"), name: "Legacy older" },
+          { ...project("tie"), name: "Legacy tie" },
+          project("only-legacy"),
+        ],
+        activeProjectId: "only-legacy",
+      }),
+    );
     await migrateProjects(factory, storage, () => timestamp);
     expect((await repository.get("newer"))?.name).toBe("IDB newer");
     expect((await repository.get("tie"))?.name).toBe("IDB tie");
     expect(await repository.get("only-legacy")).not.toBeNull();
 
-    storage.setItem(PROJECTS_V2_KEY, JSON.stringify({ version: 2, projects: [project("late")], activeProjectId: null }));
+    storage.setItem(
+      PROJECTS_V2_KEY,
+      JSON.stringify({ version: 2, projects: [project("late")], activeProjectId: null }),
+    );
     const second = await migrateProjects(factory, storage, () => "later");
     expect(second.state).toBe("complete");
     expect(await repository.get("late")).toBeNull();

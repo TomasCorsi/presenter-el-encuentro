@@ -40,6 +40,7 @@ export function createBoundCloudRepository<T>(
           .from(adapter.table)
           .select("*")
           .eq("workspace_id", workspaceId)
+          .is("deleted_at", null)
           .order("entity_updated_at", { ascending: false });
         if (error) throw error;
         return (data ?? []).map(adapter.fromRow);
@@ -54,6 +55,7 @@ export function createBoundCloudRepository<T>(
           .select("*")
           .eq("workspace_id", workspaceId)
           .eq("id", id)
+          .is("deleted_at", null)
           .maybeSingle();
         if (error) throw error;
         return data ? adapter.fromRow(data) : null;
@@ -77,11 +79,25 @@ export function createBoundCloudRepository<T>(
     },
     async delete(id) {
       try {
-        const { error } = await client
+        const { data: current, error: readError } = await client
           .from(adapter.table)
-          .delete()
+          .select("sync_revision")
           .eq("workspace_id", workspaceId)
-          .eq("id", id);
+          .eq("id", id)
+          .maybeSingle();
+        if (readError) throw readError;
+        if (!current) return;
+        const entityType =
+          adapter.table === "projects" ? "project" : adapter.table === "songs" ? "song" : "preset";
+        const { error } = await client.rpc("apply_sync_change", {
+          target_workspace_id: workspaceId,
+          target_entity_type: entityType,
+          target_entity_id: id,
+          target_operation: "delete",
+          target_operation_id: crypto.randomUUID(),
+          expected_revision: current.sync_revision,
+          target_record: null,
+        });
         if (error) throw error;
       } catch (error) {
         throw normalizeCloudError(error);
@@ -102,13 +118,19 @@ export function createCloudRepositories(
 ): CloudRepositories {
   return {
     projects: createBoundCloudRepository(client, workspaceId, {
-      table: "projects", toRecord: projectToCloudRecord, fromRow: projectFromCloudRow,
+      table: "projects",
+      toRecord: projectToCloudRecord,
+      fromRow: projectFromCloudRow,
     }),
     songs: createBoundCloudRepository(client, workspaceId, {
-      table: "songs", toRecord: songToCloudRecord, fromRow: songFromCloudRow,
+      table: "songs",
+      toRecord: songToCloudRecord,
+      fromRow: songFromCloudRow,
     }),
     presets: createBoundCloudRepository(client, workspaceId, {
-      table: "presets", toRecord: presetToCloudRecord, fromRow: presetFromCloudRow,
+      table: "presets",
+      toRecord: presetToCloudRecord,
+      fromRow: presetFromCloudRow,
     }),
   };
 }

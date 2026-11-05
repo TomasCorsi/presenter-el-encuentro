@@ -128,7 +128,8 @@ Supabase se utilizará para:
   Songs y Presets se conservan read-only como respaldo de migración.
 - Memoria: sesión de Live, estado Output y relay Stream.
 
-No existen todavía cola de sincronización, conflictos, cloud storage ni backup.
+Fase 14 agrega cola y conflictos locales para Projects, Songs y Presets. Cloud
+Storage y backup continúan fuera de alcance.
 
 ## Regla crítica
 
@@ -491,3 +492,34 @@ Live. Tanto imagen como video se representan mediante `<img>` estático. El
 solid resuelto permanece debajo y actúa como fallback ante metadata, thumbnail
 o decode ausentes. `BackgroundLayer` reutiliza el mismo primitive, pero conserva
 por separado su resolución de bytes, video real y transiciones.
+
+## Fase 14 — Sync Engine local-first
+
+```text
+UI operativa → repositories locales → IndexedDB v2
+                                      ↕ LocalDataChangeBus
+                              SyncProvider / SyncEngine
+                                      ↕ SyncCloudGateway
+                          Supabase Auth + RLS + apply_sync_change
+```
+
+Sólo `SyncProvider` obtiene el cliente Supabase del contexto interno. Projects,
+Songs, Presets, Live, Main, Stage y Stream no importan el gateway. Cada escritura
+sincronizable confirma entidad y journal en una única transacción. El ciclo es
+pull → aplicar/aislar conflictos → flush con lease → pull final → `lastSyncAt`.
+
+`broadcast-control.app` v2 conserva los stores v1 y agrega `sync_links`,
+`sync_entities`, `sync_queue` y `sync_conflicts`; `activeSyncLinkKey` vive en
+`meta`. Todo se separa por `userId:cloudWorkspaceId`. Los pulls aplican entidad,
+metadata y checkpoint juntos y publican por `LocalDataChangeBus`; el
+`BroadcastChannel` del bus sólo mejora la reacción entre pestañas.
+
+Supabase conserva tombstones y un cursor monotónico compartido. El RPC
+`apply_sync_change` es `SECURITY INVOKER`, valida primero `operationId` y luego
+`expected_revision`, y sigue sujeto a grants y RLS. No hay Realtime, polling
+constante, Background Sync obligatorio ni service role.
+
+Sync nunca modifica PresentationStore, LiveSession, Preview, Program, playback
+u OutputSnapshot. Un cambio remoto sólo llega a repositories/providers; Live
+mantiene el snapshot congelado y requiere “Recargar presentación”. Media/Bible
+no se sincronizan y una referencia Media ausente usa el fallback existente.

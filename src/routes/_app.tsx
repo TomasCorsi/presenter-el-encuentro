@@ -13,6 +13,7 @@ import { SongsProvider } from "@/features/songs/songs-context";
 import { appContentOverflowClass } from "@/features/live/live-layout";
 import { CloudProvider } from "@/features/cloud/cloud-context";
 import { cn } from "@/lib/utils";
+import { SyncProvider } from "@/features/sync/sync-context";
 
 export const Route = createFileRoute("/_app")({
   component: AppShell,
@@ -30,18 +31,20 @@ function AppShell() {
   return (
     <CloudProvider>
       <LocalDataProvider>
-        <AppDataProviders liveRoute={liveRoute} />
+        <SyncProvider>
+          <AppDataProviders liveRoute={liveRoute} />
+        </SyncProvider>
       </LocalDataProvider>
     </CloudProvider>
   );
 }
 
 function AppDataProviders({ liveRoute }: { liveRoute: boolean }) {
-  const { repositories } = useLocalData();
+  const { repositories, changes } = useLocalData();
   return (
-    <ProjectsProvider repository={repositories.projects}>
-      <SongsProvider repository={repositories.songs}>
-        <PresetsProvider repository={repositories.presets}>
+    <ProjectsProvider repository={repositories.projects} changes={changes}>
+      <SongsProvider repository={repositories.songs} changes={changes}>
+        <PresetsProvider repository={repositories.presets} changes={changes}>
           <BibleProvider>
             <MediaProvider projectRepository={repositories.projects}>
               {/* El motor de presentación también vive en el shell: montarlo en

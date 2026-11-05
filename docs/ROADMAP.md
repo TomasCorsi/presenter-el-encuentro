@@ -551,12 +551,24 @@ para Fase 14 y Supabase no es backup.
 
 ## Fase 14 — Sync Engine
 
-- [ ] Local → Cloud.
-- [ ] Cloud → Local.
-- [ ] Cola offline.
-- [ ] Retry.
-- [ ] Conflictos básicos.
-- [ ] Sin bloquear Live.
+- [x] Local → Cloud por journal atómico y RPC CAS/idempotente.
+- [x] Cloud → Local incremental por `sync_change_seq`.
+- [x] IndexedDB v2 con cola offline, metadata, vínculos y conflictos.
+- [x] Retry exponencial, leases y protección de generación en vuelo.
+- [x] Tombstones, restore y conflictos manuales sin LWW.
+- [x] Primera vinculación evaluada/confirmada, unlink archivado y relink fresco.
+- [x] Settings, status y badge sólo para error/conflicto.
+- [x] Live protegido: snapshot congelado y Project eliminado marcado stale.
+- [x] Migración cloud real, pgTAP 25/25 y QA SQL transaccional PASS.
+- [x] Build client, SSR, PWA y Nitro `cloudflare-module` PASS.
+
+**Estado:** IMPLEMENTACIÓN COMPLETA / CLOUD MIGRATION PASS / pgTAP 25/25 PASS /
+QUALITY GATE AUTOMÁTICO COMPLETO / BUILD PASS / QA MANUAL DOS DISPOSITIVOS
+PENDIENTE. IndexedDB sigue siendo la autoridad operativa. Media, Bible,
+Realtime, service role, backup/restore y Fase 15 permanecen fuera de alcance.
+Quality gate: 39 tests focalizados y 445 tests completos PASS, 1396 assertions,
+TypeScript PASS, lint dirigido sin errores y `git diff --check` PASS. Build
+validado en client, SSR, PWA `injectManifest` y Nitro `cloudflare-module`.
 
 ---
 

@@ -734,3 +734,62 @@ conectados a la UI operativa.
 **Estado:** FASE 13 COMPLETADA / MIGRACIÓN CLOUD PASS / RLS REAL PASS / pgTAP
 15/15 PASS / REPOSITORIES CLOUD PASS / AUTH BÁSICA REAL PASS / BUILD PASS /
 RECOVERY END-TO-END Y SMTP PRODUCTIVO PENDIENTES NO BLOQUEANTES.
+
+## Fase 14 — Sync Engine
+
+Cobertura local: upgrade IndexedDB v1→v2, stores/índices, preservación de
+entidades y `activeProjectId`, journal atómico con abort de entidad si falla el
+enqueue, cola durable tras reapertura, coalescing, generation safety, leases,
+remote apply sin reenqueue, checkpoints, archive y relink fresco. Reglas puras
+cubren fingerprint canónico, backoff/jitter, `Retry-After` y límite de intentos.
+El engine prueba el orden pull→flush→pull, offline sin incrementar intentos,
+respuesta perdida idempotente y conflicto CAS. La suite local cubre
+explícitamente update/update, update/delete, delete/update, colisión inicial,
+mantener local, usar cloud y duplicar copia local. Tests estáticos impiden
+imports Supabase/gateway desde features operativas.
+
+Validación real del 2026-11-05 en `yadwnoqjexrrtklhfgcq`:
+
+- migración `phase14_sync_engine`: PASS;
+- pgTAP remoto: 25/25 PASS;
+- QA SQL transaccional: insert, idempotencia tras respuesta perdida, CAS,
+  tombstone, pull incremental, restore, DELETE físico revocado, RLS
+  cross-workspace y `SECURITY INVOKER`: PASS;
+- cleanup: `ROLLBACK`, cero usuarios/contenido QA;
+- advisor de seguridad: sólo permanece el warning intencional heredado de
+  `ensure_personal_workspace()` SECURITY DEFINER; el RPC sync no aparece;
+- advisor de performance: índices sync recién creados aún sin uso estadístico y
+  foreign-key indexes heredados como recomendaciones no bloqueantes.
+
+Quality gate automático final del 2026-11-05:
+
+- build client: PASS, Vite 8.1.5 y 2253 módulos;
+- build SSR: PASS, 293 módulos;
+- Nitro: PASS, preset `cloudflare-module`, compatibilidad `2026-10-31`;
+- PWA: PASS, `injectManifest`, `sw.js` y 118 entradas precache (1287,33 KiB);
+- artefactos: `SyncProvider` permanece bajo App Shell; Main, Stage y Stream no
+  incluyen provider, gateway, Supabase ni stores sync; Supabase sigue Network
+  Only y el Service Worker no cachea requests sync;
+- focalizados Sync/Cloud/IndexedDB: 39 PASS, 0 FAIL, 281 assertions;
+- suite completa: 445 PASS, 0 FAIL, 1396 assertions en 84 archivos;
+- `npx tsc --noEmit`: PASS;
+- lint dirigido: PASS, 0 errores y 6 warnings Fast Refresh conocidos por el
+  patrón Provider+hook;
+- `git diff --check`: PASS.
+
+El cierre detectó y corrigió un bug real y acotado: una excepción síncrona del
+journal podía dejar confirmar la entidad sin su entrada de queue. Los tres
+repositories IndexedDB ahora abortan explícitamente la misma transacción y el
+test de regresión confirma que no queda entidad ni queue parcial.
+
+No se repitió QA SQL destructivo porque no hubo cambios SQL. Se conserva la
+evidencia ya validada de migración cloud, pgTAP 25/25, CAS, tombstones, restore,
+pull incremental, aislamiento cross-workspace, grants y cleanup completo.
+
+QA manual pendiente: dos browsers/perfiles o dispositivos reales, edición
+offline/reconnect, conflictos UI, logout/relink, Live activo con cambio remoto y
+resume real de PWA. No se realizó QA manual ni se creó commit.
+
+**Estado:** IMPLEMENTACIÓN COMPLETA / CLOUD MIGRATION PASS / pgTAP 25/25 PASS /
+QUALITY GATE AUTOMÁTICO COMPLETO / BUILD PASS / QA MANUAL DOS DISPOSITIVOS
+PENDIENTE.

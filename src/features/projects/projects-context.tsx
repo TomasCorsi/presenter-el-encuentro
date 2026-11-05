@@ -14,6 +14,7 @@ import type { RundownBackground } from "@/domain/projects/rundown";
 import { ProjectService } from "@/features/projects/project-service";
 import { createLocalStorageProjectRepository } from "@/services/projects/local-storage-project-repository";
 import type { ProjectRepository } from "@/services/projects/project-repository";
+import type { LocalDataChangeBus } from "@/services/local-data/local-data-change-bus";
 
 interface ProjectsState {
   projects: Project[];
@@ -88,9 +89,11 @@ function errorMessage(error: unknown): string {
 export function ProjectsProvider({
   children,
   repository,
+  changes,
 }: {
   children: ReactNode;
   repository?: ProjectRepository;
+  changes?: LocalDataChangeBus | null;
 }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const service = useMemo(() => {
@@ -114,6 +117,14 @@ export function ProjectsProvider({
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(
+    () =>
+      changes?.subscribe((change) => {
+        if (change.entityType === "project") void refresh();
+      }),
+    [changes, refresh],
+  );
 
   const run = useCallback(
     async <T,>(operation: () => Promise<T>): Promise<T> => {

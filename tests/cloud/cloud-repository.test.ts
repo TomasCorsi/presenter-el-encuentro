@@ -23,19 +23,42 @@ function fakeClient() {
     payload: { schemaVersion: 1, rundown: [] },
     entity_created_at: project.createdAt,
     entity_updated_at: project.updatedAt,
+    sync_revision: 1,
   };
   const query = {
-    eq(column: string, value: unknown) { calls.push([`eq:${column}`, value]); return query; },
-    order(column: string) { calls.push(["order", column]); return Promise.resolve({ data: [row], error: null }); },
-    maybeSingle() { return Promise.resolve({ data: row, error: null }); },
-    then(resolve: (value: unknown) => unknown) { return Promise.resolve({ data: null, error: null }).then(resolve); },
+    eq(column: string, value: unknown) {
+      calls.push([`eq:${column}`, value]);
+      return query;
+    },
+    is(column: string, value: unknown) {
+      calls.push([`is:${column}`, value]);
+      return query;
+    },
+    order(column: string) {
+      calls.push(["order", column]);
+      return Promise.resolve({ data: [row], error: null });
+    },
+    maybeSingle() {
+      return Promise.resolve({ data: row, error: null });
+    },
+    then(resolve: (value: unknown) => unknown) {
+      return Promise.resolve({ data: null, error: null }).then(resolve);
+    },
   };
   const client = {
+    rpc(name: string, args: unknown) {
+      calls.push([`rpc:${name}`, args]);
+      return Promise.resolve({ data: { outcome: "applied", row }, error: null });
+    },
     from(table: string) {
       calls.push(["from", table]);
       return {
-        select() { return query; },
-        delete() { return query; },
+        select() {
+          return query;
+        },
+        delete() {
+          return query;
+        },
         upsert(record: unknown, options: unknown) {
           calls.push(["upsert", { record, options }]);
           return { select: () => ({ single: () => Promise.resolve({ data: row, error: null }) }) };
@@ -55,11 +78,18 @@ describe("bound cloud repositories", () => {
     await repository.put(project);
     await repository.delete(project.id);
     expect(calls.filter(([name]) => name === "eq:workspace_id").map(([, value]) => value)).toEqual([
-      workspaceId, workspaceId, workspaceId,
+      workspaceId,
+      workspaceId,
+      workspaceId,
     ]);
     expect(calls.find(([name]) => name === "upsert")?.[1]).toMatchObject({
       options: { onConflict: "workspace_id,id" },
       record: { workspace_id: workspaceId },
+    });
+    expect(calls.find(([name]) => name === "rpc:apply_sync_change")?.[1]).toMatchObject({
+      target_workspace_id: workspaceId,
+      target_operation: "delete",
+      expected_revision: 1,
     });
   });
 });
