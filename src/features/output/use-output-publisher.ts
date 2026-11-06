@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import { createUuid } from "@/utils/create-id";
 
 import type { VideoPlaybackState } from "@/domain/output/video-playback";
 import type { BackgroundTransition } from "@/domain/output/output-snapshot";
 import { buildStageProjection } from "@/domain/output/stage-projection";
 import { getProgramOutput } from "@/domain/presentation/presentation-selectors";
 import { usePresentationStore } from "@/features/presentation/presentation-context";
-import { createOutputPublisher, type OutputPublisher } from "@/services/output-sync/output-publisher";
+import {
+  createOutputPublisher,
+  type OutputPublisher,
+} from "@/services/output-sync/output-publisher";
 import {
   createRelayOutputTransport,
   isLoopbackHostname,
@@ -38,7 +42,7 @@ export function useOutputPublisher(
   const publisherRef = useRef<OutputPublisher | null>(null);
 
   useEffect(() => {
-    const sessionId = crypto.randomUUID();
+    const sessionId = createUuid();
     const broadcastTransport = createBroadcastTransport();
     const relay = isLoopbackHostname(window.location.hostname)
       ? createRelayOutputTransport()
@@ -46,9 +50,7 @@ export function useOutputPublisher(
     setRelayStatus(relay ? relay.getStatus() : "unsupported");
     const unsubscribeRelayStatus = relay?.subscribeStatus(setRelayStatus) ?? null;
     const publisher = createOutputPublisher(
-      relay
-        ? createCompositeOutputTransport([broadcastTransport, relay])
-        : broadcastTransport,
+      relay ? createCompositeOutputTransport([broadcastTransport, relay]) : broadcastTransport,
       sessionId,
       () => playbackRef.current,
       () => transitionRef.current,

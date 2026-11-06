@@ -7,6 +7,7 @@ import {
   useReducer,
   type ReactNode,
 } from "react";
+import { createUuid } from "@/utils/create-id";
 
 import type { Song, SongSectionType } from "@/domain/songs/song";
 import type { UpdateSectionInput } from "@/domain/songs/song-rules";
@@ -72,7 +73,7 @@ export function SongsProvider({
     if (typeof window === "undefined") return null;
     const resolved = repository ?? createLocalStorageSongRepository(window.localStorage);
     return new SongService(resolved, {
-      createId: () => crypto.randomUUID(),
+      createId: createUuid,
       now: () => new Date().toISOString(),
     });
   }, [repository]);

@@ -5,12 +5,13 @@ import {
   type SyncLink,
 } from "@/domain/sync/sync";
 import { CloudRepositoryError } from "@/services/cloud/cloud-error";
+import { createUuid } from "@/utils/create-id";
 import type { SyncCloudGateway } from "./sync-cloud-gateway";
 import type { SyncLocalStore } from "./sync-local-store";
 import { canAutoRetry, retryDelayMilliseconds } from "./sync-rules";
 
 export class SyncEngine {
-  readonly #owner = crypto.randomUUID();
+  readonly #owner = createUuid();
   #running: Promise<void> | null = null;
 
   constructor(

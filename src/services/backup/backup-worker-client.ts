@@ -1,4 +1,5 @@
 import { digestStream } from "./backup-integrity";
+import { createUuid } from "@/utils/create-id";
 
 export async function hashBlobOffMainThread(
   blob: Blob,
@@ -9,7 +10,7 @@ export async function hashBlobOffMainThread(
     type: "module",
     name: "presenter-backup-integrity",
   });
-  const id = crypto.randomUUID();
+  const id = createUuid();
   try {
     return await new Promise((resolve, reject) => {
       worker.onmessage = (

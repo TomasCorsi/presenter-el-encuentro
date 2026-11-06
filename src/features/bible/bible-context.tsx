@@ -7,6 +7,7 @@ import {
   useReducer,
   type ReactNode,
 } from "react";
+import { createUuid } from "@/utils/create-id";
 
 import type {
   BibleBookMeta,
@@ -70,7 +71,7 @@ export function BibleProvider({ children }: { children: ReactNode }) {
   const service = useMemo(() => {
     if (typeof window === "undefined" || !window.indexedDB) return null;
     return new BibleService(createIndexedDbBibleRepository(window.indexedDB), {
-      createId: () => crypto.randomUUID(),
+      createId: createUuid,
       now: () => new Date().toISOString(),
     });
   }, []);

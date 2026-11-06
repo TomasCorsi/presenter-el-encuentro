@@ -2,6 +2,7 @@ import { BlobReader, ZipReader, type Entry, type FileEntry } from "@zip.js/zip.j
 import type { BackupInspection, BackupProgress } from "@/domain/backup/backup";
 import { DEFAULT_PRESET_ID } from "@/domain/presets/preset";
 import { parsePreset, parseProject, parseSong } from "@/services/local-data/application-migrations";
+import { createUuid } from "@/utils/create-id";
 import {
   APPLICATION_STORES,
   idbTransactionDone,
@@ -108,7 +109,7 @@ export async function restoreLocalBackup(options: {
     }
   }
 
-  const restoreId = crypto.randomUUID();
+  const restoreId = createUuid();
   const newGeneration = `restore-${restoreId}`;
   const journal: RestoreJournal = {
     id: "active",

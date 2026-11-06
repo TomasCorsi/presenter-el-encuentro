@@ -6,6 +6,7 @@ import { MediaInUseError, MediaService } from "@/features/media/media-service";
 import { createInMemoryMediaRepository } from "@/services/media/in-memory-media-repository";
 import { createInMemoryMediaStorage } from "@/services/media/in-memory-media-storage";
 import type { MediaRepository } from "@/services/media/media-repository";
+import { createUuid } from "@/utils/create-id";
 
 const noInfo = async () => null;
 
@@ -18,7 +19,7 @@ function makeService(projects: Project[] = []) {
     { list: async () => projects },
     "local-media",
     () => new Date(),
-    () => crypto.randomUUID(),
+    createUuid,
     noInfo,
   );
   return { repository, storage, service };
@@ -205,7 +206,7 @@ describe("MediaService.delete", () => {
       { list: async () => [projectUsing(imported!.id)] },
       "local-media",
       () => new Date(),
-      () => crypto.randomUUID(),
+      createUuid,
       noInfo,
     );
     // El repositorio del servicio "inUse" es otro, pero la regla de uso se

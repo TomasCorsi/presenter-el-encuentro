@@ -1,4 +1,5 @@
 import type { OutputTransport } from "./output-transport";
+import { createUuid } from "@/utils/create-id";
 
 export const OUTPUT_RELAY_PATH = "/api/output-relay";
 export const OUTPUT_RELAY_MAX_BYTES = 256 * 1024;
@@ -39,7 +40,7 @@ export function createRelayOutputTransport(
   options: CreateRelayOutputTransportOptions = {},
 ): RelayOutputTransport {
   const path = options.path ?? OUTPUT_RELAY_PATH;
-  const clientId = options.clientId ?? crypto.randomUUID();
+  const clientId = options.clientId ?? createUuid();
   const fetchFn = options.fetchFn ?? fetch;
   const eventSourceFactory = options.eventSourceFactory ?? ((url: string) => new EventSource(url));
   const listeners = new Set<(message: unknown) => void>();

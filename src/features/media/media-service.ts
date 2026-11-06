@@ -10,6 +10,7 @@ import {
 import type { MediaFileStorage } from "@/services/media/media-file-storage";
 import type { MediaRepository } from "@/services/media/media-repository";
 import type { ProjectRepository } from "@/services/projects/project-repository";
+import { createUuid } from "@/utils/create-id";
 
 import { readVisualMediaInfo } from "./read-media-info";
 
@@ -33,7 +34,7 @@ export class MediaService {
     private readonly projects: Pick<ProjectRepository, "list">,
     private readonly workspaceId: string = "local-media",
     private readonly now: () => Date = () => new Date(),
-    private readonly newId: () => string = () => crypto.randomUUID(),
+    private readonly newId: () => string = createUuid,
     /** Lectura de metadata visual (no bloqueante). Inyectable para tests. */
     private readonly readInfo: typeof readVisualMediaInfo = readVisualMediaInfo,
     /** Preparación best-effort del storage; jamás debe bloquear importación. */

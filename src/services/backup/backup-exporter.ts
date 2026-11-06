@@ -13,6 +13,7 @@ import {
 } from "@/domain/backup/backup";
 import { encodeNdjson } from "./backup-ndjson";
 import { hashingTransform, sha256Bytes } from "./backup-integrity";
+import { createUuid } from "@/utils/create-id";
 import {
   readLocalBackupSnapshot,
   snapshotFingerprint,
@@ -160,7 +161,7 @@ export async function exportLocalBackup(options: BackupExportOptions): Promise<B
     const manifest: PresenterBackupManifestV1 = {
       magic: BACKUP_MAGIC,
       formatVersion: BACKUP_FORMAT_VERSION,
-      contentId: crypto.randomUUID(),
+      contentId: createUuid(),
       createdAt: (options.now ?? new Date()).toISOString(),
       appVersion: options.appVersion,
       buildId: options.buildId,

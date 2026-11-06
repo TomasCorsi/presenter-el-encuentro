@@ -7,6 +7,7 @@ import {
   useReducer,
   type ReactNode,
 } from "react";
+import { createUuid } from "@/utils/create-id";
 
 import { DEFAULT_PRESET, type Preset, type PresetStyle } from "@/domain/presets/preset";
 import { PresetService } from "@/features/presets/preset-service";
@@ -76,7 +77,7 @@ export function PresetsProvider({
     if (typeof window === "undefined") return null;
     const resolved = repository ?? createLocalStoragePresetRepository(window.localStorage);
     return new PresetService(resolved, {
-      createId: () => crypto.randomUUID(),
+      createId: createUuid,
       now: () => new Date().toISOString(),
     });
   }, [repository]);

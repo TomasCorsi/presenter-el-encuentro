@@ -1,5 +1,6 @@
 import { MAINTENANCE_LEASE_KEY } from "./backup-preferences";
 import { isOperationalPath } from "@/pwa/cache-policy";
+import { createUuid } from "@/utils/create-id";
 
 interface MaintenanceLease {
   owner: string;
@@ -25,7 +26,7 @@ export async function acquireMaintenanceLease(
   storage: Storage,
   operation: MaintenanceLease["operation"],
 ): Promise<() => void> {
-  const owner = crypto.randomUUID();
+  const owner = createUuid();
   const current = parseLease(storage.getItem(MAINTENANCE_LEASE_KEY));
   if (current && current.expiresAt > Date.now()) {
     throw new Error("Otra pestaña está ejecutando mantenimiento local.");
@@ -77,7 +78,7 @@ export async function assertMaintenanceWindowSafety(
         paths.add(event.data.path);
       }
     };
-    channel.postMessage({ type: "maintenance-probe", nonce: crypto.randomUUID() });
+    channel.postMessage({ type: "maintenance-probe", nonce: createUuid() });
     await new Promise((resolve) => window.setTimeout(resolve, 200));
     channel.close();
     const blocked = [...paths].filter((path) => operation === "restore" || isOperationalPath(path));

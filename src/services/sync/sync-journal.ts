@@ -1,4 +1,5 @@
 import { DEFAULT_PRESET_ID } from "@/domain/presets/preset";
+import { createUuid } from "@/utils/create-id";
 import {
   createSyncEntityKey,
   type SyncEntityMetadata,
@@ -38,7 +39,7 @@ export async function commitJournalOrAbort(
   }
 }
 
-const operationId = (): string => crypto.randomUUID();
+const operationId = createUuid;
 
 async function activeLink(transaction: IDBTransaction): Promise<SyncLink | null> {
   const pointer = await idbRequest<ApplicationMetaRecord<string> | undefined>(

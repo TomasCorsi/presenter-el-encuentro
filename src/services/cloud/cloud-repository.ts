@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Project } from "@/domain/projects/project";
 import type { Song } from "@/domain/songs/song";
 import type { Preset } from "@/domain/presets/preset";
+import { createUuid } from "@/utils/create-id";
 import { normalizeCloudError } from "./cloud-error";
 import {
   presetFromCloudRow,
@@ -94,7 +95,7 @@ export function createBoundCloudRepository<T>(
           target_entity_type: entityType,
           target_entity_id: id,
           target_operation: "delete",
-          target_operation_id: crypto.randomUUID(),
+          target_operation_id: createUuid(),
           expected_revision: current.sync_revision,
           target_record: null,
         });

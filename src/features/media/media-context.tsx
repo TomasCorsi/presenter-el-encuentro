@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import type { MediaAsset, MediaCollection } from "@/domain/media/media";
+import { createUuid } from "@/utils/create-id";
 import type { ProjectRepository } from "@/services/projects/project-repository";
 import { createIndexedDbMediaRepository } from "@/services/media/indexeddb-media-repository";
 import { createInMemoryMediaRepository } from "@/services/media/in-memory-media-repository";
@@ -135,7 +136,7 @@ export function MediaProvider({
         resolvedProjects,
         MEDIA_WORKSPACE_ID,
         () => new Date(),
-        () => crypto.randomUUID(),
+        createUuid,
         readVisualMediaInfo,
         prepareStorage,
       ),

@@ -1,4 +1,5 @@
 import { DEFAULT_PRESET_ID } from "@/domain/presets/preset";
+import { createUuid } from "@/utils/create-id";
 import {
   SYNC_ENTITY_TYPES,
   createSyncEntityKey,
@@ -134,7 +135,7 @@ export class SyncLocalStore {
           lastSyncedAt: null,
         } satisfies SyncEntityMetadata);
         queueStore.add({
-          operationId: crypto.randomUUID(),
+          operationId: createUuid(),
           linkKey: link.linkKey,
           entityType: type,
           entityId: entity.id,
@@ -534,7 +535,7 @@ export class SyncLocalStore {
     if (resolution === "keep-local") {
       const operation = conflict.localSnapshot ? "upsert" : "delete";
       const entry: SyncQueueEntry = {
-        operationId: queued?.operationId ?? crypto.randomUUID(),
+        operationId: queued?.operationId ?? createUuid(),
         linkKey: conflict.linkKey,
         entityType: conflict.entityType,
         entityId: conflict.entityId,
@@ -553,7 +554,7 @@ export class SyncLocalStore {
     } else {
       if (resolution === "duplicate-local" && conflict.localSnapshot) {
         const source = structuredClone(conflict.localSnapshot) as Record<string, unknown>;
-        const copyId = crypto.randomUUID();
+        const copyId = createUuid();
         const nameKey = conflict.entityType === "song" ? "title" : "name";
         const copy = {
           ...source,
@@ -576,7 +577,7 @@ export class SyncLocalStore {
           lastSyncedAt: null,
         } satisfies SyncEntityMetadata);
         queueStore.add({
-          operationId: crypto.randomUUID(),
+          operationId: createUuid(),
           linkKey: link.linkKey,
           entityType: conflict.entityType,
           entityId: copyId,

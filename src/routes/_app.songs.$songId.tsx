@@ -1,6 +1,7 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Calendar, Clock, Copy, ListMusic, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createUuid } from "@/utils/create-id";
 
 import { Page } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
@@ -9,10 +10,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { SONG_TITLE_MAX_LENGTH, type Song, type SongFactoryDependencies } from "@/domain/songs/song";
+import {
+  SONG_TITLE_MAX_LENGTH,
+  type Song,
+  type SongFactoryDependencies,
+} from "@/domain/songs/song";
 import { addSection, moveSection, removeSection, updateSection } from "@/domain/songs/song-rules";
 import { SongSectionEditor } from "@/features/songs/components/song-section-editor";
 import { useSongs } from "@/features/songs/songs-context";
@@ -22,7 +33,7 @@ const DESCRIPTION = "Edición de título, autor y secciones de una canción de l
 const AUTOSAVE_DELAY_MS = 600;
 
 const draftDependencies: SongFactoryDependencies = {
-  createId: () => crypto.randomUUID(),
+  createId: createUuid,
   now: () => new Date().toISOString(),
 };
 
@@ -43,7 +54,9 @@ export const Route = createFileRoute("/_app/songs/$songId")({
 type SaveStatus = "clean" | "dirty" | "saving" | "saved" | "error";
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("es", { dateStyle: "long", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("es", { dateStyle: "long", timeStyle: "short" }).format(
+    new Date(value),
+  );
 }
 
 function formatTime(value: Date): string {
@@ -71,7 +84,8 @@ function SongEditorPage() {
     if (!persistedSong) return;
     setDraft((current) => {
       if (!current || current.id !== persistedSong.id) return persistedSong;
-      if (saveStatus === "dirty" || saveStatus === "saving" || saveStatus === "error") return current;
+      if (saveStatus === "dirty" || saveStatus === "saving" || saveStatus === "error")
+        return current;
       return persistedSong;
     });
   }, [persistedSong, saveStatus]);
@@ -98,12 +112,17 @@ function SongEditorPage() {
     }
   }, [clearTimer, songsContext]);
 
-  const markDirty = useCallback((next: Song) => {
-    setDraft(next);
-    setSaveStatus("dirty");
-    clearTimer();
-    saveTimer.current = setTimeout(() => { void flush(); }, AUTOSAVE_DELAY_MS);
-  }, [clearTimer, flush]);
+  const markDirty = useCallback(
+    (next: Song) => {
+      setDraft(next);
+      setSaveStatus("dirty");
+      clearTimer();
+      saveTimer.current = setTimeout(() => {
+        void flush();
+      }, AUTOSAVE_DELAY_MS);
+    },
+    [clearTimer, flush],
+  );
 
   const flushIfPending = useCallback(() => {
     if (saveStatus === "dirty") void flush();
@@ -115,16 +134,43 @@ function SongEditorPage() {
 
   const statusIndicator = useMemo(() => {
     switch (saveStatus) {
-      case "dirty": return <StatusBadge tone="sync" showDot={false}>Cambios sin guardar</StatusBadge>;
-      case "saving": return <StatusBadge tone="sync" pulse>Guardando…</StatusBadge>;
-      case "saved": return <StatusBadge tone="online" showDot={false}>Guardado {savedAt ? formatTime(savedAt) : ""}</StatusBadge>;
-      case "error": return <StatusBadge tone="live" showDot={false}>Error al guardar</StatusBadge>;
-      default: return null;
+      case "dirty":
+        return (
+          <StatusBadge tone="sync" showDot={false}>
+            Cambios sin guardar
+          </StatusBadge>
+        );
+      case "saving":
+        return (
+          <StatusBadge tone="sync" pulse>
+            Guardando…
+          </StatusBadge>
+        );
+      case "saved":
+        return (
+          <StatusBadge tone="online" showDot={false}>
+            Guardado {savedAt ? formatTime(savedAt) : ""}
+          </StatusBadge>
+        );
+      case "error":
+        return (
+          <StatusBadge tone="live" showDot={false}>
+            Error al guardar
+          </StatusBadge>
+        );
+      default:
+        return null;
     }
   }, [saveStatus, savedAt]);
 
   if (loading) {
-    return <Page><p className="text-sm text-muted-foreground" role="status">Cargando canción…</p></Page>;
+    return (
+      <Page>
+        <p className="text-sm text-muted-foreground" role="status">
+          Cargando canción…
+        </p>
+      </Page>
+    );
   }
 
   if (!song) {
@@ -134,7 +180,11 @@ function SongEditorPage() {
           icon={ListMusic}
           title="Canción no encontrada"
           description="La canción no existe o fue eliminada de este dispositivo."
-          actions={<Button asChild variant="outline"><Link to="/songs">Volver a Songs</Link></Button>}
+          actions={
+            <Button asChild variant="outline">
+              <Link to="/songs">Volver a Songs</Link>
+            </Button>
+          }
         />
       </Page>
     );
@@ -156,7 +206,10 @@ function SongEditorPage() {
     <Page>
       <div className="mb-4 flex items-center justify-between gap-3">
         <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link to="/songs"><ArrowLeft />Songs</Link>
+          <Link to="/songs">
+            <ArrowLeft />
+            Songs
+          </Link>
         </Button>
         <div aria-live="polite">{statusIndicator}</div>
       </div>
@@ -188,36 +241,62 @@ function SongEditorPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => void handleDuplicate().catch(() => undefined)}>
-            <Copy />Duplicar
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleDuplicate().catch(() => undefined)}
+          >
+            <Copy />
+            Duplicar
           </Button>
-          <Button variant="outline" size="sm" className="text-destructive hover:text-destructive"
-            onClick={() => setDeleteOpen(true)}>
-            <Trash2 />Eliminar
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2 />
+            Eliminar
           </Button>
         </div>
       </div>
 
-      <section aria-labelledby="song-dates-title" className="mt-5 grid gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-2">
-        <h2 id="song-dates-title" className="sr-only">Fechas de la canción</h2>
+      <section
+        aria-labelledby="song-dates-title"
+        className="mt-5 grid gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-2"
+      >
+        <h2 id="song-dates-title" className="sr-only">
+          Fechas de la canción
+        </h2>
         <div className="flex items-start gap-3 bg-card p-4">
           <Calendar className="mt-0.5 size-4 text-muted-foreground" aria-hidden="true" />
-          <div><p className="text-xs uppercase text-muted-foreground">Creada</p><p className="mt-1 text-sm text-foreground">{formatDate(song.createdAt)}</p></div>
+          <div>
+            <p className="text-xs uppercase text-muted-foreground">Creada</p>
+            <p className="mt-1 text-sm text-foreground">{formatDate(song.createdAt)}</p>
+          </div>
         </div>
         <div className="flex items-start gap-3 bg-card p-4">
           <Clock className="mt-0.5 size-4 text-muted-foreground" aria-hidden="true" />
-          <div><p className="text-xs uppercase text-muted-foreground">Última modificación</p><p className="mt-1 text-sm text-foreground">{formatDate(song.updatedAt)}</p></div>
+          <div>
+            <p className="text-xs uppercase text-muted-foreground">Última modificación</p>
+            <p className="mt-1 text-sm text-foreground">{formatDate(song.updatedAt)}</p>
+          </div>
         </div>
       </section>
 
       <section aria-labelledby="sections-title" className="mt-6 border-t border-border pt-5">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h2 id="sections-title" className="text-base font-semibold text-foreground">Letra por secciones</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Cada sección se convertirá en slides en una fase posterior.</p>
+            <h2 id="sections-title" className="text-base font-semibold text-foreground">
+              Letra por secciones
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Cada sección se convertirá en slides en una fase posterior.
+            </p>
           </div>
           <Button size="sm" onClick={() => markDirty(addSection(song, "verse", draftDependencies))}>
-            <Plus />Añadir sección
+            <Plus />
+            Añadir sección
           </Button>
         </div>
 
@@ -226,7 +305,15 @@ function SongEditorPage() {
             icon={ListMusic}
             title="Sin secciones todavía"
             description="Añade la primera sección para estructurar la letra (verso, coro, puente…)."
-            actions={<Button size="sm" onClick={() => markDirty(addSection(song, "verse", draftDependencies))}><Plus />Añadir sección</Button>}
+            actions={
+              <Button
+                size="sm"
+                onClick={() => markDirty(addSection(song, "verse", draftDependencies))}
+              >
+                <Plus />
+                Añadir sección
+              </Button>
+            }
           />
         ) : (
           <div className="space-y-3">
@@ -236,9 +323,13 @@ function SongEditorPage() {
                 section={section}
                 isFirst={index === 0}
                 isLast={index === song.sections.length - 1}
-                onChange={(input) => markDirty(updateSection(song, section.id, input, draftDependencies.now))}
+                onChange={(input) =>
+                  markDirty(updateSection(song, section.id, input, draftDependencies.now))
+                }
                 onBlurFlush={flushIfPending}
-                onMove={(direction) => markDirty(moveSection(song, section.id, direction, draftDependencies.now))}
+                onMove={(direction) =>
+                  markDirty(moveSection(song, section.id, direction, draftDependencies.now))
+                }
                 onRemove={() => markDirty(removeSection(song, section.id, draftDependencies.now))}
               />
             ))}
@@ -256,8 +347,10 @@ function SongEditorPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => void handleDelete().catch(() => undefined)}>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => void handleDelete().catch(() => undefined)}
+            >
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>

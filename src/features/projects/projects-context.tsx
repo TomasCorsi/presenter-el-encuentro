@@ -15,6 +15,7 @@ import { ProjectService } from "@/features/projects/project-service";
 import { createLocalStorageProjectRepository } from "@/services/projects/local-storage-project-repository";
 import type { ProjectRepository } from "@/services/projects/project-repository";
 import type { LocalDataChangeBus } from "@/services/local-data/local-data-change-bus";
+import { createUuid } from "@/utils/create-id";
 
 interface ProjectsState {
   projects: Project[];
@@ -100,7 +101,7 @@ export function ProjectsProvider({
     if (typeof window === "undefined") return null;
     const resolved = repository ?? createLocalStorageProjectRepository(window.localStorage);
     return new ProjectService(resolved, {
-      createId: () => crypto.randomUUID(),
+      createId: createUuid,
       now: () => new Date().toISOString(),
     });
   }, [repository]);
