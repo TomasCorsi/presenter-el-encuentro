@@ -45,9 +45,13 @@ function openDatabase(factory: IDBFactory): Promise<IDBDatabase> {
   });
 }
 
-export function createIndexedDbBlobMediaStorage(factory: IDBFactory): MediaFileStorage {
+export function createIndexedDbBlobMediaStorage(
+  factory: IDBFactory,
+  generation = "legacy",
+): MediaFileStorage & { clearGeneration(): Promise<void> } {
   let connection: Promise<IDBDatabase> | null = null;
   const db = () => (connection ??= openDatabase(factory));
+  const key = (id: string) => (generation === "legacy" ? id : `${generation}|${id}`);
 
   return {
     kind: "indexeddb-blob",
@@ -55,29 +59,36 @@ export function createIndexedDbBlobMediaStorage(factory: IDBFactory): MediaFileS
     async save(id, file) {
       const database = await db();
       const tx = database.transaction(FILES_STORE, "readwrite");
-      tx.objectStore(FILES_STORE).put(file, id);
+      tx.objectStore(FILES_STORE).put(file, key(id));
       await done(tx);
+    },
+
+    async saveStream(id, stream, mimeType) {
+      const blob = await new Response(stream).blob();
+      await this.save(id, blob.type ? blob : new Blob([blob], { type: mimeType }));
     },
 
     async get(id) {
       const database = await db();
-      const value = await request(database.transaction(FILES_STORE).objectStore(FILES_STORE).get(id));
+      const value = await request(
+        database.transaction(FILES_STORE).objectStore(FILES_STORE).get(key(id)),
+      );
       return value instanceof Blob ? value : null;
     },
 
     async delete(id) {
       const database = await db();
       const tx = database.transaction(FILES_STORE, "readwrite");
-      tx.objectStore(FILES_STORE).delete(id);
+      tx.objectStore(FILES_STORE).delete(key(id));
       await done(tx);
     },
 
     async exists(id) {
       const database = await db();
-      const key = await request(
-        database.transaction(FILES_STORE).objectStore(FILES_STORE).getKey(id),
+      const storedKey = await request(
+        database.transaction(FILES_STORE).objectStore(FILES_STORE).getKey(key(id)),
       );
-      return key !== undefined;
+      return storedKey !== undefined;
     },
 
     async getUrl(id): Promise<MediaUrlHandle | null> {
@@ -85,6 +96,21 @@ export function createIndexedDbBlobMediaStorage(factory: IDBFactory): MediaFileS
       if (!blob) return null;
       const url = URL.createObjectURL(blob);
       return { url, release: () => URL.revokeObjectURL(url) };
+    },
+
+    async clearGeneration() {
+      if (generation === "legacy") return;
+      const database = await db();
+      const tx = database.transaction(FILES_STORE, "readwrite");
+      const store = tx.objectStore(FILES_STORE);
+      const cursor = store.openKeyCursor();
+      cursor.onsuccess = () => {
+        const current = cursor.result;
+        if (!current) return;
+        if (String(current.key).startsWith(`${generation}|`)) current.delete();
+        current.continue();
+      };
+      await done(tx);
     },
   };
 }

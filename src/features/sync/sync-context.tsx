@@ -13,6 +13,7 @@ import { useCloud, useCloudSyncClient } from "@/features/cloud/cloud-context";
 import { useLocalData } from "@/features/local-data/local-data-context";
 import { createSupabaseSyncGateway } from "@/services/sync/sync-cloud-gateway";
 import { SyncEngine } from "@/services/sync/sync-engine";
+import { maintenanceLeaseIsActive } from "@/services/backup/local-maintenance-coordinator";
 
 export interface SyncRuntimeValue {
   status: SyncStatus;
@@ -23,6 +24,8 @@ export interface SyncRuntimeValue {
   conflictsCount: number;
   errorCount: number;
   error: string | null;
+  maintenance: boolean;
+  beginMaintenance(): Promise<() => void>;
   assessLink(): Promise<void>;
   confirmLink(): Promise<void>;
   syncNow(): Promise<void>;
@@ -52,6 +55,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [pendingCount, setPendingCount] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
   const [running, setRunning] = useState(false);
+  const [maintenance, setMaintenance] = useState(false);
+  const maintenanceRef = useRef(false);
+  const runningRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true);
   const previousAuth = useRef(cloud.auth);
@@ -78,7 +84,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [local]);
 
   const syncNow = useCallback(async () => {
-    if (!engine || !local) return;
+    if (!engine || !local || maintenanceRef.current || runningRef.current) return;
+    runningRef.current = true;
     setRunning(true);
     setError(null);
     try {
@@ -87,9 +94,29 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       setError(reason instanceof Error ? reason.message : "No se pudo sincronizar.");
     } finally {
       setRunning(false);
+      runningRef.current = false;
       await refresh();
     }
   }, [engine, local, refresh]);
+
+  useEffect(() => {
+    const refreshMaintenance = () => {
+      const active = maintenanceLeaseIsActive(window.localStorage);
+      maintenanceRef.current = active;
+      setMaintenance(active);
+    };
+    refreshMaintenance();
+    const channel =
+      typeof BroadcastChannel === "undefined"
+        ? null
+        : new BroadcastChannel("presenter-maintenance-v1");
+    window.addEventListener("storage", refreshMaintenance);
+    channel?.addEventListener("message", refreshMaintenance);
+    return () => {
+      window.removeEventListener("storage", refreshMaintenance);
+      channel?.close();
+    };
+  }, []);
 
   useEffect(() => {
     mounted.current = true;
@@ -182,6 +209,18 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       conflictsCount: conflicts.length,
       errorCount,
       error,
+      maintenance,
+      beginMaintenance: async () => {
+        maintenanceRef.current = true;
+        setMaintenance(true);
+        while (runningRef.current) {
+          await new Promise((resolve) => window.setTimeout(resolve, 25));
+        }
+        return () => {
+          maintenanceRef.current = false;
+          setMaintenance(false);
+        };
+      },
       assessLink: async () => {
         if (!local || !gateway || !cloud.user || !cloud.identity)
           throw new Error("Iniciá sesión y conectá Supabase antes de vincular.");
@@ -252,6 +291,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       gateway,
       link,
       local,
+      maintenance,
       pendingCount,
       refresh,
       status,

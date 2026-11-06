@@ -1,10 +1,6 @@
 import type { MediaAsset, MediaCollection } from "@/domain/media/media";
 
-import {
-  parseMediaAsset,
-  parseMediaCollection,
-  type MediaRepository,
-} from "./media-repository";
+import { parseMediaAsset, parseMediaCollection, type MediaRepository } from "./media-repository";
 
 /**
  * Metadata de Media en IndexedDB (misma filosofía que Bible: la API nativa,
@@ -12,10 +8,14 @@ import {
  * blobs); aquí solo hay metadata. Client-only.
  */
 
-const DB_NAME = "broadcast-control.media";
-const DB_VERSION = 2;
-const ASSETS_STORE = "assets";
-const COLLECTIONS_STORE = "collections";
+export const MEDIA_DB_NAME = "broadcast-control.media";
+export const MEDIA_DB_VERSION = 2;
+export const MEDIA_ASSETS_STORE = "assets";
+export const MEDIA_COLLECTIONS_STORE = "collections";
+const DB_NAME = MEDIA_DB_NAME;
+const DB_VERSION = MEDIA_DB_VERSION;
+const ASSETS_STORE = MEDIA_ASSETS_STORE;
+const COLLECTIONS_STORE = MEDIA_COLLECTIONS_STORE;
 
 /** Upgrade aditivo: nunca recrea el store de assets ni toca el DB separado de bytes. */
 export function upgradeMediaDatabase(database: IDBDatabase): void {
@@ -66,9 +66,7 @@ export function createIndexedDbMediaRepository(factory: IDBFactory): MediaReposi
       const values = await request(
         database.transaction(ASSETS_STORE).objectStore(ASSETS_STORE).getAll(),
       );
-      return values
-        .map(parseMediaAsset)
-        .filter((asset): asset is MediaAsset => asset !== null);
+      return values.map(parseMediaAsset).filter((asset): asset is MediaAsset => asset !== null);
     },
 
     async get(id) {

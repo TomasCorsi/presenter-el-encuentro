@@ -14,6 +14,7 @@ import { appContentOverflowClass } from "@/features/live/live-layout";
 import { CloudProvider } from "@/features/cloud/cloud-context";
 import { cn } from "@/lib/utils";
 import { SyncProvider } from "@/features/sync/sync-context";
+import { BackupProvider } from "@/features/backup/backup-context";
 
 export const Route = createFileRoute("/_app")({
   component: AppShell,
@@ -47,27 +48,32 @@ function AppDataProviders({ liveRoute }: { liveRoute: boolean }) {
         <PresetsProvider repository={repositories.presets} changes={changes}>
           <BibleProvider>
             <MediaProvider projectRepository={repositories.projects}>
-              {/* El motor de presentación también vive en el shell: montarlo en
+              <BackupProvider>
+                {/* El motor de presentación también vive en el shell: montarlo en
                   la ruta /live lo remontaría y lo expondría a duplicados de
                   módulo al dividirse el bundle de la ruta. */}
-              <PresentationProvider>
-                <SidebarProvider>
-                  {/* Altura fija de viewport: el scroll vive dentro de <main>,
+                <PresentationProvider>
+                  <SidebarProvider>
+                    {/* Altura fija de viewport: el scroll vive dentro de <main>,
                       nunca en la ventana (la consola de Live no debe desplazarse). */}
-                  <div className="flex h-screen w-full overflow-hidden bg-background">
-                    <AppSidebar />
-                    <SidebarInset className="flex min-w-0 flex-1 flex-col bg-background">
-                      <AppTopbar />
-                      <main
-                        data-live-scroll-root={liveRoute ? "locked" : "scrollable"}
-                        className={cn("min-h-0 min-w-0 flex-1", appContentOverflowClass(liveRoute))}
-                      >
-                        <Outlet />
-                      </main>
-                    </SidebarInset>
-                  </div>
-                </SidebarProvider>
-              </PresentationProvider>
+                    <div className="flex h-screen w-full overflow-hidden bg-background">
+                      <AppSidebar />
+                      <SidebarInset className="flex min-w-0 flex-1 flex-col bg-background">
+                        <AppTopbar />
+                        <main
+                          data-live-scroll-root={liveRoute ? "locked" : "scrollable"}
+                          className={cn(
+                            "min-h-0 min-w-0 flex-1",
+                            appContentOverflowClass(liveRoute),
+                          )}
+                        >
+                          <Outlet />
+                        </main>
+                      </SidebarInset>
+                    </div>
+                  </SidebarProvider>
+                </PresentationProvider>
+              </BackupProvider>
             </MediaProvider>
           </BibleProvider>
         </PresetsProvider>

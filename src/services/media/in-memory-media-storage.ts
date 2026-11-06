@@ -15,6 +15,10 @@ export function createInMemoryMediaStorage(): MediaFileStorage & { files: Map<st
       files.set(id, file);
     },
 
+    async saveStream(id, stream, mimeType) {
+      files.set(id, new Blob([await new Response(stream).blob()], { type: mimeType }));
+    },
+
     async get(id) {
       return files.get(id) ?? null;
     },

@@ -1071,6 +1071,23 @@ de sync, tombstones, cola ni backend.
 
 **Estado:** aceptada (Fase 12).
 
+## ADR-059 — Backup local ZIP64, replace-only y generaciones Media
+
+**Decisión.** `.presenterbackup` es ZIP64 v1 plaintext, streaming secuencial,
+CRC32 y SHA-256 por entry. Restore reemplaza el perfil local: no combina, no
+importa como copia y no toca cloud. Excluye Sync/Auth, Presentation/Live/Outputs,
+caches y preferencias físicas.
+
+La atomicidad multi-base usa journal durable, snapshot de rollback y generaciones
+Media. File System Access es mejora progresiva; Blob se limita a 512 MiB. Backup
+sin Media puede correr durante Live; completo y Restore coordinan ventanas. No hay
+cifrado ni password ZIP.
+
+**Consecuencias.** El archivo se verifica sin mutar, un crash no monta estado
+mixto y Restore exige una evaluación Sync nueva. Los datos son legibles en texto.
+
+**Estado:** aceptada (Fase 15).
+
 ## ADR-058 — Sync local-first con journal transaccional y CAS cloud
 
 **Contexto.** Fase 13 dejó Supabase validado pero desconectado del camino

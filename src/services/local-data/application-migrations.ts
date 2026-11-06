@@ -67,7 +67,15 @@ const RUNDOWN_TYPES = new Set<RundownItemType>([
   "countdown",
   "message",
 ]);
-const SECTION_TYPES = new Set(["verse", "chorus", "prechorus", "bridge", "intro", "outro", "custom"]);
+const SECTION_TYPES = new Set([
+  "verse",
+  "chorus",
+  "prechorus",
+  "bridge",
+  "intro",
+  "outro",
+  "custom",
+]);
 
 function parseRundownItem(value: unknown): RundownItem | null {
   if (!value || typeof value !== "object") return null;
@@ -79,7 +87,8 @@ function parseRundownItem(value: unknown): RundownItem | null {
     typeof item["order"] !== "number" ||
     !RUNDOWN_TYPES.has(item["type"] as RundownItemType) ||
     (item["presetId"] !== undefined && typeof item["presetId"] !== "string")
-  ) return null;
+  )
+    return null;
 
   if (item["payload"] !== undefined) {
     const payload = item["payload"];
@@ -96,7 +105,8 @@ function parseRundownItem(value: unknown): RundownItem | null {
     type: item["type"] as RundownItemType,
   };
   if (typeof item["presetId"] === "string") parsed.presetId = item["presetId"];
-  if (item["payload"] !== undefined) parsed.payload = structuredClone(item["payload"]) as RundownItem["payload"];
+  if (item["payload"] !== undefined)
+    parsed.payload = structuredClone(item["payload"]) as RundownItem["payload"];
   if (parsed.type === "song" || parsed.type === "bible") {
     const background = item["background"];
     if (background !== undefined) {
@@ -109,7 +119,7 @@ function parseRundownItem(value: unknown): RundownItem | null {
   return parsed;
 }
 
-function parseProject(value: unknown, version: 1 | 2): Project | null {
+export function parseProject(value: unknown, version: 1 | 2): Project | null {
   if (!value || typeof value !== "object") return null;
   const item = value as Record<string, unknown>;
   if (
@@ -118,7 +128,8 @@ function parseProject(value: unknown, version: 1 | 2): Project | null {
     typeof item["name"] !== "string" ||
     typeof item["createdAt"] !== "string" ||
     typeof item["updatedAt"] !== "string"
-  ) return null;
+  )
+    return null;
 
   let rundown: RundownItem[] = [];
   if (version === 2) {
@@ -143,17 +154,22 @@ function parseProjects(raw: string | null, version: 1 | 2): ParsedLegacy<Project
   if (raw === null) return { status: "absent" };
   try {
     const value: unknown = JSON.parse(raw);
-    if (!value || typeof value !== "object") return { status: "invalid", reason: "El payload no es un objeto." };
+    if (!value || typeof value !== "object")
+      return { status: "invalid", reason: "El payload no es un objeto." };
     const candidate = value as Record<string, unknown>;
     if (candidate["version"] !== version || !Array.isArray(candidate["projects"])) {
       return { status: "invalid", reason: "La versión o colección de Projects es inválida." };
     }
     const projects = candidate["projects"].map((entry) => parseProject(entry, version));
     if (projects.some((entry) => entry === null)) {
-      return { status: "invalid", reason: "Projects contiene una entidad inválida; no se migró nada." };
+      return {
+        status: "invalid",
+        reason: "Projects contiene una entidad inválida; no se migró nada.",
+      };
     }
     const values = projects as Project[];
-    const requested = typeof candidate["activeProjectId"] === "string" ? candidate["activeProjectId"] : null;
+    const requested =
+      typeof candidate["activeProjectId"] === "string" ? candidate["activeProjectId"] : null;
     return {
       status: "valid",
       values,
@@ -167,21 +183,30 @@ function parseProjects(raw: string | null, version: 1 | 2): ParsedLegacy<Project
 function parseSongSection(value: unknown): value is SongSection {
   if (!value || typeof value !== "object") return false;
   const item = value as Record<string, unknown>;
-  return typeof item["id"] === "string" && typeof item["type"] === "string" &&
-    SECTION_TYPES.has(item["type"]) && typeof item["label"] === "string" &&
-    typeof item["content"] === "string" && typeof item["order"] === "number";
+  return (
+    typeof item["id"] === "string" &&
+    typeof item["type"] === "string" &&
+    SECTION_TYPES.has(item["type"]) &&
+    typeof item["label"] === "string" &&
+    typeof item["content"] === "string" &&
+    typeof item["order"] === "number"
+  );
 }
 
-function parseSong(value: unknown): Song | null {
+export function parseSong(value: unknown): Song | null {
   if (!value || typeof value !== "object") return null;
   const item = value as Record<string, unknown>;
   if (
-    typeof item["id"] !== "string" || typeof item["workspaceId"] !== "string" ||
+    typeof item["id"] !== "string" ||
+    typeof item["workspaceId"] !== "string" ||
     typeof item["title"] !== "string" ||
     (item["author"] !== undefined && typeof item["author"] !== "string") ||
-    !Array.isArray(item["sections"]) || !item["sections"].every(parseSongSection) ||
-    typeof item["createdAt"] !== "string" || typeof item["updatedAt"] !== "string"
-  ) return null;
+    !Array.isArray(item["sections"]) ||
+    !item["sections"].every(parseSongSection) ||
+    typeof item["createdAt"] !== "string" ||
+    typeof item["updatedAt"] !== "string"
+  )
+    return null;
   return structuredClone(item) as unknown as Song;
 }
 
@@ -189,14 +214,18 @@ function parseSongs(raw: string | null): ParsedLegacy<Song> {
   if (raw === null) return { status: "absent" };
   try {
     const value: unknown = JSON.parse(raw);
-    if (!value || typeof value !== "object") return { status: "invalid", reason: "El payload no es un objeto." };
+    if (!value || typeof value !== "object")
+      return { status: "invalid", reason: "El payload no es un objeto." };
     const candidate = value as Record<string, unknown>;
     if (candidate["version"] !== 1 || !Array.isArray(candidate["songs"])) {
       return { status: "invalid", reason: "La versión o colección de Songs es inválida." };
     }
     const songs = candidate["songs"].map(parseSong);
     if (songs.some((entry) => entry === null)) {
-      return { status: "invalid", reason: "Songs contiene una entidad inválida; no se migró nada." };
+      return {
+        status: "invalid",
+        reason: "Songs contiene una entidad inválida; no se migró nada.",
+      };
     }
     return { status: "valid", values: songs as Song[] };
   } catch {
@@ -204,18 +233,26 @@ function parseSongs(raw: string | null): ParsedLegacy<Song> {
   }
 }
 
-function parsePreset(value: unknown): Preset | null {
+export function parsePreset(value: unknown): Preset | null {
   if (!value || typeof value !== "object") return null;
   const item = value as Record<string, unknown>;
   if (
-    typeof item["id"] !== "string" || item["id"] === "" || item["id"] === DEFAULT_PRESET_ID ||
-    typeof item["workspaceId"] !== "string" || typeof item["name"] !== "string" ||
-    typeof item["createdAt"] !== "string" || typeof item["updatedAt"] !== "string"
-  ) return null;
+    typeof item["id"] !== "string" ||
+    item["id"] === "" ||
+    item["id"] === DEFAULT_PRESET_ID ||
+    typeof item["workspaceId"] !== "string" ||
+    typeof item["name"] !== "string" ||
+    typeof item["createdAt"] !== "string" ||
+    typeof item["updatedAt"] !== "string"
+  )
+    return null;
   return {
-    id: item["id"], workspaceId: item["workspaceId"], name: item["name"],
+    id: item["id"],
+    workspaceId: item["workspaceId"],
+    name: item["name"],
     style: normalizePresetStyle(item["style"]),
-    createdAt: item["createdAt"], updatedAt: item["updatedAt"],
+    createdAt: item["createdAt"],
+    updatedAt: item["updatedAt"],
   };
 }
 
@@ -223,14 +260,18 @@ function parsePresets(raw: string | null): ParsedLegacy<Preset> {
   if (raw === null) return { status: "absent" };
   try {
     const value: unknown = JSON.parse(raw);
-    if (!value || typeof value !== "object") return { status: "invalid", reason: "El payload no es un objeto." };
+    if (!value || typeof value !== "object")
+      return { status: "invalid", reason: "El payload no es un objeto." };
     const candidate = value as Record<string, unknown>;
     if (candidate["version"] !== 1 || !Array.isArray(candidate["presets"])) {
       return { status: "invalid", reason: "La versión o colección de Presets es inválida." };
     }
     const presets = candidate["presets"].map(parsePreset);
     if (presets.some((entry) => entry === null)) {
-      return { status: "invalid", reason: "Presets contiene una entidad inválida; no se migró nada." };
+      return {
+        status: "invalid",
+        reason: "Presets contiene una entidad inválida; no se migró nada.",
+      };
     }
     return { status: "valid", values: presets as Preset[] };
   } catch {
@@ -238,20 +279,27 @@ function parsePresets(raw: string | null): ParsedLegacy<Preset> {
   }
 }
 
-export function inspectLegacyData(storage: ReadonlyKeyValueStorage): Record<LocalDataDomain, LegacyDomainInspection> {
+export function inspectLegacyData(
+  storage: ReadonlyKeyValueStorage,
+): Record<LocalDataDomain, LegacyDomainInspection> {
   const projectsV2 = parseProjects(storage.getItem(PROJECTS_V2_KEY), 2);
   const projectsV1 = parseProjects(storage.getItem(PROJECTS_V1_KEY), 1);
   const songs = parseSongs(storage.getItem(SONGS_V1_KEY));
   const presets = parsePresets(storage.getItem(PRESETS_V1_KEY));
   const projectFallback = projectsV2.status === "invalid" && projectsV1.status === "valid";
-  const projectSource = projectsV2.status === "valid"
-    ? "local-storage-v2"
-    : projectsV1.status === "valid" ? "local-storage-v1" : "empty";
+  const projectSource =
+    projectsV2.status === "valid"
+      ? "local-storage-v2"
+      : projectsV1.status === "valid"
+        ? "local-storage-v1"
+        : "empty";
   return {
     projects: {
       usable: projectsV2.status !== "invalid" || projectFallback,
       source: projectSource,
-      ...(projectsV2.status === "invalid" && !projectFallback ? { warning: projectsV2.reason } : {}),
+      ...(projectsV2.status === "invalid" && !projectFallback
+        ? { warning: projectsV2.reason }
+        : {}),
     },
     songs: {
       usable: songs.status !== "invalid",
@@ -267,7 +315,8 @@ export function inspectLegacyData(storage: ReadonlyKeyValueStorage): Record<Loca
 }
 
 function mergeByUpdatedAt<T extends { id: string; updatedAt: string }>(
-  indexedDbValues: readonly T[], legacyValues: readonly T[],
+  indexedDbValues: readonly T[],
+  legacyValues: readonly T[],
 ): T[] {
   const merged = new Map(indexedDbValues.map((value) => [value.id, value]));
   for (const legacy of legacyValues) {
@@ -278,10 +327,14 @@ function mergeByUpdatedAt<T extends { id: string; updatedAt: string }>(
 }
 
 async function existingMarker(
-  database: IDBDatabase, domain: LocalDataDomain,
+  database: IDBDatabase,
+  domain: LocalDataDomain,
 ): Promise<MigrationMarkerValue | null> {
   const record = await idbRequest<ApplicationMetaRecord<MigrationMarkerValue> | undefined>(
-    database.transaction(APPLICATION_STORES.meta).objectStore(APPLICATION_STORES.meta).get(MIGRATION_MARKERS[domain]),
+    database
+      .transaction(APPLICATION_STORES.meta)
+      .objectStore(APPLICATION_STORES.meta)
+      .get(MIGRATION_MARKERS[domain]),
   );
   return record?.value ?? null;
 }
@@ -300,14 +353,18 @@ async function migrateValues<T extends { id: string; updatedAt: string }>(option
   if (marker) return { domain: options.domain, state: "complete", ...marker };
   if (options.parsed.status === "invalid") {
     return {
-      domain: options.domain, state: "degraded", source: options.source, count: 0,
+      domain: options.domain,
+      state: "degraded",
+      source: options.source,
+      count: 0,
       warning: options.parsed.reason,
       legacyUsable: false,
     };
   }
 
   const transaction = database.transaction(
-    [options.storeName, APPLICATION_STORES.meta], "readwrite",
+    [options.storeName, APPLICATION_STORES.meta],
+    "readwrite",
   );
   const completed = idbTransactionDone(transaction);
   try {
@@ -324,17 +381,25 @@ async function migrateValues<T extends { id: string; updatedAt: string }>(option
       );
       const requested = currentActive
         ? currentActive.value
-        : options.parsed.status === "valid" ? options.parsed.activeProjectId ?? null : null;
+        : options.parsed.status === "valid"
+          ? (options.parsed.activeProjectId ?? null)
+          : null;
       const activeProjectId = merged.some((value) => value.id === requested) ? requested : null;
-      meta.put({ key: ACTIVE_PROJECT_META_KEY, value: activeProjectId } satisfies ApplicationMetaRecord);
+      meta.put({
+        key: ACTIVE_PROJECT_META_KEY,
+        value: activeProjectId,
+      } satisfies ApplicationMetaRecord);
     }
 
     const markerValue: MigrationMarkerValue = {
-      completedAt: options.now(), source: options.source, count: merged.length,
+      completedAt: options.now(),
+      source: options.source,
+      count: merged.length,
       ...(options.warning ? { warning: options.warning } : {}),
     };
     transaction.objectStore(APPLICATION_STORES.meta).put({
-      key: MIGRATION_MARKERS[options.domain], value: markerValue,
+      key: MIGRATION_MARKERS[options.domain],
+      value: markerValue,
     } satisfies ApplicationMetaRecord);
     await completed;
     return { domain: options.domain, state: "complete", ...markerValue };
@@ -350,11 +415,14 @@ async function migrateValues<T extends { id: string; updatedAt: string }>(option
 }
 
 export async function migrateProjects(
-  factory: IDBFactory, storage: ReadonlyKeyValueStorage, now = () => new Date().toISOString(),
+  factory: IDBFactory,
+  storage: ReadonlyKeyValueStorage,
+  now = () => new Date().toISOString(),
 ): Promise<DomainMigrationResult> {
   const v2 = parseProjects(storage.getItem(PROJECTS_V2_KEY), 2);
   let parsed = v2;
-  let source: DomainMigrationResult["source"] = v2.status === "absent" ? "empty" : "local-storage-v2";
+  let source: DomainMigrationResult["source"] =
+    v2.status === "absent" ? "empty" : "local-storage-v2";
   let warning: string | undefined;
   if (v2.status !== "valid") {
     const v1 = parseProjects(storage.getItem(PROJECTS_V1_KEY), 1);
@@ -370,15 +438,45 @@ export async function migrateProjects(
       source = "local-storage-v1";
     }
   }
-  return migrateValues({ factory, domain: "projects", storeName: APPLICATION_STORES.projects, parsed, source, now, ...(warning ? { warning } : {}) });
+  return migrateValues({
+    factory,
+    domain: "projects",
+    storeName: APPLICATION_STORES.projects,
+    parsed,
+    source,
+    now,
+    ...(warning ? { warning } : {}),
+  });
 }
 
-export function migrateSongs(factory: IDBFactory, storage: ReadonlyKeyValueStorage, now = () => new Date().toISOString()) {
+export function migrateSongs(
+  factory: IDBFactory,
+  storage: ReadonlyKeyValueStorage,
+  now = () => new Date().toISOString(),
+) {
   const parsed = parseSongs(storage.getItem(SONGS_V1_KEY));
-  return migrateValues({ factory, domain: "songs", storeName: APPLICATION_STORES.songs, parsed, source: parsed.status === "absent" ? "empty" : "local-storage-v1", now });
+  return migrateValues({
+    factory,
+    domain: "songs",
+    storeName: APPLICATION_STORES.songs,
+    parsed,
+    source: parsed.status === "absent" ? "empty" : "local-storage-v1",
+    now,
+  });
 }
 
-export function migratePresets(factory: IDBFactory, storage: ReadonlyKeyValueStorage, now = () => new Date().toISOString()) {
+export function migratePresets(
+  factory: IDBFactory,
+  storage: ReadonlyKeyValueStorage,
+  now = () => new Date().toISOString(),
+) {
   const parsed = parsePresets(storage.getItem(PRESETS_V1_KEY));
-  return migrateValues({ factory, domain: "presets", storeName: APPLICATION_STORES.presets, parsed, source: parsed.status === "absent" ? "empty" : "local-storage-v1", now });
+  return migrateValues({
+    factory,
+    domain: "presets",
+    storeName: APPLICATION_STORES.presets,
+    parsed,
+    source: parsed.status === "absent" ? "empty" : "local-storage-v1",
+    now,
+  });
 }

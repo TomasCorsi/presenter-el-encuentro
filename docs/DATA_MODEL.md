@@ -437,3 +437,16 @@ Persistencia de Biblias: IndexedDB `broadcast-control.bible` (v1), stores
 `versions` (key `id`), `books` (key `versionId`) y `chapters`
 (key `${versionId}|${bookUsfm}|${chapter}`, índice `versionId`). Reinstalar
 una versión reemplaza sus datos sin dejar huérfanos.
+
+## Backup format v1 y maintenance
+
+El backup no es otra base autoritativa. Es un ZIP64 con `manifest.json`,
+`integrity.json`, archivos NDJSON/JSON y `media/NNNNNNNN.bin`. El manifest tiene
+versión propia, inventario, tamaños, capacidades, resumen Sync no sensible y
+SHA-256 por entry.
+
+`broadcast-control.maintenance` v1 contiene `restore_operations` con un journal
+singleton en fases `prepared`, `staged`, `committing` y `committed`. Guarda el
+rollback y punteros de generación, nunca cloud. Media restaurada vive en
+`media-generations/<restoreId>/` (OPFS) o bajo prefijo en IndexedDB Blob;
+`MediaAsset` no almacena paths de backup.

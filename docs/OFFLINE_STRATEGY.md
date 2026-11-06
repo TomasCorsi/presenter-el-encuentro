@@ -8,15 +8,15 @@ sincronización ni backup.
 
 ## Fuentes locales de verdad
 
-| Datos | Persistencia |
-| --- | --- |
-| Projects, Songs, Presets | IndexedDB `broadcast-control.app` |
-| Traducciones Bible | IndexedDB `broadcast-control.bible` |
-| Metadata y colecciones Media | IndexedDB `broadcast-control.media` |
-| Bytes Media | OPFS; fallback IndexedDB Blob sólo para imágenes |
-| Preferencias del dispositivo | `localStorage` |
-| Sesión Live y protocolo Output | Memoria / BroadcastChannel |
-| Relay Stream | Memoria del servidor local |
+| Datos                          | Persistencia                                     |
+| ------------------------------ | ------------------------------------------------ |
+| Projects, Songs, Presets       | IndexedDB `broadcast-control.app`                |
+| Traducciones Bible             | IndexedDB `broadcast-control.bible`              |
+| Metadata y colecciones Media   | IndexedDB `broadcast-control.media`              |
+| Bytes Media                    | OPFS; fallback IndexedDB Blob sólo para imágenes |
+| Preferencias del dispositivo   | `localStorage`                                   |
+| Sesión Live y protocolo Output | Memoria / BroadcastChannel                       |
+| Relay Stream                   | Memoria del servidor local                       |
 
 Las claves legacy de Projects, Songs y Presets se conservan como respaldo y no
 se escriben después de una migración exitosa. La sesión Live no se persiste.
@@ -124,3 +124,13 @@ incrementa intentos; auth pausa y validación queda como error manual.
 
 Sync no es backup: replica cambios y también deletes/conflictos. Unlink archiva
 estado sync sin borrar datos locales o cloud.
+
+## Backup offline
+
+Backup y Restore son enteramente locales: no dependen de red, Background Sync ni
+Supabase. El Service Worker no intercepta archivos elegidos ni streams de backup.
+File System Access escribe al destino; sin esa API se permite Blob hasta 512 MiB.
+
+Restore suspende Sync, bloquea otras ventanas, verifica el archive y usa staging
+más rollback. Sin Media se conserva metadata y las referencias faltantes siguen el
+fallback normal; nunca se inventan bytes ni se consulta cloud.

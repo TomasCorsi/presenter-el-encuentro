@@ -12,6 +12,7 @@ import type { MediaFileStorage, MediaUrlHandle } from "./media-file-storage";
  */
 
 const MEDIA_DIRECTORY = "media";
+const MEDIA_GENERATIONS_DIRECTORY = "media-generations";
 
 export function isOpfsAvailable(): boolean {
   return (
@@ -24,7 +25,7 @@ export function isOpfsAvailable(): boolean {
 type DirectoryHandle = {
   getDirectoryHandle(name: string, options?: { create?: boolean }): Promise<DirectoryHandle>;
   getFileHandle(name: string, options?: { create?: boolean }): Promise<FileSystemFileHandle>;
-  removeEntry(name: string): Promise<void>;
+  removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
 };
 
 function isNotFound(error: unknown): boolean {
@@ -35,21 +36,41 @@ const supportsMove =
   typeof FileSystemFileHandle !== "undefined" && "move" in FileSystemFileHandle.prototype;
 
 /** Storage OPFS del navegador. Lanza si OPFS no está disponible. */
-export function createBrowserOpfsMediaStorage(): MediaFileStorage {
+export function createBrowserOpfsMediaStorage(generation = "legacy"): MediaFileStorage {
   return createOpfsMediaStorage(
     () => navigator.storage.getDirectory() as unknown as Promise<DirectoryHandle>,
+    undefined,
+    generation,
   );
+}
+
+export async function deleteBrowserOpfsMediaGeneration(generation: string): Promise<void> {
+  if (generation === "legacy") return;
+  const root = (await navigator.storage.getDirectory()) as unknown as DirectoryHandle;
+  try {
+    const generations = await root.getDirectoryHandle(MEDIA_GENERATIONS_DIRECTORY);
+    await generations.removeEntry(generation, { recursive: true });
+  } catch (error) {
+    if (!isNotFound(error)) throw error;
+  }
 }
 
 export function createOpfsMediaStorage(
   getRoot: () => Promise<DirectoryHandle>,
   canMoveFiles: boolean = supportsMove,
+  generation = "legacy",
 ): MediaFileStorage {
   let directory: Promise<DirectoryHandle> | null = null;
   const mediaDir = () =>
-    (directory ??= getRoot().then((root) =>
-      root.getDirectoryHandle(MEDIA_DIRECTORY, { create: true }),
-    ));
+    (directory ??= getRoot().then(async (root) => {
+      if (generation === "legacy") {
+        return root.getDirectoryHandle(MEDIA_DIRECTORY, { create: true });
+      }
+      const generations = await root.getDirectoryHandle(MEDIA_GENERATIONS_DIRECTORY, {
+        create: true,
+      });
+      return generations.getDirectoryHandle(generation, { create: true });
+    }));
 
   async function removeQuietly(dir: DirectoryHandle, name: string): Promise<void> {
     try {
@@ -63,13 +84,17 @@ export function createOpfsMediaStorage(
     kind: "opfs",
 
     async save(id, file) {
+      return this.saveStream(id, file.stream(), file.type);
+    },
+
+    async saveStream(id, stream) {
       const dir = await mediaDir();
       const tempName = `${id}.part`;
       const targetName = canMoveFiles ? tempName : id;
       try {
         const handle = await dir.getFileHandle(targetName, { create: true });
         const writable = await handle.createWritable();
-        await file.stream().pipeTo(writable);
+        await stream.pipeTo(writable);
         if (canMoveFiles) {
           await removeQuietly(dir, id);
           await (handle as unknown as { move(name: string): Promise<void> }).move(id);

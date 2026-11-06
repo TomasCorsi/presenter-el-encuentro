@@ -793,3 +793,18 @@ resume real de PWA. No se realizó QA manual ni se creó commit.
 **Estado:** IMPLEMENTACIÓN COMPLETA / CLOUD MIGRATION PASS / pgTAP 25/25 PASS /
 QUALITY GATE AUTOMÁTICO COMPLETO / BUILD PASS / QA MANUAL DOS DISPOSITIVOS
 PENDIENTE.
+
+## Fase 15 — Backup y Restore local
+
+Cobertura focalizada: formato/naming/MIME, paths seguros, versión futura,
+duplicados case-only, límites, NDJSON, SHA incremental, migration registry, export
+verificable, exclusión Sync, Media faltante, replace-only, queue vacía, cambio de
+generación y recovery. Contratos estáticos verifican App Shell, ausencia en
+Outputs y protección de Presentation/Live/Output/PWA.
+
+Build client, SSR, Nitro `cloudflare-module`, PWA `injectManifest` y worker: PASS.
+Focalizados Backup: 16 PASS, 0 FAIL, 44 assertions. Suite completa: 461 PASS,
+0 FAIL, 1440 assertions en 87 archivos.
+
+QA manual pendiente: File System Access/OPFS con archivos grandes, cancelación,
+bloqueo entre perfiles y crash físico por fase. Sin commit y sin Fase 16.

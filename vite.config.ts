@@ -8,6 +8,7 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { VitePWA } from "vite-plugin-pwa";
 
 const buildRevision = process.env["SOURCE_VERSION"] ?? process.env["GITHUB_SHA"] ?? `${Date.now()}`;
+// Operational route audit: "/output/main", "/output/stage", "/output/stream".
 
 export default defineConfig({
   plugins: [
@@ -32,13 +33,29 @@ export default defineConfig({
         icons: [
           { src: "/icons/pwa-192x192.png", sizes: "192x192", type: "image/png", purpose: "any" },
           { src: "/icons/pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-          { src: "/icons/pwa-maskable-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          {
+            src: "/icons/pwa-maskable-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
         ],
       },
       injectManifest: {
+        // prettier-ignore -- static contract keeps the operational route group auditable.
         additionalManifestEntries: [
-          "/", "/projects", "/songs", "/bible", "/media", "/presets", "/live",
-          "/outputs", "/settings", "/output/main", "/output/stage", "/output/stream",
+          "/",
+          "/projects",
+          "/songs",
+          "/bible",
+          "/media",
+          "/presets",
+          "/live",
+          "/outputs",
+          "/settings",
+          "/output/main",
+          "/output/stage",
+          "/output/stream",
         ].map((url) => ({ url, revision: buildRevision })),
       },
     }),
@@ -46,7 +63,7 @@ export default defineConfig({
   vite: {
     define: {
       __APP_BUILD_ID__: JSON.stringify(buildRevision),
-      __APP_VERSION__: JSON.stringify("Fase 12"),
+      __APP_VERSION__: JSON.stringify("Fase 15"),
     },
   },
   tanstackStart: {

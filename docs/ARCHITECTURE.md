@@ -66,13 +66,13 @@ Estado conceptual:
 
 ```ts
 type PresentationState = {
-  previewItemId: string | null
-  previewSlideId: string | null
-  programSlideId: string | null
-  programMode: "content" | "clear" | "black"
-  detachedProgramSlide: Slide | null
-  runtime: PresentationRuntime
-}
+  previewItemId: string | null;
+  previewSlideId: string | null;
+  programSlideId: string | null;
+  programMode: "content" | "clear" | "black";
+  detachedProgramSlide: Slide | null;
+  runtime: PresentationRuntime;
+};
 ```
 
 Acciones principales:
@@ -209,12 +209,12 @@ IndexedDB, `localStorage`, StorageManager ni al Service Worker.
 
 ### Convención de rutas de outputs
 
-| URL              | Archivo                          |
-| ---------------- | -------------------------------- |
-| `/output/main`   | `src/routes/output.main.tsx`     |
-| `/output/stage`  | `src/routes/output.stage.tsx`    |
-| `/output/stream` | `src/routes/output.stream.tsx`   |
-| `/remote`        | `src/routes/remote.tsx`          |
+| URL              | Archivo                        |
+| ---------------- | ------------------------------ |
+| `/output/main`   | `src/routes/output.main.tsx`   |
+| `/output/stage`  | `src/routes/output.stage.tsx`  |
+| `/output/stream` | `src/routes/output.stream.tsx` |
+| `/remote`        | `src/routes/remote.tsx`        |
 
 Los outputs no contienen controles y no comparten layout con la aplicación.
 
@@ -378,7 +378,6 @@ Cada estado de datos distingue tres campos: `loading` (operación en curso),
 vistas bloquean solo mientras `hasLoaded` es `false`; refrescos posteriores no
 sustituyen la pantalla.
 
-
 ## Presets y renderizado (Fase 8)
 
 Composición de contenido y resolución de estilo son pasos distintos:
@@ -523,3 +522,16 @@ Sync nunca modifica PresentationStore, LiveSession, Preview, Program, playback
 u OutputSnapshot. Un cambio remoto sólo llega a repositories/providers; Live
 mantiene el snapshot congelado y requiere “Recargar presentación”. Media/Bible
 no se sincronizan y una referencia Media ausente usa el fallback existente.
+
+## Fase 15 — Backup y Restore local
+
+`BackupProvider` vive únicamente bajo App Shell, dentro de `MediaProvider` y
+fuera de Main/Stage/Stream. El formato v1 es ZIP64 plaintext: NDJSON, preferencias
+JSON, Media ordinal, `manifest.json` e `integrity.json`. zip.js mantiene CRC32 y
+noble hashes calcula SHA-256 incremental; un worker evita bloquear inspecciones.
+
+Restore verifica todo antes de mutar, crea un `RestoreJournal` durable en
+`broadcast-control.maintenance`, escribe Media en una generación invisible,
+reemplaza las bases locales y cambia el puntero al final. Un fallo hace rollback;
+un reinicio resuelve el journal antes del bootstrap. Sync se suspende y se vacían
+links, queue, checkpoints y conflicts; Supabase sólo recibe logout local poscommit.

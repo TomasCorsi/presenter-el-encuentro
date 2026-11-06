@@ -34,12 +34,18 @@ for (const method of ["GET", "POST", "PUT", "PATCH", "DELETE"] as const) {
 }
 
 registerRoute(
-  ({ request, url }) => request.method === "GET" && url.origin === sw.location.origin && url.pathname.startsWith("/assets/"),
+  ({ request, url }) =>
+    request.method === "GET" &&
+    url.origin === sw.location.origin &&
+    url.pathname.startsWith("/assets/"),
   new CacheFirst({ cacheName: `presenter-assets-${__APP_BUILD_ID__}` }),
 );
 
 registerRoute(
-  ({ request, url }) => request.mode === "navigate" && url.origin === sw.location.origin && !isNetworkOnlyPath(url.pathname),
+  ({ request, url }) =>
+    request.mode === "navigate" &&
+    url.origin === sw.location.origin &&
+    !isNetworkOnlyPath(url.pathname),
   async ({ request, url }) => {
     const precached = await matchPrecache(url.pathname);
     if (precached) return precached;
@@ -58,16 +64,46 @@ registerRoute(
 );
 
 sw.addEventListener("message", (event: ExtendableMessageEvent) => {
-  const data = event.data as { type?: string } | null;
+  const data = event.data as { type?: string; operation?: "backup" | "restore" } | null;
+  if (data?.type === "CHECK_MAINTENANCE_SAFETY") {
+    event.waitUntil(
+      (async () => {
+        const windows = await sw.clients.matchAll({ type: "window", includeUncontrolled: true });
+        const sourceId = (event.source as Client | null)?.id ?? null;
+        const otherPaths = windows
+          .filter((client) => client.id !== sourceId)
+          .map((client) => new URL(client.url).pathname);
+        const blocked =
+          data.operation === "restore"
+            ? otherPaths
+            : otherPaths.filter(
+                (path) =>
+                  blockingOperationalPaths(
+                    [
+                      {
+                        id: "candidate",
+                        url: new URL(path, sw.location.origin).href,
+                      } as WindowClient,
+                    ],
+                    null,
+                  ).length > 0,
+              );
+        event.ports[0]?.postMessage({ safe: blocked.length === 0, blocked });
+      })(),
+    );
+    return;
+  }
   if (data?.type === "CHECK_UPDATE_SAFETY" || data?.type === "SKIP_WAITING") {
-    event.waitUntil((async () => {
-      const windows = await sw.clients.matchAll({ type: "window", includeUncontrolled: true });
-      const blocked = blockingOperationalPaths(
-        windows,
-        (event.source as Client | null)?.id ?? null,
-      );
-      event.ports[0]?.postMessage({ safe: blocked.length === 0, blocked });
-      if (data.type === "SKIP_WAITING" && blocked.length === 0) await sw.skipWaiting();
-    })());
+    event.waitUntil(
+      (async () => {
+        const windows = await sw.clients.matchAll({ type: "window", includeUncontrolled: true });
+        const blocked = blockingOperationalPaths(
+          windows,
+          (event.source as Client | null)?.id ?? null,
+        );
+        event.ports[0]?.postMessage({ safe: blocked.length === 0, blocked });
+        if (data.type === "SKIP_WAITING" && blocked.length === 0) await sw.skipWaiting();
+      })(),
+    );
   }
 });

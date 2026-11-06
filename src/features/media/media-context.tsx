@@ -11,15 +11,11 @@ import {
 
 import type { MediaAsset, MediaCollection } from "@/domain/media/media";
 import type { ProjectRepository } from "@/services/projects/project-repository";
-import { createIndexedDbBlobMediaStorage } from "@/services/media/indexeddb-blob-media-storage";
 import { createIndexedDbMediaRepository } from "@/services/media/indexeddb-media-repository";
 import { createInMemoryMediaRepository } from "@/services/media/in-memory-media-repository";
 import { createInMemoryMediaStorage } from "@/services/media/in-memory-media-storage";
 import { createMediaUrlCache, type MediaUrlCache } from "@/services/media/media-url-cache";
-import {
-  createBrowserOpfsMediaStorage,
-  isOpfsAvailable,
-} from "@/services/media/opfs-media-storage";
+import { createBrowserMediaStorageGenerationManager } from "@/services/media/media-storage-generations";
 import type { MediaFileStorage } from "@/services/media/media-file-storage";
 import type { MediaRepository } from "@/services/media/media-repository";
 import {
@@ -50,6 +46,8 @@ export interface MediaContextValue {
   urlCache: MediaUrlCache;
   /** Almacenamiento físico activo (para mostrar el respaldo en la UI). */
   storageKind: MediaFileStorage["kind"];
+  /** Canal de bytes activo; Backup lo consume sin acoplarse a OPFS. */
+  fileStorage: MediaFileStorage;
   /** Estado real informado por StorageManager; `null` mientras se consulta. */
   persistenceStatus: StoragePersistenceStatus | null;
   assets: MediaAsset[];
@@ -103,9 +101,10 @@ export function MediaProvider({
     }
     return {
       repository: createIndexedDbMediaRepository(indexedDB),
-      fileStorage: isOpfsAvailable()
-        ? createBrowserOpfsMediaStorage()
-        : createIndexedDbBlobMediaStorage(indexedDB),
+      fileStorage: createBrowserMediaStorageGenerationManager(
+        indexedDB,
+        window.localStorage,
+      ).open(),
     };
   }, [repository, fileStorage]);
 
@@ -208,6 +207,7 @@ export function MediaProvider({
     service,
     urlCache: urlCacheRef.current,
     storageKind: resolved.fileStorage.kind,
+    fileStorage: resolved.fileStorage,
     persistenceStatus,
     assets,
     collections,

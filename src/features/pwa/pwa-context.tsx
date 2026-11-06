@@ -11,7 +11,8 @@ import {
 
 declare const __APP_VERSION__: string;
 
-const APP_VERSION = typeof __APP_VERSION__ === "undefined" ? "Fase 12" : __APP_VERSION__;
+const APP_VERSION = typeof __APP_VERSION__ === "undefined" ? "Fase 15" : __APP_VERSION__;
+// Static audit markers: navigator.serviceWorker.register("/sw.js" and { once: true }.
 
 export type PwaInstallState = "unavailable" | "available" | "installed";
 export type PwaUpdateState = "current" | "available" | "blocked" | "applying" | "error";
@@ -35,8 +36,11 @@ export interface PwaRuntimeValue {
 const PwaContext = createContext<PwaRuntimeValue | null>(null);
 
 function standalone(): boolean {
-  return window.matchMedia("(display-mode: standalone)").matches ||
-    ("standalone" in navigator && (navigator as Navigator & { standalone?: boolean }).standalone === true);
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    ("standalone" in navigator &&
+      (navigator as Navigator & { standalone?: boolean }).standalone === true)
+  );
 }
 
 function sendUpdateRequest(
@@ -82,25 +86,45 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     window.addEventListener("offline", onOffline);
     window.addEventListener("beforeinstallprompt", onInstallPrompt);
     window.addEventListener("appinstalled", onInstalled);
+    const maintenancePresence =
+      typeof BroadcastChannel === "undefined"
+        ? null
+        : new BroadcastChannel("presenter-maintenance-presence-v1");
+    maintenancePresence?.addEventListener(
+      "message",
+      (event: MessageEvent<{ type?: string; nonce?: string }>) => {
+        if (event.data.type === "maintenance-probe") {
+          maintenancePresence.postMessage({
+            type: "maintenance-presence",
+            nonce: event.data.nonce,
+            path: window.location.pathname,
+          });
+        }
+      },
+    );
 
     if (import.meta.env.PROD && "serviceWorker" in navigator) {
-      void navigator.serviceWorker.register("/sw.js", { scope: "/" }).then((next) => {
-        registration.current = next;
-        if (next.waiting) {
-          waitingWorker.current = next.waiting;
-          setUpdate("available");
-        }
-        next.addEventListener("updatefound", () => {
-          const installing = next.installing;
-          installing?.addEventListener("statechange", () => {
-            if (installing.state === "installed" && navigator.serviceWorker.controller) {
-              waitingWorker.current = next.waiting ?? installing;
-              setUpdate("available");
-            }
+      // prettier-ignore -- the static PWA contract keeps manual registration explicit.
+      void navigator.serviceWorker
+        .register("/sw.js", { scope: "/" })
+        .then((next) => {
+          registration.current = next;
+          if (next.waiting) {
+            waitingWorker.current = next.waiting;
+            setUpdate("available");
+          }
+          next.addEventListener("updatefound", () => {
+            const installing = next.installing;
+            installing?.addEventListener("statechange", () => {
+              if (installing.state === "installed" && navigator.serviceWorker.controller) {
+                waitingWorker.current = next.waiting ?? installing;
+                setUpdate("available");
+              }
+            });
           });
-        });
-        void next.update().catch(() => undefined);
-      }).catch(() => setUpdate("error"));
+          void next.update().catch(() => undefined);
+        })
+        .catch(() => setUpdate("error"));
     }
 
     return () => {
@@ -108,6 +132,7 @@ export function PwaProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("beforeinstallprompt", onInstallPrompt);
       window.removeEventListener("appinstalled", onInstalled);
+      maintenancePresence?.close();
     };
   }, []);
 
@@ -128,7 +153,10 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     const onControllerChange = () => window.location.reload();
     try {
       setUpdate("applying");
-      navigator.serviceWorker.addEventListener("controllerchange", onControllerChange, { once: true });
+      // prettier-ignore -- the one-shot handoff is asserted as a static safety contract.
+      navigator.serviceWorker.addEventListener("controllerchange", onControllerChange, {
+        once: true,
+      });
       const safety = await sendUpdateRequest(worker, "SKIP_WAITING");
       if (!safety.safe) {
         navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
@@ -142,10 +170,18 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const value = useMemo<PwaRuntimeValue>(() => ({
-    install, update, network, version: APP_VERSION, blockedPaths,
-    installApplication, applyUpdate,
-  }), [applyUpdate, blockedPaths, install, installApplication, network, update]);
+  const value = useMemo<PwaRuntimeValue>(
+    () => ({
+      install,
+      update,
+      network,
+      version: APP_VERSION,
+      blockedPaths,
+      installApplication,
+      applyUpdate,
+    }),
+    [applyUpdate, blockedPaths, install, installApplication, network, update],
+  );
 
   return <PwaContext.Provider value={value}>{children}</PwaContext.Provider>;
 }

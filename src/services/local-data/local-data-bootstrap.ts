@@ -17,6 +17,8 @@ import {
 import { openApplicationDatabase } from "./application-database";
 import { LocalDataChangeBus } from "./local-data-change-bus";
 import { SyncLocalStore } from "@/services/sync/sync-local-store";
+import { recoverInterruptedRestore } from "@/services/backup/backup-maintenance-database";
+import { createBrowserMediaStorageGenerationManager } from "@/services/media/media-storage-generations";
 
 export interface LocalDataRepositories {
   projects: ProjectRepository;
@@ -35,6 +37,7 @@ export interface LocalDataBootstrapResult {
 export interface BootstrapStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+  removeItem?(key: string): void;
 }
 
 function unavailableProjectRepository(message: string): ProjectRepository {
@@ -88,6 +91,11 @@ async function performBootstrap(options: {
   const now = options.now ?? (() => new Date().toISOString());
   try {
     await openApplicationDatabase(options.factory);
+    await recoverInterruptedRestore({
+      factory: options.factory,
+      storage: options.storage,
+      mediaManager: createBrowserMediaStorageGenerationManager(options.factory, options.storage),
+    });
   } catch (error) {
     const warning = error instanceof Error ? error.message : "IndexedDB no está disponible.";
     const legacy = inspectLegacyData(options.storage);

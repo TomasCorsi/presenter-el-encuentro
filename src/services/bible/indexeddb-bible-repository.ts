@@ -16,11 +16,16 @@ import { chapterKey, type BibleRepository } from "./bible-repository";
  * Sin dependencias: se usa la API nativa. Solo se instancia en cliente.
  */
 
-const DB_NAME = "broadcast-control.bible";
-const DB_VERSION = 1;
-const VERSIONS_STORE = "versions";
-const BOOKS_STORE = "books";
-const CHAPTERS_STORE = "chapters";
+export const BIBLE_DB_NAME = "broadcast-control.bible";
+export const BIBLE_DB_VERSION = 1;
+export const BIBLE_VERSIONS_STORE = "versions";
+export const BIBLE_BOOKS_STORE = "books";
+export const BIBLE_CHAPTERS_STORE = "chapters";
+const DB_NAME = BIBLE_DB_NAME;
+const DB_VERSION = BIBLE_DB_VERSION;
+const VERSIONS_STORE = BIBLE_VERSIONS_STORE;
+const BOOKS_STORE = BIBLE_BOOKS_STORE;
+const CHAPTERS_STORE = BIBLE_CHAPTERS_STORE;
 
 interface StoredBooks {
   versionId: string;

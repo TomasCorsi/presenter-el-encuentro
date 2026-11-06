@@ -604,3 +604,16 @@ validado en client, SSR, PWA `injectManifest` y Nitro `cloudflare-module`.
 - [ ] Error handling.
 - [ ] UX polish.
 - [ ] Testing.
+
+## Fase 15 — Backup y Restore local confiable
+
+- [x] `.presenterbackup` ZIP64 v1 con manifest, integrity y SHA-256 por entry.
+- [x] Backup completo/sin Media, streaming, worker y fallback Blob acotado.
+- [x] Inspección estricta, hardening ZIP y restore replace-only con rollback.
+- [x] Maintenance DB, recovery de crash y generaciones Media.
+- [x] Bible/preferencias saneadas; Sync/Auth y estado operativo excluidos.
+- [x] Coordinación de ventanas, políticas Live/PWA y quality gate automático.
+- [ ] QA manual de archivos grandes, OPFS y crash físico entre reinicios.
+
+**Estado:** IMPLEMENTACIÓN COMPLETA / BUILD PASS / QUALITY GATE AUTOMÁTICO PASS /
+QA MANUAL PENDIENTE. No se avanzó a Fase 16.

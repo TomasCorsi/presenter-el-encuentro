@@ -57,6 +57,7 @@ export interface CloudRuntimeValue {
   requestPasswordRecovery(email: string): Promise<void>;
   updatePassword(password: string): Promise<void>;
   signOut(): Promise<void>;
+  clearLocalSessionForRestore(): Promise<void>;
   retry(): Promise<void>;
 }
 
@@ -302,6 +303,16 @@ export function CloudProvider({
           }
           applyAnonymous(false);
         }),
+      clearLocalSessionForRestore: async () => {
+        const client = clientRef.current;
+        operationRef.current += 1;
+        explicitLogoutRef.current = true;
+        if (client) {
+          const { error: signOutError } = await client.auth.signOut({ scope: "local" });
+          if (signOutError) throw signOutError;
+        }
+        applyAnonymous(false);
+      },
       retry: () =>
         run(async (client) => {
           const { data, error: sessionError } = await client.auth.getSession();

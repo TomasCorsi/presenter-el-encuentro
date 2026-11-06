@@ -21,6 +21,8 @@ export interface MediaFileStorage {
   readonly kind: MediaStorageKind;
   /** Escribe el archivo completo; en OPFS usa streaming (nunca arrayBuffer). */
   save(id: string, file: Blob): Promise<void>;
+  /** Escribe chunks sin materializar el archivo completo. */
+  saveStream(id: string, stream: ReadableStream<Uint8Array>, mimeType: string): Promise<void>;
   get(id: string): Promise<Blob | null>;
   delete(id: string): Promise<void>;
   exists(id: string): Promise<boolean>;
